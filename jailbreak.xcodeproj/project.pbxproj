@@ -27,6 +27,8 @@
 		F20690412A59965A00519F19 /* jailbreak */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = jailbreak; sourceTree = BUILT_PRODUCTS_DIR; };
 		F20690442A59965A00519F19 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "../../../../../opt/homebrew/Cellar/libusb/1.0.26/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
+		F206904E2A59BBAE00519F19 /* dump_shellcode.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = dump_shellcode.py; sourceTree = "<group>"; };
+		F206904F2A59BD6C00519F19 /* Notes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Notes.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +46,8 @@
 		F20690382A59965A00519F19 = {
 			isa = PBXGroup;
 			children = (
+				F206904F2A59BD6C00519F19 /* Notes.md */,
+				F206904E2A59BBAE00519F19 /* dump_shellcode.py */,
 				F20690432A59965A00519F19 /* jailbreak */,
 				F20690422A59965A00519F19 /* Products */,
 				F206904B2A59B10A00519F19 /* Frameworks */,
