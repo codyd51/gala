@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		F20690452A59965A00519F19 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = F20690442A59965A00519F19 /* main.m */; };
+		F206904D2A59B10A00519F19 /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +26,7 @@
 /* Begin PBXFileReference section */
 		F20690412A59965A00519F19 /* jailbreak */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = jailbreak; sourceTree = BUILT_PRODUCTS_DIR; };
 		F20690442A59965A00519F19 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "../../../../../opt/homebrew/Cellar/libusb/1.0.26/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +34,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F206904D2A59B10A00519F19 /* libusb-1.0.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -43,6 +46,7 @@
 			children = (
 				F20690432A59965A00519F19 /* jailbreak */,
 				F20690422A59965A00519F19 /* Products */,
+				F206904B2A59B10A00519F19 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -60,6 +64,14 @@
 				F20690442A59965A00519F19 /* main.m */,
 			);
 			path = jailbreak;
+			sourceTree = "<group>";
+		};
+		F206904B2A59B10A00519F19 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -247,6 +259,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = BPXZQ3R8TZ;
 				ENABLE_HARDENED_RUNTIME = YES;
+				HEADER_SEARCH_PATHS = "/opt/homebrew/Cellar/libusb/1.0.26/include/**";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/Cellar/libusb/1.0.26/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -257,6 +274,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = BPXZQ3R8TZ;
 				ENABLE_HARDENED_RUNTIME = YES;
+				HEADER_SEARCH_PATHS = "/opt/homebrew/Cellar/libusb/1.0.26/include/**";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/Cellar/libusb/1.0.26/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
