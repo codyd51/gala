@@ -17,7 +17,7 @@
 */
 
 #define DUMP_TO 0x84000000
-#define DUMP_FROM 0x62d
+#define DUMP_FROM 0x8402c160
 #define DUMP_SIZE 0x10000
 
 void memcpy(char* dest, char* source, int size) {
@@ -28,17 +28,19 @@ void memcpy(char* dest, char* source, int size) {
     }
 }
 
-void c_entry_point(void) {
-    //uint32_t* mem = 0x84000000;
-    //mem[0] = 0xdeadbeef;
-    //mem[1] = 0xcafebabe;
-    /*
-     */
+
+void c_entry_point(char* pwned_serial, int pwned_serial_len) {
+    memcpy(DUMP_TO, DUMP_FROM, DUMP_SIZE);
     unsigned int *p = 0;
+    
+    // Try to draw to the framebuffer
     for(p = (unsigned int*)0x5F700000; p < (unsigned int*)(0x5F700000 + (640 * 960 * 4)); p++) {
         *p = 0xff0088;
     }
-    memcpy(DUMP_TO, DUMP_FROM, DUMP_SIZE);
+    
+    // Overwrite the serial number
+    char* serial = (char*)0x8402e0e0;
+    memcpy(serial, pwned_serial, pwned_serial_len);
 }
 
 /*
