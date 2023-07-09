@@ -24,6 +24,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F20532F32A59E68B004E86C2 /* assemble2.s */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm; path = assemble2.s; sourceTree = "<group>"; };
+		F20532F42A59EB75004E86C2 /* compile_payload.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = compile_payload.sh; sourceTree = "<group>"; };
+		F20532F52A59F989004E86C2 /* payload_body.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = payload_body.c; sourceTree = "<group>"; };
 		F20690412A59965A00519F19 /* jailbreak */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = jailbreak; sourceTree = BUILT_PRODUCTS_DIR; };
 		F20690442A59965A00519F19 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "../../../../../opt/homebrew/Cellar/libusb/1.0.26/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
@@ -46,6 +49,9 @@
 		F20690382A59965A00519F19 = {
 			isa = PBXGroup;
 			children = (
+				F20532F52A59F989004E86C2 /* payload_body.c */,
+				F20532F42A59EB75004E86C2 /* compile_payload.sh */,
+				F20532F32A59E68B004E86C2 /* assemble2.s */,
 				F206904F2A59BD6C00519F19 /* Notes.md */,
 				F206904E2A59BBAE00519F19 /* dump_shellcode.py */,
 				F20690432A59965A00519F19 /* jailbreak */,
