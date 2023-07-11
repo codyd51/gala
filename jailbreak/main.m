@@ -55,12 +55,13 @@ void dump_state(struct libusb_device_handle* device_handle) {
 }
 
 
-struct libusb_device_handle* find_device(struct libusb_context* context, int vendor_id, int device_id) {
+struct libusb_device_handle* find_device(struct libusb_context* context, int vendor_id, int device_id, char* serial_number_out) {
+    NSLog(@"Looking for device...");
     struct libusb_device** device_list = NULL;
     ssize_t device_count = libusb_get_device_list(context, &device_list);
-    NSLog(@"Got device list %p", device_list);
+    NSLog(@"Found %d devices in device list %p", device_count, device_list);
     struct libusb_device_handle* handle = NULL;
-    
+
     for (ssize_t i = 0; i < device_count; i++) {
         struct libusb_device* device = device_list[i];
         struct libusb_device_descriptor device_desc;
@@ -69,9 +70,12 @@ struct libusb_device_handle* find_device(struct libusb_context* context, int ven
         
         if (device_desc.idVendor == vendor_id && device_desc.idProduct == device_id) {
             libusb_open(device, &handle);
-            char bytes[128] = {0};
-            libusb_get_string_descriptor_ascii(handle, device_desc.iSerialNumber, &bytes, 128);
-            NSLog(@"Found device handle %p, serial %s", handle, bytes);
+            char serial[128] = {0};
+            libusb_get_string_descriptor_ascii(handle, device_desc.iSerialNumber, &serial, 128);
+            NSLog(@"Found device handle %p, serial %s", handle, serial);
+            if (serial_number_out) {
+                strcpy(serial_number_out, &serial);
+            }
             break;
         }
     }
@@ -101,10 +105,7 @@ uint32_t get_file_len(FILE* f) {
 void get_status(struct libusb_device_handle* device_handle) {
     unsigned char status[6];
     int ret = libusb_control_transfer(device_handle, 0xa1, 3, 0, 0, status, 6, 100);
-    NSLog(@"get_status ret = %d", ret);
-    for (int i = 0; i < 6; i++) {
-        //NSLog(@"%02x", status[i]);
-    }
+    //NSLog(@"get_status ret = %d", ret);
 }
 
 void dfu_notify_upload_finished(struct libusb_device_handle* device_handle) {
@@ -116,58 +117,69 @@ void dfu_notify_upload_finished(struct libusb_device_handle* device_handle) {
     for (int i = 0; i < 3; i++) {
         get_status(device_handle);
     }
+    NSLog(@"Resetting device to complete upload flow...");
     libusb_reset_device(device_handle);
 }
 
-void print_serial_number(struct libusb_device_handle* device_handle) {
+void upload_file(struct libusb_device_handle* device_handle, const char* filename) {
+    FILE* file = fopen(filename, "rb");
+    uint32_t file_len = get_file_len(file);
+    NSLog(@"File is %d bytes", file_len);
+    int chunk_size = 0x800;
+    unsigned char* chunk_buf = malloc(chunk_size);
+    for (int i = 0; i < file_len; i += chunk_size) {
+        int read_bytes = (int)fread(chunk_buf, 1, chunk_size, file);
+        NSLog(@"\tUpload %d%% done...", (int)(((float)i / (float)file_len) * 100.0));
+        int ret = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, chunk_buf, chunk_size, 3000);
+    }
+    NSLog(@"Informing the device that the upload is finished...");
+    //libusb_reset_device(device_handle);
+    dfu_notify_upload_finished(device_handle);
+}
+
+void upload_recovery(struct libusb_device_handle* device_handle, const char* filename) {
     /*
-    uint8_t* data = [33]();
-    r = libusb_get_device_descriptor(devs[i], &desc);
-    if (r < 0) {
-        cerr << "Error: Device handle not received, code: " << r << endl;
+    def send_data(device, data):
+        #print 'Sending 0x%x of data to device.' % len(data)
+        assert device.ctrl_transfer(0x41, 0, 0, 0, 0, 1000) == 0
+        index = 0
+        while index < len(data):
+            amount = min(len(data) - index, MAX_PACKET_SIZE)
+            assert device.write(0x04, data[index:index + amount], 1000) == amount
+            index += amount
+     */
+
+    /*
+    FILE* file = fopen(filename, "rb");
+    uint32_t file_len = get_file_len(file);
+    NSLog(@"File is %d bytes", file_len);
+    int chunk_size = 0x4000;
+    unsigned char* chunk_buf = malloc(chunk_size);
+    libusb_control_transfer(device_handle, 0x41, 0, 0, 0, 0, 0, 3000);
+    for (int i = 0; i < file_len; i += chunk_size) {
+        int read_bytes = (int)fread(chunk_buf, 1, chunk_size, file);
+        NSLog(@"\tUpload %d%% done...", (int)(((float)i / (float)file_len) * 100.0));
+        //int ret = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, chunk_buf, chunk_size, 3000);
     }
-    printf("%02X:%02X  \t", desc.idVendor, desc.idProduct);
-    try {
-        libusb_open(devs[i], &handle);
-        if (handle != nullptr) {
-            if (libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, data, 31) >= 0) {
-                data[32] = '\0';
-                cout << "Serial Number: \"" << data << "\"";
-            }
-        }
-        libusb_close(handle);
-    } catch (libusb_error &e) {
-        cerr << e << endl;
-    }
-    cout << endl;
+    NSLog(@"Informing the device that the upload is finished...");
+    libusb_reset_device(device_handle);
+    dfu_notify_upload_finished(device_handle);
      */
 }
 
 struct libusb_device_handle* usb_wait_device_connection(struct libusb_context* context, struct libusb_device_handle* device_handle) {
     //sleep(2);
     //libusb_close(device_handle);
-    return find_device(context, 0x05ac, 0x1227);
+    return find_device(context, 0x05ac, 0x1227, NULL);
 }
 
-void inner_main(void) {
-    NSLog(@"Main running");
-    // Initialize USB connection with the DFU device
-    struct libusb_context* context = NULL;
-    libusb_init(&context);
-    NSLog(@"Got context: %p", context);
-    
-    struct libusb_device_handle* device_handle = NULL;
-    while (1) {
-        device_handle = find_device(context, 0x05ac, 0x1227);
-        if (device_handle) {
-            break;
-        }
-        NSLog(@"Failed to find DFU device.");
-        sleep(1);
-    }
-    
-    //dump_state(device_handle);
-    
+void reset_counters(struct libusb_device_handle* device_handle) {
+    // assert device.ctrl_transfer(0x21, 4, 0, 0, 0, 1000) == 0
+    int ret = libusb_control_transfer(device_handle, 0x21, 4, 0, 0, 0, 0, 1000);
+    NSLog(@"reset_counters retval (expect 0): %d", ret);
+}
+
+struct libusb_device_handle* run_limera1n(struct libusb_context* context, struct libusb_device_handle* device_handle) {
     // Run limera1n
     unsigned char buf[LOADADDR_SIZE] = {0};
     unsigned char shellcode[BUF_SIZE] = {0};
@@ -231,26 +243,71 @@ void inner_main(void) {
     libusb_reset_device(device_handle);
     dfu_notify_upload_finished(device_handle);
     //libusb_reset_device(device_handle);
-    NSLog(@"dump started?!");
     // communicate with the payload
     struct libusb_device_handle* device_handle2 = usb_wait_device_connection(context, device_handle);
-    NSLog(@"got handle2 %p", device_handle2);
+    NSLog(@"Reconnected, limera1n finished");
     
     //dump_state(device_handle2);
 
-    //unsigned int addr = 0x0;
-    /*
-    FILE* fout = fopen("/Users/philliptennen/Documents/Jailbreak/jailbreak/rom2.bin", "wb");
+    //NSLog(@"all done");
+    return device_handle2;
+}
+
+void pull_dump(struct libusb_device_handle* device_handle) {
+    NSLog(@"Pulling a dump...");
+    FILE* fout = fopen("/Users/philliptennen/Documents/Jailbreak/jailbreak/sentinel_dump2.bin", "wb");
     unsigned char data[0x800] = {0};
-    for (int addr = 0; addr < 0x10000; addr += 0x800) {
-        int ret = libusb_control_transfer(device_handle2, 0xa1, 2, 0, 0, data, 0x800, 0);
-        NSLog(@"ret %d", ret);
+    for (int addr = 0; addr < 0x1000; addr += 0x800) {
+        int ret = libusb_control_transfer(device_handle, 0xa1, 2, 0, 0, data, 0x800, 0);
+        //NSLog(@"ret %d", ret);
         fwrite(data, 1, 0x800, fout);
     }
     fclose(fout);
-     */
+}
 
-    //NSLog(@"all done");
+void inner_main(void) {
+    NSLog(@"Main running");
+    // Initialize USB connection with the DFU device
+    struct libusb_context* context = NULL;
+    libusb_init(&context);
+    NSLog(@"Got context: %p", context);
+    
+    struct libusb_device_handle* device_handle = NULL;
+    bool did_already_perform_exploit = false;
+    while (1) {
+        char serial[128] = {0};
+        device_handle = find_device(context, 0x05ac, 0x1227, &serial);
+        if (device_handle) {
+            did_already_perform_exploit = strcmp(serial, "[Overwritten serial number!]") == 0;
+            break;
+        }
+        NSLog(@"Failed to find DFU device.");
+        return;
+        sleep(1);
+    }
+
+    struct libusb_device_handle* device_handle2 = device_handle;
+    
+    if (!did_already_perform_exploit) {
+        NSLog(@"Device has not been exploited yet...");
+        device_handle2 = run_limera1n(context, device_handle2);
+    }
+    else {
+        NSLog(@"Skipped perfoming exploit because the device is already pwned");
+    }
+
+    sleep(1);
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/payload2/trimmed_shellcode.img3");
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    NSLog(@"spinning");
+    sleep(1);
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+
+    while (1) {}
+
+    //pull_dump(device_handle2);
     
     // Now, try writing an ipsw to see what happens?!
     // Reset counters
@@ -262,16 +319,83 @@ void inner_main(void) {
 
     // Reset counters
     //sent_bytes = libusb_control_transfer(device_handle2, 0x21, 2, 0, 0, buf, 0, 1000);
+    //NSLog(@"Result of resetting counters %d", sent_bytes);
     
     //dump_state(device_handle);
     
+    /*
     //FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_6.1.3_10B329_Restore.ipsw", "rb");
-    //FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_6.1.3_10B329_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu", "rb");
-    FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu", "rb");
+    FILE* ipsw = fopen(", "rb");
+    //FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu", "rb");
     uint32_t file_len = get_file_len(ipsw);
     NSLog(@"IPSW is %d bytes", file_len);
     int chunk_size = 0x800;
     unsigned char* ipsw_buf = malloc(chunk_size);
+    for (int i = 0; i < file_len; i += chunk_size) {
+        int read_bytes = (int)fread(ipsw_buf, 1, chunk_size, ipsw);
+        //hexdump(ipsw_buf, chunk_size);
+        NSLog(@"\tread %d bytes, progress = %.2f", read_bytes, (float)i / (float)file_len);
+        int ret = libusb_control_transfer(device_handle2, 0x21, 1, 0, 0, ipsw_buf, chunk_size, 3000);
+        NSLog(@"\t\tret %d", ret);
+    }
+    */
+    
+    reset_counters(device_handle2);
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/applelogo-640x960.s5l8930x.img3");
+    //dfu_notify_upload_finished(device_handle2);
+    
+    //sleep(1);
+    NSLog(@"Uploading IBSS...");
+    
+    //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBSS.reencrypted");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403_iBSS.n90ap.RELEASE.dfu.repack_test");
+    //NSLog(@"Upload finished, will ask device to validate...");
+    //dfu_notify_upload_finished(device_handle2);
+    //libusb_reset_device(device_handle2);
+    sleep(1);
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    
+    //unsigned int addr = 0x0;
+    NSLog(@"Uploaded patched IBSS");
+    
+    NSLog(@"Uploading IBEC...");
+    reset_counters(device_handle2);
+    //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBEC.reencrypted");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    sleep(1);
+    
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/kernelcache.release.n90");
+    sleep(1);
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    
+    NSLog(@"Sleep");
+    while (1) {}
+    
+    
+    NSLog(@"Sent IBEC! Spinning");
+    
+    while (1) {}
+    NSLog(@"Sleeping...");
+    sleep(5);
+    NSLog(@"Sending restore ramdisk...");
+    //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/038-6494-001.dmg");
+    //upload_file_recovery(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/038-6494-001.dmg");
+    NSLog(@"Sent restore ramdisk!");
+    NSLog(@"Spinning here...");
+    while (1) {}
+
+    /*
+    sleep(5);
+    
+    ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_6.1.3_10B329_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu", "rb");
+    file_len = get_file_len(ipsw);
+    NSLog(@"IPSW is %d bytes", file_len);
+    ipsw_buf = malloc(chunk_size);
     for (int i = 0; i < file_len; i += chunk_size) {
         int read_bytes = (int)fread(ipsw_buf, 1, chunk_size, ipsw);
         hexdump(ipsw_buf, chunk_size);
@@ -280,15 +404,35 @@ void inner_main(void) {
         NSLog(@"\t\tret %d", ret);
     }
     
+     */
+    /*
     NSLog(@"Upload finished, will ask device to validate...");
     libusb_reset_device(device_handle2);
     dfu_notify_upload_finished(device_handle2);
     device_handle2 = usb_wait_device_connection(context, device_handle2);
     NSLog(@"got handle2 %p", device_handle2);
+     */
+    
+    //sleep(3);
+    NSLog(@"Finished bootstrapping IBSS");
+    
+    sleep(1);
+    NSLog(@"The device should now be running IBSS");
+    
+    reset_counters(device_handle2);
+    //upload_file(device_handle, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    upload_file(device_handle, "test_payload");
+    sleep(1);
+    //libusb_reset_device(device_handle2);
+    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    NSLog(@"got handle2 %p", device_handle2);
+    
+    NSLog(@"Really all done!");
+    sleep(5);
     
     char* command = "bgcolor 255 0 0";
-    int ret = libusb_control_transfer(device_handle2, 0x40, 0, 0, 0, command, strlen(command) + 1, 5000);
-    //NSLog(@"ret %d %s", libusb_error_name(ret));
+    int ret = libusb_control_transfer(device_handle2, 0x40, 0, 0, 0, command, strlen(command) + 1, 30000);
+    NSLog(@"ret %d", ret);
     
     while (1) {}
     

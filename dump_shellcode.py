@@ -1,9 +1,20 @@
 from pathlib import Path
 from strongarm.macho import MachoBinary, MachoParser
+import argparse
 
 
 def main():
-    object_file_path = Path(__file__).parent / "payload"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("object_file_path")
+    parser.add_argument("output_path")
+    args = parser.parse_args()
+    
+    # object_file_path = Path(__file__).parent / "payload"
+    object_file_path = Path(args.object_file_path)
+    output_file_path = Path(args.output_path)
+    print(f'Object path: {object_file_path}')
+    print(f'Output path: {output_file_path}')
+    
     parser = MachoParser(object_file_path)
     print(parser)
     binary = parser.get_armv7_slice()
@@ -15,8 +26,7 @@ def main():
     print(text_section)
     bytes = binary.get_content_from_virtual_address(text_section.address, text_section.size)
     
-    output_file = Path(__file__).parent / "trimmed_shellcode"
-    with open(output_file.as_posix(), "wb") as f:
+    with open(output_file_path.as_posix(), "wb") as f:
         f.write(bytes)
     
 

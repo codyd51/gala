@@ -32,6 +32,10 @@
 		F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "../../../../../opt/homebrew/Cellar/libusb/1.0.26/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
 		F206904E2A59BBAE00519F19 /* dump_shellcode.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = dump_shellcode.py; sourceTree = "<group>"; };
 		F206904F2A59BD6C00519F19 /* Notes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Notes.md; sourceTree = "<group>"; };
+		F26E90572A5DFE8900CB8B98 /* payload2_tiny.s */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm; path = payload2_tiny.s; sourceTree = "<group>"; };
+		F2FC8F442A5C709F002724FB /* payload2.s */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm; path = payload2.s; sourceTree = "<group>"; };
+		F2FC8F462A5C70F0002724FB /* compile_payload2.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = compile_payload2.sh; sourceTree = "<group>"; };
+		F2FC8F472A5C71B2002724FB /* payload2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = payload2.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,6 +53,7 @@
 		F20690382A59965A00519F19 = {
 			isa = PBXGroup;
 			children = (
+				F2FC8F432A5C7086002724FB /* payload2 */,
 				F20532F52A59F989004E86C2 /* payload_body.c */,
 				F20532F42A59EB75004E86C2 /* compile_payload.sh */,
 				F20532F32A59E68B004E86C2 /* assemble2.s */,
@@ -82,6 +87,17 @@
 				F206904C2A59B10A00519F19 /* libusb-1.0.0.dylib */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F2FC8F432A5C7086002724FB /* payload2 */ = {
+			isa = PBXGroup;
+			children = (
+				F2FC8F462A5C70F0002724FB /* compile_payload2.sh */,
+				F2FC8F442A5C709F002724FB /* payload2.s */,
+				F2FC8F472A5C71B2002724FB /* payload2.c */,
+				F26E90572A5DFE8900CB8B98 /* payload2_tiny.s */,
+			);
+			path = payload2;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
