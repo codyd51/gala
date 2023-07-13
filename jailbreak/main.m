@@ -86,7 +86,10 @@ struct libusb_device_handle* find_device(struct libusb_context* context, int ven
 
 long readfile(char* filename, void* buffer) {
     FILE* f = fopen(filename, "rb");
-    // if !f
+    if (!f) {
+        NSLog(@"File couldn't be opened: %s", filename);
+        exit(1);
+    }
     fseek(f, 0, SEEK_END);
     long len = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -105,7 +108,7 @@ uint32_t get_file_len(FILE* f) {
 void get_status(struct libusb_device_handle* device_handle) {
     unsigned char status[6];
     int ret = libusb_control_transfer(device_handle, 0xa1, 3, 0, 0, status, 6, 100);
-    //NSLog(@"get_status ret = %d", ret);
+    NSLog(@"get_status ret = %d", ret);
 }
 
 void dfu_notify_upload_finished(struct libusb_device_handle* device_handle) {
@@ -123,14 +126,19 @@ void dfu_notify_upload_finished(struct libusb_device_handle* device_handle) {
 
 void upload_file(struct libusb_device_handle* device_handle, const char* filename) {
     FILE* file = fopen(filename, "rb");
+    if (!file) {
+        NSLog(@"File could not be opened! %s", filename);
+        exit(1);
+    }
     uint32_t file_len = get_file_len(file);
     NSLog(@"File is %d bytes", file_len);
     int chunk_size = 0x800;
     unsigned char* chunk_buf = malloc(chunk_size);
     for (int i = 0; i < file_len; i += chunk_size) {
         int read_bytes = (int)fread(chunk_buf, 1, chunk_size, file);
-        NSLog(@"\tUpload %d%% done...", (int)(((float)i / (float)file_len) * 100.0));
-        int ret = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, chunk_buf, chunk_size, 3000);
+        NSLog(@"\tUpload %d%% done, sending %d bytes...", (int)(((float)i / (float)file_len) * 100.0), read_bytes);
+        int ret = libusb_control_transfer(device_handle, 0x21, 1, 0, 0, chunk_buf, read_bytes, 3000);
+        NSLog(@"\t\t%d", ret);
     }
     NSLog(@"Informing the device that the upload is finished...");
     //libusb_reset_device(device_handle);
@@ -169,7 +177,7 @@ void upload_recovery(struct libusb_device_handle* device_handle, const char* fil
 
 struct libusb_device_handle* usb_wait_device_connection(struct libusb_context* context, struct libusb_device_handle* device_handle) {
     //sleep(2);
-    //libusb_close(device_handle);
+    libusb_close(device_handle);
     return find_device(context, 0x05ac, 0x1227, NULL);
 }
 
@@ -190,7 +198,8 @@ struct libusb_device_handle* run_limera1n(struct libusb_context* context, struct
     
     // Read the shellcode into the buffer
     // TODO: Check the shellcode looks correct?
-    long shellcode_length = readfile("/Users/philliptennen/Documents/Jailbreak/jailbreak/trimmed_shellcode", shellcode);
+    NSLog(@"Reading file...");
+    long shellcode_length = readfile("/Users/philliptennen/Documents/Jailbreak/jailbreak/payload_stage1/build/payload_stage1_shellcode", shellcode);
     NSLog(@"Shellcode len %lx", shellcode_length);
     
     NSLog(@"Sending heap fill with jump");
@@ -270,8 +279,7 @@ void inner_main(void) {
     // Initialize USB connection with the DFU device
     struct libusb_context* context = NULL;
     libusb_init(&context);
-    NSLog(@"Got context: %p", context);
-    
+
     struct libusb_device_handle* device_handle = NULL;
     bool did_already_perform_exploit = false;
     while (1) {
@@ -290,15 +298,16 @@ void inner_main(void) {
     
     if (!did_already_perform_exploit) {
         NSLog(@"Device has not been exploited yet...");
-        device_handle2 = run_limera1n(context, device_handle2);
+        //device_handle2 = run_limera1n(context, device_handle2);
     }
     else {
         NSLog(@"Skipped perfoming exploit because the device is already pwned");
     }
 
     sleep(1);
-    device_handle2 = usb_wait_device_connection(context, device_handle2);
-    
+    //device_handle2 = usb_wait_device_connection(context, device_handle2);
+
+    /*
     upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/payload2/trimmed_shellcode.img3");
     device_handle2 = usb_wait_device_connection(context, device_handle2);
     NSLog(@"spinning");
@@ -306,6 +315,7 @@ void inner_main(void) {
     device_handle2 = usb_wait_device_connection(context, device_handle2);
 
     while (1) {}
+     */
 
     //pull_dump(device_handle2);
     
@@ -326,7 +336,7 @@ void inner_main(void) {
     /*
     //FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_6.1.3_10B329_Restore.ipsw", "rb");
     FILE* ipsw = fopen(", "rb");
-    //FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu", "rb");
+    FILE* ipsw = fopen("/Users/philliptennen/Downloads/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu", "rb");
     uint32_t file_len = get_file_len(ipsw);
     NSLog(@"IPSW is %d bytes", file_len);
     int chunk_size = 0x800;
@@ -340,16 +350,16 @@ void inner_main(void) {
     }
     */
     
-    reset_counters(device_handle2);
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/applelogo-640x960.s5l8930x.img3");
+    //reset_counters(device_handle2);
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/applelogo-640x960.s5l8930x.img3");
     //dfu_notify_upload_finished(device_handle2);
     
     //sleep(1);
     NSLog(@"Uploading IBSS...");
     
-    //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBSS.reencrypted");
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403_iBSS.n90ap.RELEASE.dfu.repack_test");
     //NSLog(@"Upload finished, will ask device to validate...");
     //dfu_notify_upload_finished(device_handle2);
@@ -359,24 +369,26 @@ void inner_main(void) {
     
     //unsigned int addr = 0x0;
     NSLog(@"Uploaded patched IBSS");
-    
+
     NSLog(@"Uploading IBEC...");
     reset_counters(device_handle2);
-    //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBEC.reencrypted");
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
     sleep(1);
     
     device_handle2 = usb_wait_device_connection(context, device_handle2);
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/kernelcache.release.n90");
+    /*
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/kernelcache.release.n90");
     sleep(1);
     device_handle2 = usb_wait_device_connection(context, device_handle2);
-    
+    */
+
+    return;
     NSLog(@"Sleep");
     while (1) {}
-    
-    
+
     NSLog(@"Sent IBEC! Spinning");
     
     while (1) {}

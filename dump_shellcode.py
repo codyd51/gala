@@ -1,5 +1,5 @@
 from pathlib import Path
-from strongarm.macho import MachoBinary, MachoParser
+from strongarm.macho import MachoParser
 import argparse
 
 

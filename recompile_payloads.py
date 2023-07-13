@@ -19,9 +19,11 @@ def build(payload_folder: Path):
     print(f'Produced output shellcode {payload_shellcode.relative_to(payload_folder.parent)}')
 
 
-if __name__ == '__main__':
+def recompile_payloads():
     root = Path(__file__).parent
     build(root / "payload_stage1")
     build(root / "payload_stage2")
 
-    # dump_text_section_to_file
+
+if __name__ == '__main__':
+    recompile_payloads()
