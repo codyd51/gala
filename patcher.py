@@ -10,6 +10,15 @@ from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
 
+_JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
+_XPWNTOOL = _JAILBREAK_ROOT / "xpwn" / "build" / "ipsw-patch" / "xpwntool"
+
+_IBSS_KEY = "f7f5fd61ea0792f13ea84126c3afe33944ddc543b62b552e009cbffaf7e34e28"
+_IBSS_IV = "24af28537e544ebf981ce32708a7e21f"
+_IBEC_KEY = "061695b0ba878657ae195416cff88287f222b50baabb9f72e0c2271db6b58db5"
+_IBEC_IV = "1168b9ddb4c5df062892810fec574f55"
+
+
 def run_and_check(cmd_list: list[str], cwd: Path = None, env_additions: dict[str, str] | None = None) -> None:
     print(" ".join(cmd_list), cwd)
     env = os.environ.copy()
@@ -169,49 +178,95 @@ def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
             raise NotImplementedError()
 
 
-def main():
-    jailbreak_root = Path("/Users/philliptennen/Documents/Jailbreak")
-    output_dir = jailbreak_root / "patched_images" / "iPhone3,1_6.1_10B144"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    iBSS = jailbreak_root / "ipsw" / "iPhone3,1_6.1_10B144_Restore.ipsw.unzipped" / "Firmware" / "dfu" / "iBSS.n90ap.RELEASE.dfu"
-    decrypted_iBSS = output_dir / "iBSS.n90ap.RELEASE.dfu.decrypted"
-
-    iBEC = jailbreak_root / "ipsw" / "iPhone3,1_6.1_10B144_Restore.ipsw.unzipped" / "Firmware" / "dfu" / "iBEC.n90ap.RELEASE.dfu"
-    decrypted_iBEC = output_dir / "iBEC.n90ap.RELEASE.dfu.decrypted"
-
-    xpwntool = jailbreak_root / "xpwn" / "build" / "ipsw-patch" / "xpwntool"
-
-    # Decrypt the iBSS and iBEC images
-    # (And delete any decrypted image we already produced)
-    decrypted_iBSS.unlink(missing_ok=True)
-    decrypted_iBEC.unlink(missing_ok=True)
+def decrypt_img3(path: Path, output_path: Path, key: str, iv: str):
     run_and_check(
         [
-            xpwntool.as_posix(),
-            iBSS.as_posix(),
-            decrypted_iBSS.as_posix(),
+            _XPWNTOOL.as_posix(),
+            path.as_posix(),
+            output_path.as_posix(),
             "-k",
-            "f7f5fd61ea0792f13ea84126c3afe33944ddc543b62b552e009cbffaf7e34e28",
+            key,
             "-iv",
-            "24af28537e544ebf981ce32708a7e21f",
+            iv,
         ],
     )
-    if not decrypted_iBSS.exists():
-        raise RuntimeError(f"Expected decrypted iBSS to be produced at {decrypted_iBSS.as_posix()}")
+    if not output_path.exists():
+        raise RuntimeError(f"Expected decrypted img3 to be produced at {output_path.as_posix()}")
+
+
+def encrypt_img3(path: Path, output_path: Path, original_img3: Path, key: str, iv: str):
     run_and_check(
         [
-            xpwntool.as_posix(),
-            iBEC.as_posix(),
-            decrypted_iBEC.as_posix(),
+            _XPWNTOOL.as_posix(),
+            path.as_posix(),
+            output_path.as_posix(),
+            "-t",
+            original_img3.as_posix(),
             "-k",
-            "061695b0ba878657ae195416cff88287f222b50baabb9f72e0c2271db6b58db5",
+            key,
             "-iv",
-            "1168b9ddb4c5df062892810fec574f55",
+            iv,
         ],
     )
-    if not decrypted_iBEC.exists():
-        raise RuntimeError(f"Expected decrypted iBEC to be produced at {decrypted_iBEC.as_posix()}")
 
+
+def apply_patches(input: Path, output: Path, patches: list[PatchRegion]):
+    cs = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    cs.detail = True
+    base_address = 0x84000000
+    input_bytes = input.read_bytes()
+    patched_bytes = bytearray(copy(input_bytes))
+    for patch in patches:
+        function = patch.function
+        print()
+        print(f'Patching {function.name}:')
+        print(f'    {patch.address} {patch.orig_instructions}')
+        print(f'   Patch ----> {patch.patched_instructions}')
+        #if len(patch.orig_instructions) != len(patch.patched_instructions):
+        #    raise ValueError(f'Expected to have the same number of instructions in the pre- and post-patch state')
+
+        region_size = sum([i.format.size for i in patch.orig_instructions])
+        patch_file_offset = patch.address - base_address
+        instr_bytes = input_bytes[patch_file_offset:patch_file_offset + region_size]
+        actual_orig_instructions = list(cs.disasm(instr_bytes, patch.address))
+
+        # Validate the original instructions are what we expect
+        if len(actual_orig_instructions) != len(patch.orig_instructions):
+            raise ValueError(f'Expected to find {len(patch.orig_instructions)} instructions, but found {len(actual_orig_instructions)}: {patch.orig_instructions}, {actual_orig_instructions}')
+        for actual_orig_instruction, expected_orig_instruction in zip(actual_orig_instructions, patch.orig_instructions):
+            actual_orig_instruction_str = f'{actual_orig_instruction.mnemonic} {actual_orig_instruction.op_str}'
+            if actual_orig_instruction_str != expected_orig_instruction.value:
+                raise ValueError(f"Expected to disassemble \"{expected_orig_instruction}\", but found \"{actual_orig_instruction_str}\"")
+
+        # Assemble the patched instructions
+        patched_instr_address = patch.address
+        for patched_instr in patch.patched_instructions:
+            assembled_bytes = assemble(patched_instr_address, patched_instr)
+            # Validate that the instruction was assembled correctly
+            disassembled_instrs = list(cs.disasm(assembled_bytes, patched_instr_address))
+            if len(disassembled_instrs) != 1:
+                raise ValueError(f"Expected to disassemble exactly one instruction, but got {disassembled_instrs}")
+            disassembled_instr = disassembled_instrs[0]
+            if not disassembled_instr.op_str:
+                assembled_instr_str = disassembled_instr.mnemonic
+            else:
+                assembled_instr_str = f"{disassembled_instr.mnemonic} {disassembled_instr.op_str}"
+            if assembled_instr_str != patched_instr.value:
+                raise ValueError(f"Expected to assemble \"{patched_instr.value}\", but assembled \"{assembled_instr_str}\"")
+
+            # Apply the patch to the binary
+            patched_bytes[patch_file_offset:patch_file_offset + patched_instr.format.size] = assembled_bytes
+
+            # Iterate to the next instruction location
+            patched_instr_address += patched_instr.format.size
+            patch_file_offset += patched_instr.format.size
+
+        # All done with our patches, now let's repack the binary into an Img3
+        # Also save the unpacked version, for manually verifying our patches in a disassembler
+        output.write_bytes(patched_bytes)
+
+
+def patch_decrypted_ibss(decrypted_iBSS_path: Path, patched_iBSS_path: Path):
     image3_load_validate_signature = Function(
         name="image3_load_validate_signature",
         address=VirtualMemoryPointer(0x8400568e),
@@ -279,76 +334,38 @@ def main():
             patched_instructions=[Instr.thumb("b #0x84000964")],
         )
     ]
+    apply_patches(decrypted_iBSS_path, patched_iBSS_path, patches)
 
-    cs = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
-    cs.detail = True
-    base_address = 0x84000000
-    decrypted_iBSS_bytes = decrypted_iBSS.read_bytes()
-    patched_iBSS_bytes = bytearray(copy(decrypted_iBSS_bytes))
-    for patch in patches:
-        function = patch.function
-        print()
-        print(f'Patching {function.name}:')
-        print(f'    {patch.address} {patch.orig_instructions}')
-        print(f'   Patch ----> {patch.patched_instructions}')
-        #if len(patch.orig_instructions) != len(patch.patched_instructions):
-        #    raise ValueError(f'Expected to have the same number of instructions in the pre- and post-patch state')
 
-        region_size = sum([i.format.size for i in patch.orig_instructions])
-        patch_file_offset = patch.address - base_address
-        instr_bytes = decrypted_iBSS_bytes[patch_file_offset:patch_file_offset + region_size]
-        actual_orig_instructions = list(cs.disasm(instr_bytes, patch.address))
+def patch_ibss(encrypted_input: Path, output_dir: Path) -> Path:
+    decrypted_iBSS = output_dir / "iBSS.n90ap.RELEASE.dfu.decrypted"
 
-        # Validate the original instructions are what we expect
-        if len(actual_orig_instructions) != len(patch.orig_instructions):
-            raise ValueError(f'Expected to find {len(patch.orig_instructions)} instructions, but found {len(actual_orig_instructions)}: {patch.orig_instructions}, {actual_orig_instructions}')
-        for actual_orig_instruction, expected_orig_instruction in zip(actual_orig_instructions, patch.orig_instructions):
-            actual_orig_instruction_str = f'{actual_orig_instruction.mnemonic} {actual_orig_instruction.op_str}'
-            if actual_orig_instruction_str != expected_orig_instruction.value:
-                raise ValueError(f"Expected to disassemble \"{expected_orig_instruction}\", but found \"{actual_orig_instruction_str}\"")
+    # Decrypt the iBSS and iBEC images
+    # (And delete any decrypted image we already produced)
+    decrypted_iBSS.unlink(missing_ok=True)
+    decrypt_img3(encrypted_input, decrypted_iBSS, _IBSS_KEY, _IBSS_IV)
 
-        # Assemble the patched instructions
-        patched_instr_address = patch.address
-        for patched_instr in patch.patched_instructions:
-            assembled_bytes = assemble(patched_instr_address, patched_instr)
-            # Validate that the instruction was assembled correctly
-            disassembled_instrs = list(cs.disasm(assembled_bytes, patched_instr_address))
-            if len(disassembled_instrs) != 1:
-                raise ValueError(f"Expected to disassemble exactly one instruction, but got {disassembled_instrs}")
-            disassembled_instr = disassembled_instrs[0]
-            if not disassembled_instr.op_str:
-                assembled_instr_str = disassembled_instr.mnemonic
-            else:
-                assembled_instr_str = f"{disassembled_instr.mnemonic} {disassembled_instr.op_str}"
-            if assembled_instr_str != patched_instr.value:
-                raise ValueError(f"Expected to assemble \"{patched_instr.value}\", but assembled \"{assembled_instr_str}\"")
+    patched_iBSS = output_dir / "iBSS.n90ap.RELEASE.dfu.patched"
+    patched_iBSS.unlink(missing_ok=True)
+    patch_decrypted_ibss(decrypted_iBSS, patched_iBSS)
+    print(f'Wrote patched iBSS to {patched_iBSS.as_posix()}')
 
-            # Apply the patch to the binary
-            patched_iBSS_bytes[patch_file_offset:patch_file_offset + patched_instr.format.size] = assembled_bytes
+    reencrypted_iBSS = output_dir / "iBSS.n90ap.RELEASE.dfu.reencrypted"
+    encrypt_img3(patched_iBSS, reencrypted_iBSS, encrypted_input, _IBSS_KEY, _IBSS_IV)
+    print(f'Wrote re-encrypted iBSS to {reencrypted_iBSS.as_posix()}')
+    return reencrypted_iBSS
 
-            # Iterate to the next instruction location
-            patched_instr_address += patched_instr.format.size
-            patch_file_offset += patched_instr.format.size
 
-        # All done with our patches, now let's repack the binary into an Img3
-        # Also save the unpacked version, for manually verifying our patches in a disassembler
-        patched_iBSS = output_dir / "iBSS.n90ap.RELEASE.dfu.patched"
-        patched_iBSS.unlink(missing_ok=True)
-        patched_iBSS.write_bytes(patched_iBSS_bytes)
-        reencrypted_iBSS = output_dir / "iBSS.n90ap.RELEASE.dfu.reencrypted"
-        run_and_check(
-            [
-                xpwntool.as_posix(),
-                patched_iBSS.as_posix(),
-                reencrypted_iBSS.as_posix(),
-                "-k",
-                "f7f5fd61ea0792f13ea84126c3afe33944ddc543b62b552e009cbffaf7e34e28",
-                "-iv",
-                "24af28537e544ebf981ce32708a7e21f",
-            ],
-        )
-        print(f'Wrote patched iBSS to {patched_iBSS.as_posix()}')
-        print(f'Wrote re-encrypted iBSS to {reencrypted_iBSS.as_posix()}')
+def main():
+    output_dir = _JAILBREAK_ROOT / "patched_images" / "iPhone3,1_6.1_10B144"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    encrypted_iBSS = _JAILBREAK_ROOT / "ipsw" / "iPhone3,1_6.1_10B144_Restore.ipsw.unzipped" / "Firmware" / "dfu" / "iBSS.n90ap.RELEASE.dfu"
+    _patched_encrypted_iBSS = patch_ibss(encrypted_iBSS, output_dir)
+
+    iBEC = _JAILBREAK_ROOT / "ipsw" / "iPhone3,1_6.1_10B144_Restore.ipsw.unzipped" / "Firmware" / "dfu" / "iBEC.n90ap.RELEASE.dfu"
+    decrypted_iBEC = output_dir / "iBEC.n90ap.RELEASE.dfu.decrypted"
+    decrypted_iBEC.unlink(missing_ok=True)
+    decrypt_img3(iBEC, decrypted_iBEC, _IBEC_KEY, _IBEC_IV)
 
 
 if __name__ == '__main__':
