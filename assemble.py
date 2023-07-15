@@ -1,0 +1,127 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import Self
+
+from strongarm.macho import VirtualMemoryPointer
+
+
+class InstructionFormat(Enum):
+    Thumb = 0
+    Arm = 1
+
+    @property
+    def size(self) -> int:
+        return {
+            InstructionFormat.Thumb: 2,
+            InstructionFormat.Arm: 4,
+        }[self]
+
+
+@dataclass
+class Instr:
+    format: InstructionFormat
+    value: str
+
+    @classmethod
+    def thumb(cls, value: str) -> Self:
+        return cls(
+            format=InstructionFormat.Thumb,
+            value=value
+        )
+
+    @classmethod
+    def arm(cls, value: str) -> Self:
+        return cls(
+            format=InstructionFormat.Arm,
+            value=value
+        )
+
+    def __repr__(self) -> str:
+        return f'{self.format.name}({self.value})'
+
+
+def register_name_to_encoded_value(register_name: str) -> str:
+    try:
+        return {
+            "r0": "000",
+            "r1": "001",
+        }[register_name]
+    except KeyError:
+        raise ValueError(f"Unhandled register {register_name}")
+
+
+def immediate_literal_to_int(imm: str) -> int:
+    if imm[0] != '#':
+        raise ValueError(f'Expected a hash character')
+    # Handle base-16 and base-10
+    if imm[1:3] == '0x':
+        return int(imm[3:], 16)
+    else:
+        return int(imm[1:], 10)
+
+
+def int_to_bits_with_width(val: int, width: int) -> str:
+    return f"{bin(val)[2:]:>0{width}}"
+
+
+def immediate_literal_to_bits(imm: str, width: int) -> str:
+    int_val = immediate_literal_to_int(imm)
+    return int_to_bits_with_width(int_val, width)
+
+
+def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
+    # Ref: http://bear.ces.cwru.edu/eecs_382/ARM7-TDMI-manual-pt3.pdf?ref=zdimension.fr
+    match mnemonic:
+        case "cmp":
+            return "010000{op}{rs}{rd}".format(
+                op="1010",
+                rs=register_name_to_encoded_value(ops[0]),
+                rd=register_name_to_encoded_value(ops[1]),
+            )
+        case "nop":
+            return f"{'10111111':<016}"
+        case "movs":
+            # 5.3 Format 3: move/compare/add/subtract immediate
+            return "001{op}{rd}{offset8}".format(
+                op="00",
+                rd=register_name_to_encoded_value(ops[0]),
+                offset8=immediate_literal_to_bits(ops[1], 8),
+            )
+        case "b":
+            # 5.18 Format 18: unconditional branch
+            dest_address = immediate_literal_to_int(ops[0])
+            # "The address specified by label is a full 12-bit two’s complement address,
+            # but must always be halfword aligned (ie bit 0 set to 0),
+            # since the assembler places label >> 1 in the Offset11 field."
+            dest_offset = (dest_address - address - 4) >> 1
+            if dest_offset <= 0:
+                # Negative offsets are actually allowed, but are unhandled for now
+                raise ValueError(f'Expected a positive offset')
+            if abs(dest_offset) > 2048:
+                raise ValueError("Expected offset to be <= 2048")
+            return "11100{offset11}".format(
+                offset11=int_to_bits_with_width(dest_offset, 11),
+            )
+        case _:
+            raise NotImplementedError(mnemonic)
+
+
+def bitstring_to_bytes(s: str) -> bytes:
+    # Ref: https://stackoverflow.com/questions/32675679/convert-binary-string-to-bytearray-in-python-3
+    return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='little')
+
+
+def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
+    instr_str = instr.value
+    parts = instr_str.split(" ")
+    mnemonic = parts[0]
+    ops_str = " ".join(parts[1:])
+    ops = ops_str.split(", ")
+    print(f'mnemonic: "{mnemonic}", ops: {ops}')
+
+    match instr.format:
+        case InstructionFormat.Thumb:
+            binary_str = assemble_thumb(address, mnemonic, ops)
+            return bitstring_to_bytes(binary_str)
+        case InstructionFormat.Arm:
+            raise NotImplementedError()
