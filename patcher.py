@@ -1,13 +1,14 @@
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Tuple, Mapping
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
 from assemble import Instr, assemble
 from os_build import OsBuildEnum, KeyRepository, ImageType
-from utils import run_and_check, TotalEnumMapping
+from utils import run_and_check, TotalEnumMapping, hexdump
 
 _JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
 _XPWNTOOL = _JAILBREAK_ROOT / "xpwn" / "build" / "ipsw-patch" / "xpwntool"
@@ -25,6 +26,12 @@ class PatchRegion:
     address: VirtualMemoryPointer
     orig_instructions: list[Instr]
     patched_instructions: list[Instr]
+
+
+@dataclass
+class PatchRawBytes:
+    address: VirtualMemoryPointer
+    new_content: bytes
 
 
 class PatchRepository:
@@ -102,8 +109,8 @@ class PatchRepository:
     })
 
     @classmethod
-    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType) -> list[PatchRegion]:
-        image_patches_for_build = cls._BUILDS_TO_IMAGE_PATCHES[os_build]
+    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType) -> Tuple[list[PatchRegion], list[PatchRawBytes]]:
+        image_patches_for_build = cls.builds_to_image_patches()[os_build]
         return image_patches_for_build[image]
 
 
@@ -146,13 +153,19 @@ def encrypt_img3(path: Path, output_path: Path, original_img3: Path, key: str, i
     )
 
 
-def apply_patches(input: Path, output: Path, patches: list[PatchRegion]):
+def apply_patches(
+    input: Path,
+    output: Path,
+    structured_patches: list[PatchRegion],
+    unstructured_patches: list[PatchRawBytes]
+):
     cs = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
     cs.detail = True
+    # TODO(PT): This base address should be updated for non-iBSS images?
     base_address = 0x84000000
     input_bytes = input.read_bytes()
     patched_bytes = bytearray(copy(input_bytes))
-    for patch in patches:
+    for patch in structured_patches:
         print()
         #function = patch.function
         #print(f'Patching {function.name}:')
@@ -179,6 +192,7 @@ def apply_patches(input: Path, output: Path, patches: list[PatchRegion]):
         patched_instr_address = patch.address
         for patched_instr in patch.patched_instructions:
             assembled_bytes = assemble(patched_instr_address, patched_instr)
+            print(f"Assembled bytes {assembled_bytes}")
             # Validate that the instruction was assembled correctly
             disassembled_instrs = list(cs.disasm(assembled_bytes, patched_instr_address))
             if len(disassembled_instrs) != 1:
@@ -198,6 +212,13 @@ def apply_patches(input: Path, output: Path, patches: list[PatchRegion]):
             patched_instr_address += patched_instr.format.size
             patch_file_offset += patched_instr.format.size
 
+    for patch in unstructured_patches:
+        print()
+        print(f'Applying unstructured patch of {len(patch.new_content)} bytes at {patch.address}')
+        hexdump(patch.new_content)
+        patch_file_offset = patch.address - base_address
+        patched_bytes[patch_file_offset:patch_file_offset + len(patch.new_content)] = patch.new_content
+
     # All done with our patches, now let's repack the binary into an Img3
     # Also save the unpacked version, for manually verifying our patches in a disassembler
     output.write_bytes(patched_bytes)
@@ -209,17 +230,8 @@ def patch_decrypted_image(
     decrypted_image_path: Path,
     patched_image_path: Path
 ):
-    image3_load_validate_signature = Function(
-        name="image3_load_validate_signature",
-        address=VirtualMemoryPointer(0x8400568e),
-    )
-    main_ibss = Function(
-        name="main_ibss",
-        address=VirtualMemoryPointer(0x840008c8),
-    )
-    # PT: I think this is enough patches to get going and load an image...
-    patches = PatchRepository.patches_for_image(os_build, image_type)
-    apply_patches(decrypted_image_path, patched_image_path, patches)
+    structured_patches, unstructured_patches = PatchRepository.patches_for_image(os_build, image_type)
+    apply_patches(decrypted_image_path, patched_image_path, structured_patches, unstructured_patches)
 
 
 def patch_ibss(os_build: OsBuildEnum) -> Path:
