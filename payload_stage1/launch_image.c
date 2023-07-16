@@ -49,7 +49,100 @@ LDR R3, =usb_wait_for_image
 
 #define patch_cmp_instruction_addr 0x840046d2
 
-void c_entry_point(char* pwned_serial, int pwned_serial_len, int pc, int sp) {
+struct image_info {
+    uint32_t	imageLength;
+    uint32_t	imageAllocation;
+    uint32_t	imageType;
+    uint32_t	imagePrivateMagic;
+#define IMAGE_MEMORY_INFO_MAGIC		'Memz'
+#define IMAGE2_IMAGE_INFO_MAGIC		'img2'
+#define IMAGE3_IMAGE_INFO_MAGIC		'img3'
+#define IMAGE4_IMAGE_INFO_MAGIC		'img4'
+    uint32_t	imageOptions;
+    void		*imagePrivate;
+};
+#define USB_RECV_REGION_BASE 0x84000000
+#define USB_RECV_REGION_SIZE 0x2c000
+
+/*
+int image3_load_no_signature_check(int memz_create_output, int* load_address, struct image_info** image_info) {
+    int sp_offset = IMAGE3_LOAD_STRUCT_OFFSET;
+}
+ */
+
+int create_image(int memz);
+int continue_loop();
+
+int get_image() {
+    //  TODO(PT): Define
+    struct image_info* (*get_dfu_image)(int load_address, int max_size) = (void*)get_dfu_image_addr;
+    struct image_info* image_info = get_dfu_image(USB_RECV_REGION_BASE, USB_RECV_REGION_SIZE);
+    int (*free)(int addr) = (void*)0x3b95;
+    // The last part of the image starts or ends at 0x8402ba80, this isn't far off...
+    int* gLeakingDFUBufferPtr = (int*)0x8402dbcc;
+
+    //struct image_info* image_info = get_dfu_image(USB_RECV_REGION_BASE, USB_RECV_REGION_SIZE);
+    int gLeakingDFUBuffer = *gLeakingDFUBufferPtr;
+    *gLeakingDFUBufferPtr = 0;
+    free(gLeakingDFUBuffer);
+    return image_info;
+}
+
+void c_entry_point(void) {
+    int (*nor_power_on)(int arg1, int arg2, int arg3) = (void*)nor_power_on_addr;
+    int (*nor_init)(int arg1) = (void*)nor_init_addr;
+    struct image_info* (*get_dfu_image)(int load_address, int max_size) = (void*)get_dfu_image_addr;
+    int (*free)(int addr) = (void*)0x3b95;
+    int (*memz_create)(int memory_base, struct image_info* image_info, int arg3) = (void*)0x7469;
+    int (*jump_to)(int arg1, int arg2, int arg3) = (void*)0x5a5d;
+
+    nor_power_on(1, 1, 0);
+    nor_init(0);
+
+    //continue_loop();
+    return;
+
+    while (1) {
+        /*
+        struct image_info* image_info = get_dfu_image(USB_RECV_REGION_BASE, USB_RECV_REGION_SIZE);
+        int gLeakingDFUBuffer = *gLeakingDFUBufferPtr;
+        *gLeakingDFUBufferPtr = 0;
+        free(gLeakingDFUBuffer);
+         */
+        /*
+        if (image_info < 0) {
+            continue;
+        }
+         */
+
+        //int memz_create_output = memz_create(USB_RECV_REGION_BASE, image_info, 0);
+        /*
+        if (memz_create_output == 0) {
+            continue;
+        }
+         */
+
+        /*
+        int load_address = USB_RECV_REGION_BASE;
+        int image_load_retval = image3_load_no_signature_check(memz_create_output, &load_address, &image_info);
+        if (image_load_retval != 0) {
+            // load failed
+            continue;
+        }
+         */
+        //int (*create_image)(int memz
+        //int ret = create_image(USB_RECV_REGION_BASE);
+        /*
+        if (ret != 0) {
+            continue;
+        }
+         */
+
+        //jump_to(0, USB_RECV_REGION_BASE, 0);
+    }
+}
+
+void c_entry_point_old(char* pwned_serial, int pwned_serial_len, int pc, int sp) {
     /*
     // Try to draw to the framebuffer
     unsigned int *p = 0;
@@ -57,8 +150,7 @@ void c_entry_point(char* pwned_serial, int pwned_serial_len, int pc, int sp) {
         *p = 0xff0088;
     }
      */
-    //return;
-    
+
     // Overwrite the serial number
     // PT: Overwriting the serial number causes the device to not come back up after uploading IBSS/IBEC?
     /*
@@ -92,9 +184,9 @@ void c_entry_point(char* pwned_serial, int pwned_serial_len, int pc, int sp) {
     
     // Crash if nor_power_on + nor_init
     // nor_power_on alone works
-    //nor_power_on(1, 1, 0);
+    nor_power_on(1, 1, 0);
     // nor_init causes the crash
-    //nor_init(0);
+    nor_init(0);
     
     /*
     char* serial = (char*)0x8402e0e0;
@@ -102,62 +194,103 @@ void c_entry_point(char* pwned_serial, int pwned_serial_len, int pc, int sp) {
      */
     
     // not really good to spinloop here because it prevents us from talking over USB?
-    /*
-    return;
-    
-    while (1) {}
-    */
-    
+
     uint8_t* ibss_tag_addr = 0x854;
     // 0x84000000
-    
+
     //int (*jump_to)() = (void*)memz_create_addr;
-    int load_address = 0x84000000;
-    
+
     // Returns 0x00011000
-    int get_dfu_image_result = get_dfu_image(load_address, 0x2c000);
-    
+    // On a failure, returns 0x000109c4
+    // I guess this is after we're limiting how many bytes we send to the true size of the file?
+    // (This is the correct iBSS size)
+    int get_dfu_image_result = get_dfu_image(USB_RECV_REGION_BASE, 0x2c000);
+    void (*entry_point)(int arg1, int arg2, int arg3, int arg4) = (void*)USB_RECV_REGION_BASE;
+    entry_point(0, 0, 0, 0);
+
     size_t loaded_length = (size_t)get_dfu_image_result;
     // Returns 0x84030a88
-    int loaded_image = image_create_from_memory(load_address, loaded_length, 0);
+    // Really struct image_info*
+    struct image_info* image_info = image_create_from_memory(USB_RECV_REGION_BASE, loaded_length, 0);
     
 #define IMAGE_TYPE_IBSS            'ibss'    // iboot single stage
     uint32_t type = IMAGE_TYPE_IBSS;
-    
+
+    /*
     int load_retval = load_selected_image(
-        loaded_image,
+        image_info,
         // 0x850 contains ILLB, 0x854 contains IBSS (no null terminator in between them)
         //0x854,
         // Try doing it the same way it's done in the source
         type,
         // Hard-coded in the boot ROM
-        load_address,
+        USB_RECV_REGION_BASE,
         loaded_length,
-        0
+        1
     );
-    
+     */
+
+    //int (*load_selected_image)(int image_addr, int type_tag, int load_addr, int loaded_length, int boot_flags) = (void*)load_selected_image_addr;
+    int (*image_load)(struct image_info* image_info, int type_tag, int load_addr, int loaded_length) = (void*)0x749d;
+    // r3 must be <= image_info->imageAllocation
+    int load_retval = image_load(
+        image_info,
+        //type???
+        // type or memory base?
+        type,
+        USB_RECV_REGION_BASE,
+        loaded_length
+    );
+
     /*
+    image_load(
+        struct image_info *image,
+        const uint32_t *types,
+        uint32_t count,
+        uint32_t *actual,
+        void **load_addr,
+        size_t *load_len);
+     */
+    /*
+    int load_retval = image_load(
+        // struct image_info*
+        image_info,
+        &type,
+        1,
+    );
+    */
+
     uint32_t* sentinel_buffer = (uint32_t*)SENTINEL_ADDRESS;
     sentinel_buffer[0] = 0xcafebabe;
     sentinel_buffer[1] = get_dfu_image_result;
-     */
-    /*
     sentinel_buffer[2] = loaded_length;
-    sentinel_buffer[3] = loaded_image;
+    sentinel_buffer[3] = image_info;
     sentinel_buffer[4] = load_retval;
-     */
+
+    // image_info->imageLength = 0x000109c4
+    // image_info->imageAllocation = 0x000109c4
+    // image_info->imageType = 0
+    // image_info->imagePrivateMagic = 0x4d656d7a
+    // image_info->imageOptions = 3
+    sentinel_buffer[5] = image_info->imageLength;
+    sentinel_buffer[6] = image_info->imageAllocation;
+    sentinel_buffer[7] = image_info->imageType;
+    sentinel_buffer[8] = image_info->imagePrivateMagic;
+    sentinel_buffer[9] = image_info->imageOptions;
+
+    memcpy(DUMP_TO, DUMP_FROM, DUMP_SIZE);
 
     /*
     char* mem = (char*)patch_cmp_instruction_addr;
     mem[0] = 0x80;
     mem[1] = 0x42;
     */
-    //jump_to(0, load_address, 0);
+    jump_to(0, USB_RECV_REGION_BASE, 0);
 
-    //memcpy(DUMP_TO, DUMP_FROM, DUMP_SIZE);
-    
+    /*
     void (*entry_point)(int arg1, int arg2, int arg3, int arg4) = (void*)load_address;
     entry_point(0, 0, 0, 0);
+     */
 }
 
 /*

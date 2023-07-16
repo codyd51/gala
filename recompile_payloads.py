@@ -8,6 +8,7 @@ def build(payload_folder: Path):
     print(f"Compiling payload: {payload_name}...")
 
     build_folder = payload_folder / "build"
+    build_folder.mkdir(exist_ok=True)
     # Delete the contents of build/
     for f in build_folder.iterdir():
         print(f'Deleting build output {f.relative_to(payload_folder.parent)}')
@@ -23,6 +24,7 @@ def recompile_payloads():
     root = Path(__file__).parent
     build(root / "payload_stage1")
     build(root / "payload_stage2")
+    build(root / "shellcode_within_ibss")
 
 
 if __name__ == '__main__':
