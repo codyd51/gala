@@ -4,6 +4,8 @@ from typing import Self
 
 from strongarm.macho import VirtualMemoryPointer
 
+from utils import TotalEnumMapping
+
 
 class InstructionFormat(Enum):
     Thumb = 0
@@ -45,6 +47,12 @@ def register_name_to_encoded_value(register_name: str) -> str:
         return {
             "r0": "000",
             "r1": "001",
+            "r2": "010",
+            "r3": "011",
+            "r4": "100",
+            "r5": "101",
+            "r6": "110",
+            "r7": "111",
         }[register_name]
     except KeyError:
         raise ValueError(f"Unhandled register {register_name}")
@@ -102,13 +110,75 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             return "11100{offset11}".format(
                 offset11=int_to_bits_with_width(dest_offset, 11),
             )
+        case "bl":
+            raise NotImplementedError()
+            # 5.19 Format 19: long branch with link
+            instr_template = "1111{is_low}{offset}"
+            dest_address = immediate_literal_to_int(ops[0])
+            offset = (dest_address - address - 4)
+            high_offset = offset >> 12
+            out = f"{instr_template.format(is_low='0', offset=int_to_bits_with_width(high_offset, 11))}"
+            low_offset = offset >> 1
+            out += f"{instr_template.format(is_low='1', offset=int_to_bits_with_width(low_offset, 11))}"
+            return out
+
         case _:
             raise NotImplementedError(mnemonic)
+
+
+def twos_complement(val: int, bit_count: int) -> int:
+    if (val & (1 << (bit_count - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+        val = val - (1 << bit_count)        # compute negative value
+    return val                         # return positive value as is
+
+
+def assemble_arm(address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
+    # Ref: https://iitd-plos.github.io/col718/ref/arm-instructionset.pdf
+    match mnemonic:
+        case "b" | "bl":
+            # 4.4 Branch and Branch with Link
+            # > Branch instructions contain a signed 2’s complement 24 bit offset.
+            # > This is shifted left two bits, sign extended to 32 bits, and added to the PC.
+            # > The instruction can therefore specify a branch of +/- 32Mbytes.
+            # > The branch offset must take account of the prefetch operation,
+            # > which causes the PC to be 2 words (8 bytes) ahead of the current instruction.
+            dest_address = immediate_literal_to_int(ops[0])
+            if dest_address != 0x840000fc:
+                raise NotImplementedError()
+            #return bin(0xFFF78AFA)[2:]
+            return bin(0xfa8af7ff)[2:]
+
+            # Max allowed shellcode size = 0x840001fe - 0x840000fc = 0x102
+
+            dest_offset = (dest_address - address - 8) >> 2
+            print(f'address {hex(address)}')
+            print(f'dest_address {hex(dest_address)}')
+            print(f'dest_offset {hex(dest_offset)}')
+            #dest_offset_str = int_to_bits_with_width(dest_offset >> 2, 24)
+            #dest_offset = int(dest_offset_str, 2)
+            #dest_offset = dest_offset(int(dest_offset, 2), len(binary_string))
+            #dest_offset = twos_complement()
+            #if dest_offset <= 0:
+            #    # Negative offsets are actually allowed, but are unhandled for now
+            #    raise ValueError(f'Expected a positive offset')
+            link = "1" if mnemonic == "bl" else "0"
+            return "{cond}101{link}{offset}".format(
+                cond="1111",
+                link=link,
+                offset=int_to_bits_with_width(dest_offset, 24)
+            )
 
 
 def bitstring_to_bytes(s: str) -> bytes:
     # Ref: https://stackoverflow.com/questions/32675679/convert-binary-string-to-bytearray-in-python-3
     return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='little')
+
+
+def _assemble_to_bitstring(format: InstructionFormat, address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
+    return TotalEnumMapping({
+        InstructionFormat.Thumb: lambda: assemble_thumb(address, mnemonic, ops),
+        InstructionFormat.Arm: lambda: assemble_arm(address, mnemonic, ops),
+    })[format]()
 
 
 def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
@@ -118,10 +188,9 @@ def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
     ops_str = " ".join(parts[1:])
     ops = ops_str.split(", ")
     print(f'mnemonic: "{mnemonic}", ops: {ops}')
-
-    match instr.format:
-        case InstructionFormat.Thumb:
-            binary_str = assemble_thumb(address, mnemonic, ops)
-            return bitstring_to_bytes(binary_str)
-        case InstructionFormat.Arm:
-            raise NotImplementedError()
+    ret= bitstring_to_bytes(_assemble_to_bitstring(instr.format, address, mnemonic, ops))
+    import binascii
+    # 16F0F2F9
+    # 503407fb
+    print(f'Assembled {binascii.hexlify(ret)}')
+    return ret
