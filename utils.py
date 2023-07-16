@@ -1,8 +1,9 @@
 import os
 import subprocess
+from collections.abc import Collection
 from enum import Enum
 from pathlib import Path
-from typing import TypeVar, Mapping, Set, Iterator
+from typing import TypeVar, Mapping, Set, Iterator, Any
 
 from more_itertools import all_equal
 
@@ -72,3 +73,9 @@ def hexdump(src: bytes) -> None:
         lines.append('{0:08x}  {1:{2}s} |{3:{4}s}|'.format(c, hex_, length * 3, printable, length))
     for line in lines:
         print(line)
+
+
+def chunks(lst: Collection[Any], n: int) -> Iterator[Collection[Any]]:
+    """Yield successive n-sized chunks from lst"""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]

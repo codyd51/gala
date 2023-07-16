@@ -309,11 +309,15 @@ void inner_main(void) {
         device_handle2 = run_limera1n(context, device_handle2);
     }
     else {
-        NSLog(@"Skipped perfoming exploit because the device is already pwned");
+        NSLog(@"Skipped performing exploit because the device is already pwned");
     }
 
     sleep(1);
+
+    libusb_close(device_handle2);
+    libusb_exit(context);
     return;
+
     //device_handle2 = usb_wait_device_connection(context, device_handle2);
 
     /*
@@ -368,7 +372,7 @@ void inner_main(void) {
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.1_8B117/iBSS.n90ap.RELEASE.dfu.reencrypted");
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_5.0_9A334_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBSS.reencrypted");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403_iBSS.n90ap.RELEASE.dfu.repack_test");

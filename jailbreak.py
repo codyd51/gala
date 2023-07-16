@@ -4,18 +4,18 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Optional
 from collections.abc import Iterator
 
 import usb
-from usb import Device
+import usb.core
 from usb.backend import libusb1
 from usb.backend.libusb1 import _LibUSB
 
 from os_build import OsBuildEnum, ImageType
 from patcher import regenerate_patched_images
 from recompile_payloads import recompile_payloads
-from utils import TotalEnumMapping
+from utils import TotalEnumMapping, chunks
 
 
 def get_libusb_backend() -> _LibUSB:
@@ -43,15 +43,84 @@ class DeviceMode(Enum):
         })[self]
 
 
+@dataclass
+class Device:
+    handle: usb.core.Device
+    mode: DeviceMode
+
+    def upload_data(self, data: bytes) -> None:
+        match self.mode:
+            case DeviceMode.DFU:
+                self._upload_data_dfu(data)
+            case DeviceMode.Recovery:
+                self._upload_data_recovery(data)
+
+    def _upload_data_dfu(self, data: bytes) -> None:
+        max_dfu_upload_chunk_size = 0x800
+        for chunk in chunks(data, max_dfu_upload_chunk_size):
+            print(f'Uploading chunk of {len(chunk)} bytes...')
+            ret = self.handle.ctrl_transfer(0x21, 1, 0, 0, chunk, 3000)
+            print(f'\tret {ret}')
+        print(f'Informing the DFU device that the upload has finished...')
+        self.handle.ctrl_transfer(0x21, 1, 0, 0, 0, timeout=100)
+        # Send a 'Get Status' three times
+        time.sleep(1)
+        for _ in range(3):
+            out = bytearray(6)
+            ret = self.handle.ctrl_transfer(0xa1, 3, 0, 0, out, timeout=100)
+            print(f'get_status ret = {ret}')
+
+        try:
+            self.handle.reset()
+        except usb.core.USBError:
+            # Sometimes this throws an error, but the image load starts anyway
+            pass
+
+    def _upload_data_recovery(self, data):
+        max_recovery_upload_chunk_size = 0x4000
+        if self.handle.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
+            raise ValueError(f'Expected a response of 0')
+        for chunk in chunks(data, max_recovery_upload_chunk_size):
+            print(f'Uploading chunk of {len(chunk)} bytes...')
+            wrote_bytes = self.handle.write(0x04, chunk, timeout=1000)
+            if wrote_bytes != len(chunk):
+                raise RuntimeError(f"Expected to write {len(chunk)} bytes, but only wrote {wrote_bytes}")
+
+
 @contextmanager
-def acquire_device(mode: DeviceMode) -> Iterator[Optional[Device]]:
+def maybe_acquire_device(mode: DeviceMode) -> Iterator[Optional[Device]]:
     """Technically doesn't need to be a context manager,
     but helps describe the semantics of how we interact with the device.
     """
-    yield usb.core.find(idVendor=0x5ac, idProduct=mode.usb_product_id, backend=get_libusb_backend())
+    device_handle = usb.core.find(idVendor=0x5ac, idProduct=mode.usb_product_id, backend=get_libusb_backend())
+    if not device_handle:
+        yield None
+    else:
+        yield Device(
+            handle=device_handle,
+            mode=mode
+        )
 
-    #if not device:
-    #    raise RuntimeError(f"Failed to find a {mode.name} device")
+
+@contextmanager
+def acquire_device(mode: DeviceMode) -> Iterator[Device]:
+    with maybe_acquire_device(mode) as maybe_device:
+        if not maybe_device:
+            raise RuntimeError(f"Unable to find a {mode.name} Mode device")
+        yield maybe_device
+
+
+@contextmanager
+def acquire_device_with_timeout(mode: DeviceMode, timeout: int = 10) -> Iterator[Device]:
+    start = time.time()
+    while time.time() < start + timeout:
+        with maybe_acquire_device(mode) as maybe_device:
+            if maybe_device:
+                yield maybe_device
+                return
+        print(f'Waiting for {mode.name} Mode device to appear...')
+        time.sleep(1)
+    raise RuntimeError(f"No {mode.name} Mode device appeared after {timeout} seconds")
 
 
 def recompile_exploit_runner(jailbreak_folder: Path):
@@ -71,73 +140,58 @@ def recompile_exploit_runner(jailbreak_folder: Path):
     )
 
 
+def exploit_and_upload_image(image_path: Path):
+    with maybe_acquire_device(DeviceMode.DFU) as maybe_dfu_device:
+        if not maybe_dfu_device:
+            print('No DFU-mode device detected, will not run exploit or upload image')
+            return
+
+        print(f'Running exploit because we detected a DFU-mode device')
+
+        # Only bother recompiling the payload just before we send the exploit
+        jailbreak_folder = Path(__file__).parent / "jailbreak"
+        jailbreak_build_folder = jailbreak_folder / "build"
+        jailbreak_build_folder.mkdir(exist_ok=True)
+        recompile_exploit_runner(jailbreak_folder)
+        jailbreak_binary = jailbreak_build_folder / "jailbreak"
+
+        proc: subprocess.CompletedProcess = subprocess.run(jailbreak_binary.as_posix())
+        if proc.returncode != 0:
+            raise ValueError(f"Jailbreak runner exited with code {proc.returncode}")
+
+    # Give it a chance to run
+    time.sleep(3)
+
+    # Re-acquire the device as our previous connection is invalidated after running the exploit
+    # Allow the device a moment to await an image again
+    with acquire_device_with_timeout(DeviceMode.DFU, timeout=3) as dfu_device:
+        # Send the image (in DFU mode)
+        print(f'Sending {image_path.name} to DFU device...')
+        dfu_device.upload_data(image_path.read_bytes())
+
+    # Call this just for the side effect of waiting until the Recovery Mode device pops up
+    # If it does, everything worked, and we're all done here
+    acquire_device_with_timeout(DeviceMode.Recovery)
+
+
 def main():
-    os_build = OsBuildEnum.iPhone3_1_5_0_9A334
+    os_build = OsBuildEnum.iPhone3_1_4_0_8A293
+    # We need to always recompile the payloads because they may impact what gets injected into the patched images
     recompile_payloads()
     image_types_to_paths = regenerate_patched_images(os_build)
 
-    jailbreak_folder = Path(__file__).parent / "jailbreak"
-    jailbreak_build_folder = jailbreak_folder / "build"
-    jailbreak_build_folder.mkdir(exist_ok=True)
-    recompile_exploit_runner(jailbreak_folder)
-    jailbreak_binary = jailbreak_build_folder / "jailbreak"
-
-    with acquire_device(DeviceMode.DFU) as maybe_dfu_device:
-        if _dfu_device := maybe_dfu_device:
-            print(f'Running exploit because we detected a DFU-mode device')
-            proc: subprocess.CompletedProcess = subprocess.run(jailbreak_binary.as_posix())
-            if proc.returncode != 0:
-                raise ValueError(f"Jailbreak runner exited with code {proc.returncode}")
-
-            # Send iBSS (in DFU mode)
-            ibss_path = image_types_to_paths[ImageType.iBSS]
-            print(f'Sending iBSS from {ibss_path.as_posix()}...')
-
-        else:
-            print(f'No DFU-mode device detected')
+    exploit_and_upload_image(image_types_to_paths[ImageType.iBSS])
 
     # Send iBEC
-    with acquire_device(DeviceMode.Recovery) as maybe_recovery_device:
-        if recovery_device := maybe_recovery_device:
-            print(f'Got recovery-mode device {recovery_device}')
-            print(type(recovery_device))
+    with acquire_device(DeviceMode.Recovery) as recovery_device:
+        recovery_device.upload_data(image_types_to_paths[ImageType.iBEC].read_bytes())
+        print(f'Sent iBEC!')
+        time.sleep(3)
 
-            if False:
-                step = 20
-                while True:
-                    for red in range(0, 255, step):
-                        for green in range(0, 255, step):
-                            for blue in range(0, 255, step):
-                                recovery_device.ctrl_transfer(0x40, 0, data_or_wLength=f"bgcolor {red} {green} {blue}".encode() + b'\x00', timeout=30000)
-
-            def send_data(device, data):
-                MAX_PACKET_SIZE = 0x4000
-                if device.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
-                    raise ValueError(f'Expected a response of 0')
-                index = 0
-                while index < len(data):
-                    amount = min(len(data) - index, MAX_PACKET_SIZE)
-                    assert device.write(0x04, data[index:index + amount], timeout=1000) == amount
-                    print(f'sending chunk {index}')
-                    #assert device.ctrl_transfer(0x21, 1, i, 0, data[index:index + amount], timeout=5000) == amount
-                    index += amount
-            #file_path = Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/iBEC.n90ap.RELEASE.dfu.reencrypted")
-            #file_path = Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.1_8B117/iBEC.n90ap.RELEASE.dfu.reencrypted")
-            #file_path = Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.1_8B117/iBEC.n90ap.RELEASE.dfu.reencrypted")
-            file_path = Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_5.0_9A334_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu")
-
-            file_data = file_path.read_bytes()
-            send_data(recovery_device, file_data)
-            print(f'Sent iBEC!')
-            time.sleep(3)
-
-            # TODO: Add assert?
-            print("Writing go command")
-            recovery_device.ctrl_transfer(0x40, 0, data_or_wLength="go".encode() + b'\x00', timeout=30000)
-            print("Wrote go command!")
-
-        else:
-            raise RuntimeError(f'Expected to find a Recovery-mode device')
+        # TODO: Add assert?
+        print("Writing go command")
+        recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="go".encode() + b'\x00', timeout=30000)
+        print("Wrote go command!")
 
 
 if __name__ == '__main__':
