@@ -38,6 +38,8 @@ https://archive.conference.hitb.org/hitbsecconf2013kul/materials/D2T1%20-%20Josh
 
 https://ipsw.me/download/iPhone3,1/10B329
 
+difficult to write anything that plays around in userspace because there's no way to set up a toolchain for iOS 4 / iOS 6 -- so bootROM exploits are the only good choice
+
 
 can't use "const char* x = "..." in C becuase it'll be put in __cstring, which is lost when we creaet the shellcode
 any strings need to be `.asciz` in assembly and loaded that way
@@ -45,3 +47,13 @@ any strings need to be `.asciz` in assembly and loaded that way
 can't really load the address using extern in C, because it's relative to PC
 solution: pass the address from asm to the C function
 fiddled a lot with ldr =symbol, etc, finally got `adr symbol` and it workrs
+
+
+load_selected_image returning -1! but it's directly from the IPSW?
+
+We acutally need two kinds of patches: the structured "replace these instructions with these other instructions" that we've been using for hand-written patches,
+and a "replace this blob with another blob", which is useful for injecting a tiny test program. The latter is useful when injecting shellcode to do a bit of extra logging when debugging something going wrong
+
+Kept running off into opcode zero, needed to do pop {pc}
+
+When I first wrote "INJECTED LOG" it'd overwrite critical instructions next door!

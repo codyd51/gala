@@ -234,34 +234,35 @@ def patch_decrypted_image(
     apply_patches(decrypted_image_path, patched_image_path, structured_patches, unstructured_patches)
 
 
-def patch_ibss(os_build: OsBuildEnum) -> Path:
-    key_pair = KeyRepository.key_iv_pair_for_image(os_build, ImageType.iBSS)
-    file_name = os_build.ibss_subpath.name
+def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
+    key_pair = KeyRepository.key_iv_pair_for_image(os_build, image_type)
+    image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
+    file_name = image_ipsw_subpath.name
 
     output_dir = _JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
     output_dir.mkdir(parents=True, exist_ok=True)
-    decrypted_iBSS = output_dir / f"{file_name}.decrypted"
+    decrypted_image = output_dir / f"{file_name}.decrypted"
 
-    # Decrypt the iBSS image
+    # Decrypt the image
     # (And delete any decrypted image we already produced)
-    decrypted_iBSS.unlink(missing_ok=True)
+    decrypted_image.unlink(missing_ok=True)
 
     ipsw = _JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
-    encrypted_iBSS = ipsw / os_build.ibss_subpath
-    if not encrypted_iBSS.exists():
-        raise ValueError(f'Expected to find an encrypted image at {encrypted_iBSS}')
+    encrypted_image = ipsw / image_ipsw_subpath
+    if not encrypted_image.exists():
+        raise ValueError(f'Expected to find an encrypted image at {encrypted_image}')
 
-    decrypt_img3(encrypted_iBSS, decrypted_iBSS, key_pair.key, key_pair.iv)
+    decrypt_img3(encrypted_image, decrypted_image, key_pair.key, key_pair.iv)
 
-    patched_iBSS = output_dir / f"{file_name}.patched"
-    patched_iBSS.unlink(missing_ok=True)
-    patch_decrypted_image(os_build, ImageType.iBSS, decrypted_iBSS, patched_iBSS)
-    print(f'Wrote patched iBSS to {patched_iBSS.as_posix()}')
+    patched_image = output_dir / f"{file_name}.patched"
+    patched_image.unlink(missing_ok=True)
+    patch_decrypted_image(os_build, image_type, decrypted_image, patched_image)
+    print(f'Wrote patched {image_type.name} to {patched_image.as_posix()}')
 
-    reencrypted_iBSS = output_dir / f"{file_name}.reencrypted"
-    encrypt_img3(patched_iBSS, reencrypted_iBSS, encrypted_iBSS, key_pair.key, key_pair.iv)
-    print(f'Wrote re-encrypted iBSS to {reencrypted_iBSS.as_posix()}')
-    return reencrypted_iBSS
+    reencrypted_image = output_dir / f"{file_name}.reencrypted"
+    encrypt_img3(patched_image, reencrypted_image, encrypted_image, key_pair.key, key_pair.iv)
+    print(f'Wrote re-encrypted {image_type.name} to {reencrypted_image.as_posix()}')
+    return reencrypted_image
 
 
 def main():
