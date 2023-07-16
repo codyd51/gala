@@ -58,3 +58,17 @@ def run_and_check(cmd_list: list[str], cwd: Path = None, env_additions: dict[str
         raise RuntimeError(f'Running "{" ".join(cmd_list)}" failed with exit code {status.returncode}')
 
 
+def hexdump(src: bytes) -> None:
+    length = 16
+    sep = '.'
+    filter = ''.join([(len(repr(chr(x))) == 3) and chr(x) or sep for x in range(256)])
+    lines = []
+    for c in range(0, len(src), length):
+        chars = src[c: c + length]
+        hex_ = ' '.join(['{:02x}'.format(x) for x in chars])
+        if len(hex_) > 24:
+            hex_ = '{} {}'.format(hex_[:24], hex_[24:])
+        printable = ''.join(['{}'.format((x <= 127 and filter[x]) or sep) for x in chars])
+        lines.append('{0:08x}  {1:{2}s} |{3:{4}s}|'.format(c, hex_, length * 3, printable, length))
+    for line in lines:
+        print(line)
