@@ -23,6 +23,7 @@ class Function:
 @dataclass
 class PatchRegion:
     #function: Function
+    function_name: str
     address: VirtualMemoryPointer
     orig_instructions: list[Instr]
     patched_instructions: list[Instr]
@@ -34,79 +35,203 @@ class PatchRawBytes:
     new_content: bytes
 
 
-class PatchRepository:
-    _BUILDS_TO_IMAGE_PATCHES = TotalEnumMapping({
-        OsBuildEnum.iPhone3_1_4_0_8A293: TotalEnumMapping({
-            ImageType.iBSS: [
-
-            ],
-            ImageType.iBEC: [
-
-            ],
-        }),
-        OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping({
-            ImageType.iBSS: [
-                PatchRegion(
-                    #function=image3_load_validate_signature,
-                    address=VirtualMemoryPointer(0x84005694),
-                    # PT: This comment is unverified
-                    # This test is followed by a `bne`. The taken direction is a "validation failed" path, so we want to stay here.
-                    orig_instructions=[Instr.arm("tst.w r0, #1")],
-                    patched_instructions=[
-                        Instr.thumb("cmp r0, r0"),
-                        Instr.thumb("nop")
-                    ],
-                ),
-                PatchRegion(
-                    #function=image3_load_validate_signature,
-                    address=VirtualMemoryPointer(0x840056ac),
-                    # PT: This comment is unverified
-                    # The branch just preceding this calls a validation function,
-                    # and the comparison following this branches away to a failure path. We want the validation to always succeed.
-                    orig_instructions=[Instr.thumb("cmp r0, #0")],
-                    patched_instructions=[Instr.thumb("cmp r0, r0")],
-                ),
-                # More comparison patches follow
-                PatchRegion(
-                    #function=image3_load_validate_signature,
-                    address=VirtualMemoryPointer(0x8400570e),
-                    orig_instructions=[Instr.thumb("cmp r0, #0")],
-                    patched_instructions=[Instr.thumb("cmp r0, r0")],
-                ),
-                PatchRegion(
-                    #function=image3_load_validate_signature,
-                    address=VirtualMemoryPointer(0x84005712),
-                    # Replace the call to the 'image3_validate_constraints' function with a direct return value
-                    # This return value is compared to 0x1 just below, so set it upfront
-                    orig_instructions=[Instr.thumb("beq #0x84005746")],
-                    patched_instructions=[Instr.thumb("movs r0, #1")],
-                ),
-                PatchRegion(
-                    #function=image3_load_validate_signature,
-                    address=VirtualMemoryPointer(0x84005726),
-                    orig_instructions=[Instr.thumb("cmp r0, #0")],
-                    patched_instructions=[Instr.thumb("cmp r0, r0")],
-                ),
-                PatchRegion(
-                    #function=image3_load_validate_signature,
-                    address=VirtualMemoryPointer(0x8400573a),
-                    orig_instructions=[Instr.thumb("cmp r0, #1")],
-                    patched_instructions=[Instr.thumb("cmp r0, r0")],
-                ),
-                PatchRegion(
-                    #function=main_ibss,
-                    address=VirtualMemoryPointer(0x84000940),
-                    # Just above is a function call, maybe to dfu_parse_ticket?
-                    # If the call returns zero, we jump back to the 'receive a DFU image' loop, and don't do further
-                    # processing. We always want to process the image.
-                    orig_instructions=[Instr.thumb("cbnz r0, #0x84000964")],
-                    patched_instructions=[Instr.thumb("b #0x84000964")],
-                )
-            ],
-            # Not implemented yet
-            ImageType.iBEC: [],
-        }),
+class FunctionRepository:
+    _BUILDS_TO_KNOWN_FUNCTIONS = TotalEnumMapping({
+        OsBuildEnum.iPhone3_1_4_0_8A293: [],
+        OsBuildEnum.iPhone3_1_4_1_8B117: [],
+        OsBuildEnum.iPhone3_1_5_0_9A334: [],
+        OsBuildEnum.iPhone3_1_6_1_10B144: [
+            Function(
+                name="image3_load_validate_signature",
+                address=VirtualMemoryPointer(0x8400568e),
+            ),
+            Function(
+                name="main_ibss",
+                address=VirtualMemoryPointer(0x840008c8),
+            ),
+        ],
     })
+
+    @classmethod
+    def function_with_name(cls, os_build: OsBuildEnum, name: str) -> Function:
+        known_functions = cls._BUILDS_TO_KNOWN_FUNCTIONS[os_build]
+        names_to_functions = {f.name: f for f in known_functions}
+        return names_to_functions[name]
+
+
+class PatchRepository:
+    _OLD_IBSS_PATCHES = [
+        PatchRegion(
+            # Load memory to find the value that should be passed to debug_enable_uarts()
+            # We always want debug logs, so override the value here
+            function_name="platform_early_init",
+            address=VirtualMemoryPointer(0x84010b96),
+            orig_instructions=[Instr.thumb("ldrb r0, [r4]")],
+            patched_instructions=[Instr.thumb("movs r0, #3")],
+        ),
+        PatchRegion(
+            # In do_go_target, there's a call to validate_memory_image. We always want to consider it to have succeeded
+            # TODO(PT): This patch might not be necessary if we we patch the signature checks correctly?
+            function_name="do_go_target",
+            address=VirtualMemoryPointer(0x84000bdc),
+            orig_instructions=[Instr.thumb("bge #0x84000bee")],
+            patched_instructions=[Instr.thumb("b #0x84000bee")],
+        ),
+        PatchRegion(
+            # TODO(PT): Add an `explanation` field
+            # After an inner call to an image validation function, we compare the return value to zero.
+            # If it's anything else, we return -1 and the image validation fails. We always want the following
+            # comparison to succeed, so compare r0 to itself.
+            function_name="",
+            address=VirtualMemoryPointer(0x8400e1e2),
+            orig_instructions=[Instr.thumb("cmp r0, #0")],
+            patched_instructions=[Instr.thumb("cmp r0, r0")],
+        ),
+        PatchRegion(
+            # If the comparison is NE, we stay on the happy path.
+            function_name="",
+            address=VirtualMemoryPointer(0x8400e1f0),
+            orig_instructions=[Instr.thumb("cmp r5, #0")],
+            patched_instructions=[Instr.thumb("cmp r5, r5")],
+        ),
+        PatchRegion(
+            # We stay on the happy path by jumping away.
+            # It is kind of seeming like the image handle is null though...
+            function_name="",
+            address=VirtualMemoryPointer(0x8400de7a),
+            orig_instructions=[Instr.thumb("cbnz r0, #0x8400de90")],
+            patched_instructions=[Instr.thumb("b #0x8400de90")],
+        ),
+        #PatchRegion(
+        #    # We stay on the happy path by jumping away.
+        #    function_name="",
+        #    address=VirtualMemoryPointer(0x8400e1f2),
+        #    orig_instructions=[Instr.arm("bne.w #0x8400deca")],
+        #    patched_instructions=[Instr.arm("b #0x8400deca")],
+        #)
+    ]
+
+    @classmethod
+    def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, Mapping[ImageType, Tuple[list[PatchRegion], list[PatchRawBytes]]]]:
+        # PT: This needs to be a method, rather than a class variable, because otherwise it
+        # captures file data **when the class is defined/interpreted**,
+        # which is before we've rebuilt the shellcode image with new code! Annoying
+        return TotalEnumMapping({
+            OsBuildEnum.iPhone3_1_4_0_8A293: TotalEnumMapping({
+                ImageType.iBSS: (
+                    [
+                        #PatchRegion(
+                        #    function_name="",
+                        #    address=VirtualMemoryPointer(0x84000be4),
+                        #    orig_instructions=[Instr.arm("mov.w r0, #-1")],
+                        #    patched_instructions=[Instr.arm("bl #0x840000fc")],
+                        #)
+                    ],
+                    [
+                        #PatchRawBytes(
+                        #    address=VirtualMemoryPointer(0x84000be4),
+                        #    new_content=Path("/Users/philliptennen/Documents/Jailbreak/jailbreak/shellcode_within_ibss/build/shellcode_within_ibss_shellcode").read_bytes(),
+                        #),
+                        PatchRawBytes(
+                            address=VirtualMemoryPointer(0x840000fc),
+                            new_content=Path("/Users/philliptennen/Documents/Jailbreak/jailbreak/shellcode_within_ibss/build/shellcode_within_ibss_shellcode").read_bytes(),
+                        )
+                    ]
+                ),
+                ImageType.iBEC: (
+                    [],
+                    []
+                ),
+            }),
+            OsBuildEnum.iPhone3_1_4_1_8B117: TotalEnumMapping({
+                ImageType.iBSS: (
+                    [],
+                    []
+                ),
+                ImageType.iBEC: (
+                    [],
+                    []
+                ),
+            }),
+            OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping({
+                ImageType.iBSS: (
+                    [],
+                    []
+                ),
+                ImageType.iBEC: (
+                    [],
+                    []
+                ),
+            }),
+            OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping({
+                ImageType.iBSS: (
+                    [
+                        PatchRegion(
+                            function_name="image3_load_validate_signature",
+                            address=VirtualMemoryPointer(0x84005694),
+                            # PT: This comment is unverified
+                            # This test is followed by a `bne`. The taken direction is a "validation failed" path, so we want to stay here.
+                            orig_instructions=[Instr.arm("tst.w r0, #1")],
+                            patched_instructions=[
+                                Instr.thumb("cmp r0, r0"),
+                                Instr.thumb("nop")
+                            ],
+                        ),
+                        PatchRegion(
+                            function_name="image3_load_validate_signature",
+                            address=VirtualMemoryPointer(0x840056ac),
+                            # PT: This comment is unverified
+                            # The branch just preceding this calls a validation function,
+                            # and the comparison following this branches away to a failure path. We want the validation to always succeed.
+                            orig_instructions=[Instr.thumb("cmp r0, #0")],
+                            patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        ),
+                        # More comparison patches follow
+                        PatchRegion(
+                            function_name="image3_load_validate_signature",
+                            address=VirtualMemoryPointer(0x8400570e),
+                            orig_instructions=[Instr.thumb("cmp r0, #0")],
+                            patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        ),
+                        PatchRegion(
+                            function_name="image3_load_validate_signature",
+                            address=VirtualMemoryPointer(0x84005712),
+                            # Replace the call to the 'image3_validate_constraints' function with a direct return value
+                            # This return value is compared to 0x1 just below, so set it upfront
+                            orig_instructions=[Instr.thumb("beq #0x84005746")],
+                            patched_instructions=[Instr.thumb("movs r0, #1")],
+                        ),
+                        PatchRegion(
+                            function_name="image3_load_validate_signature",
+                            address=VirtualMemoryPointer(0x84005726),
+                            orig_instructions=[Instr.thumb("cmp r0, #0")],
+                            patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        ),
+                        PatchRegion(
+                            function_name="image3_load_validate_signature",
+                            address=VirtualMemoryPointer(0x8400573a),
+                            orig_instructions=[Instr.thumb("cmp r0, #1")],
+                            patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        ),
+                        PatchRegion(
+                            function_name="main_ibss",
+                            address=VirtualMemoryPointer(0x84000940),
+                            # Just above is a function call, maybe to dfu_parse_ticket?
+                            # If the call returns zero, we jump back to the 'receive a DFU image' loop, and don't do further
+                            # processing. We always want to process the image.
+                            orig_instructions=[Instr.thumb("cbnz r0, #0x84000964")],
+                            patched_instructions=[Instr.thumb("b #0x84000964")],
+                        ),
+                    ],
+                    [],
+                ),
+                # Not implemented yet
+                ImageType.iBEC: (
+                    [],
+                    [],
+                ),
+            }),
+        })
 
     @classmethod
     def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType) -> Tuple[list[PatchRegion], list[PatchRawBytes]]:
@@ -265,21 +390,12 @@ def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
     return reencrypted_image
 
 
-def main():
-    if False:
-        output_dir = _JAILBREAK_ROOT / "patched_images" / "iPhone3,1_6.1_10B144"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        encrypted_iBSS = _JAILBREAK_ROOT / "ipsw" / "iPhone3,1_6.1_10B144_Restore.ipsw.unzipped" / ipsw_iBSS_subpath
-        _patched_encrypted_iBSS = patch_ibss(encrypted_iBSS, output_dir)
-
-        iBEC = _JAILBREAK_ROOT / "ipsw" / "iPhone3,1_6.1_10B144_Restore.ipsw.unzipped" / ipsw_iBEC_subpath
-        decrypted_iBEC = output_dir / "iBEC.n90ap.RELEASE.dfu.decrypted"
-        decrypted_iBEC.unlink(missing_ok=True)
-        decrypt_img3(iBEC, decrypted_iBEC, _IBEC_KEY, _IBEC_IV)
-
-    os_build = OsBuildEnum.iPhone3_1_4_0_8A293
-    _patched_encrypted_iBSS = patch_ibss(os_build)
+def regenerate_patched_images(os_build: OsBuildEnum) -> Mapping[ImageType, Path]:
+    return TotalEnumMapping({
+        image_type: patch_image(os_build, image_type)
+        for image_type in ImageType
+    })
 
 
 if __name__ == '__main__':
-    main()
+    regenerate_patched_images(OsBuildEnum.iPhone3_1_5_0_9A334)
