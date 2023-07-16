@@ -66,13 +66,13 @@ struct libusb_device_handle* find_device(struct libusb_context* context, int ven
         struct libusb_device* device = device_list[i];
         struct libusb_device_descriptor device_desc;
         libusb_get_device_descriptor(device, &device_desc);
-        NSLog(@"Found device: [Vendor 0x%04x], [Product 0x%04x]", device_desc.idVendor, device_desc.idProduct);
+        //NSLog(@"Found device: [Vendor 0x%04x], [Product 0x%04x]", device_desc.idVendor, device_desc.idProduct);
         
         if (device_desc.idVendor == vendor_id && device_desc.idProduct == device_id) {
             libusb_open(device, &handle);
             char serial[128] = {0};
             libusb_get_string_descriptor_ascii(handle, device_desc.iSerialNumber, &serial, 128);
-            NSLog(@"Found device handle %p, serial %s", handle, serial);
+            //NSLog(@"Found device handle %p, serial %s", handle, serial);
             if (serial_number_out) {
                 strcpy(serial_number_out, &serial);
             }
@@ -122,6 +122,8 @@ void dfu_notify_upload_finished(struct libusb_device_handle* device_handle) {
     }
     NSLog(@"Resetting device to complete upload flow...");
     libusb_reset_device(device_handle);
+    // Ensure we always wait a bit before doing anything else, after requesting image validation
+    //usleep(500);
 }
 
 void upload_file(struct libusb_device_handle* device_handle, const char* filename) {
@@ -179,6 +181,12 @@ struct libusb_device_handle* usb_wait_device_connection(struct libusb_context* c
     //sleep(2);
     libusb_close(device_handle);
     return find_device(context, 0x05ac, 0x1227, NULL);
+}
+
+struct libusb_device_handle* find_recovery_mode_device(struct libusb_context* context, struct libusb_device_handle* device_handle) {
+    //sleep(2);
+    libusb_close(device_handle);
+    return find_device(context, 0x05ac, 0x1281, NULL);
 }
 
 void reset_counters(struct libusb_device_handle* device_handle) {
@@ -298,13 +306,14 @@ void inner_main(void) {
     
     if (!did_already_perform_exploit) {
         NSLog(@"Device has not been exploited yet...");
-        //device_handle2 = run_limera1n(context, device_handle2);
+        device_handle2 = run_limera1n(context, device_handle2);
     }
     else {
         NSLog(@"Skipped perfoming exploit because the device is already pwned");
     }
 
     sleep(1);
+    return;
     //device_handle2 = usb_wait_device_connection(context, device_handle2);
 
     /*
@@ -317,8 +326,6 @@ void inner_main(void) {
     while (1) {}
      */
 
-    //pull_dump(device_handle2);
-    
     // Now, try writing an ipsw to see what happens?!
     // Reset counters
     /*
@@ -357,7 +364,11 @@ void inner_main(void) {
     //sleep(1);
     NSLog(@"Uploading IBSS...");
     
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.1_8B117/iBSS.n90ap.RELEASE.dfu.reencrypted");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_5.0_9A334_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBSS.reencrypted");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBSS.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403_iBSS.n90ap.RELEASE.dfu.repack_test");
@@ -366,19 +377,28 @@ void inner_main(void) {
     //libusb_reset_device(device_handle2);
     sleep(1);
     device_handle2 = usb_wait_device_connection(context, device_handle2);
-    
-    //unsigned int addr = 0x0;
-    NSLog(@"Uploaded patched IBSS");
 
+    /*
+    printf("Pulling dump...");
+    pull_dump(device_handle2);
+     */
+
+    //unsigned int addr = 0x0;
+
+    /*
     NSLog(@"Uploading IBEC...");
+    device_handle2 = find_recovery_mode_device(context, device_handle2);
     reset_counters(device_handle2);
-    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
+    upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/iBEC.n90ap.RELEASE.dfu.reencrypted");
+     */
+
     //upload_file(device_handle2, "/Users/philliptennen/Downloads/iPhone3,1_6.0_10A403_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/jailbreak/analysis/iPhone3,1_6.0_10A403/iBEC.reencrypted");
     //upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/dfu/iBEC.n90ap.RELEASE.dfu");
-    sleep(1);
-    
-    device_handle2 = usb_wait_device_connection(context, device_handle2);
+    //sleep(1);
+
+    //device_handle2 = usb_wait_device_connection(context, device_handle2);
     /*
     upload_file(device_handle2, "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_6.1_10B144_Restore.ipsw.unzipped/kernelcache.release.n90");
     sleep(1);
