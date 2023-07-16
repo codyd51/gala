@@ -9,6 +9,11 @@ class DeviceModel(Enum):
     iPhone3_1 = auto()
 
 
+class ImageType(Enum):
+    iBSS = auto()
+    iBEC = auto()
+
+
 class OsBuildEnum(Enum):
     iPhone3_1_4_0_8A293 = auto()
     iPhone3_1_6_1_10B144 = auto()
@@ -27,22 +32,13 @@ class OsBuildEnum(Enum):
             OsBuildEnum.iPhone3_1_6_1_10B144: DeviceModel.iPhone3_1,
         })[self]
 
-    @property
-    def ibss_subpath(self):
+    def ipsw_path_for_image_type(self, image_type: ImageType) -> Path:
         return TotalEnumMapping({
-            DeviceModel.iPhone3_1: Path("Firmware") / "dfu" / "iBSS.n90ap.RELEASE.dfu",
-        })[self.model]
-
-    @property
-    def ibec_subpath(self):
-        return TotalEnumMapping({
-            DeviceModel.iPhone3_1: Path("Firmware") / "dfu" / "iBEC.n90ap.RELEASE.dfu",
-        })[self.model]
-
-
-class ImageType(Enum):
-    iBSS = auto()
-    iBEC = auto()
+            DeviceModel.iPhone3_1: TotalEnumMapping({
+                ImageType.iBSS: Path("Firmware") / "dfu" / "iBSS.n90ap.RELEASE.dfu",
+                ImageType.iBEC: Path("Firmware") / "dfu" / "iBEC.n90ap.RELEASE.dfu",
+            }),
+        })[self.model][image_type]
 
 
 @dataclass
