@@ -101,10 +101,16 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
         case "b":
             # 5.18 Format 18: unconditional branch
             dest_address = immediate_literal_to_int(ops[0])
+            dest_offset = (dest_address - address - 4)
+
+            if dest_offset < 2048:
+                # Relative offset from pc
+                return f"111000{int_to_bits_with_width(dest_offset >> 1, 10)}"
+
             # "The address specified by label is a full 12-bit two’s complement address,
             # but must always be halfword aligned (ie bit 0 set to 0),
             # since the assembler places label >> 1 in the Offset11 field."
-            dest_offset = (dest_address - address - 4) >> 1
+            dest_offset = dest_offset >> 1
             if dest_offset <= 0:
                 # Negative offsets are actually allowed, but are unhandled for now
                 raise ValueError(f'Expected a positive offset')
