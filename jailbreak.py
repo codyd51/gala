@@ -118,7 +118,7 @@ def acquire_device_with_timeout(mode: DeviceMode, timeout: int = 10) -> Iterator
             if maybe_device:
                 yield maybe_device
                 return
-        print(f'Waiting for {mode.name} Mode device to appear...')
+        print(f'{int(time.time())%100}: Waiting for {mode.name} Mode device to appear...')
         time.sleep(1)
     raise RuntimeError(f"No {mode.name} Mode device appeared after {timeout} seconds")
 
@@ -179,6 +179,11 @@ def main():
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
     recompile_payloads()
     image_types_to_paths = regenerate_patched_images(os_build)
+
+    # Wait for a DFU device to connect
+    print('Awaiting DFU device...')
+    with acquire_device_with_timeout(DeviceMode.DFU, timeout=100):
+        print(f'Got DFU device')
 
     exploit_and_upload_image(image_types_to_paths[ImageType.iBSS])
 
