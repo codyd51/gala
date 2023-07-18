@@ -132,6 +132,19 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             word1 = f"{instr_template.format(is_low='1', offset=int_to_bits_with_width(low_offset, 11))}"
             word2 = f"{instr_template.format(is_low='0', offset=int_to_bits_with_width(high_offset, 11))}"
             return f"{word1}{word2}"
+        case "mov":
+            # 2846  mov        r0, r5
+            print(ops)
+            source_reg = int(ops[1].split("r")[1])
+            dest_reg = int(ops[0].split("r")[1])
+            source_is_high = source_reg >= 8
+            dest_is_high = dest_reg >= 8
+            return "01000110{h1}{h2}{rs}{rd}".format(
+                h1="1" if dest_is_high else "0",
+                h2="1" if source_is_high else "0",
+                rs=register_name_to_encoded_value(ops[1]),
+                rd=register_name_to_encoded_value(ops[0]),
+            )
 
         case _:
             raise NotImplementedError(mnemonic)
