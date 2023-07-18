@@ -57,3 +57,17 @@ and a "replace this blob with another blob", which is useful for injecting a tin
 Kept running off into opcode zero, needed to do pop {pc}
 
 When I first wrote "INJECTED LOG" it'd overwrite critical instructions next door!
+
+We're now able to inject extra logging anywhere we like, which is really helpful for tracking down exactly what's going on
+
+Takes about one minute from starting to recompile/put in DFU to result
+
+Patchfinder -- good for the same patches for multiple OS builds at the same version, but I was doing diff. versions that all had diff. code. 
+
+I was a tewak developer. One thing that always seemed like black magic to me, though, was the process of jailbreaking itself. Taking an iOS device off the shelf, and performing obscene rituals and reciting the eldirtch incandations until the shackles drop away. The real work has been done by my forebears, in particular posixninja and axiomx, who have graciously shared their knowledge via open source.
+
+I thought it was poking a live/running system, but instead this is no longer iOS: it's very close to iOS, but we're actually running a custom OS distribution
+
+Madea  program that can dump register state over dprintf
+
+In the blog post, we could 'show' a disassembler, and when you patch this, then insert shellcode there, you get a register dump, then when you patch this other thing, you get a different dump. 
