@@ -27,6 +27,8 @@ class PatchRegion:
     address: VirtualMemoryPointer
     orig_instructions: list[Instr]
     patched_instructions: list[Instr]
+    expected_length: int | None = None
+
 
 
 @dataclass
@@ -340,8 +342,12 @@ def apply_patches(
             patched_bytes[patch_file_offset:patch_file_offset + assembled_bytes_len] = assembled_bytes
 
             # Iterate to the next instruction location
-            patched_instr_address += patched_instr.format.size
-            patch_file_offset += patched_instr.format.size
+            patched_instr_address += assembled_bytes_len
+            patch_file_offset += assembled_bytes_len
+            patch_length += assembled_bytes_len
+
+        if patch.expected_length and patch_length != patch.expected_length:
+            raise ValueError(f'Expected a patch of {patch.expected_length} bytes, but patch was {assembled_bytes_len} bytes!')
 
     for patch in unstructured_patches:
         print()
