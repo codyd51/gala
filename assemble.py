@@ -150,10 +150,23 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             raise NotImplementedError(mnemonic)
 
 
-def twos_complement(val: int, bit_count: int) -> int:
+def twos_complement2(val: int, bit_count: int) -> int:
     if (val & (1 << (bit_count - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+        print(f'sign bit is set')
         val = val - (1 << bit_count)        # compute negative value
     return val                         # return positive value as is
+
+
+def twos_complement(val, nbits):
+    """Compute the 2's complement of int value val"""
+    if val < 0:
+        val = (1 << nbits) + val
+    else:
+        if (val & (1 << (nbits - 1))) != 0:
+            # If sign bit is set.
+            # compute negative value.
+            val = val - (1 << nbits)
+    return val
 
 
 def assemble_arm(address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
@@ -218,3 +231,8 @@ def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
     # 503407fb
     print(f'Assembled {binascii.hexlify(ret)}')
     return ret
+
+
+if __name__ == '__main__':
+    assert assemble(VirtualMemoryPointer(0x84015cba), Instr.thumb("b #0x84015cc0")) == bytes([0x01, 0xe0])
+    assert assemble(VirtualMemoryPointer(0x8400df5a), Instr.thumb("mov r0, r5")) == bytes([0x28, 0x46])
