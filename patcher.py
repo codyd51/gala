@@ -10,8 +10,8 @@ from assemble import Instr, assemble
 from os_build import OsBuildEnum, KeyRepository, ImageType
 from utils import run_and_check, TotalEnumMapping, hexdump
 
-_JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
-_XPWNTOOL = _JAILBREAK_ROOT / "xpwn" / "build" / "ipsw-patch" / "xpwntool"
+JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
+_XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn" / "ipsw-patch" / "xpwntool"
 
 
 @dataclass
@@ -303,7 +303,7 @@ def apply_patches(
         #if len(patch.orig_instructions) != len(patch.patched_instructions):
         #    raise ValueError(f'Expected to have the same number of instructions in the pre- and post-patch state')
 
-        region_size = sum([i.format.size for i in patch.orig_instructions])
+        region_size = sum([i.format.typical_size for i in patch.orig_instructions])
         patch_file_offset = patch.address - base_address
         instr_bytes = input_bytes[patch_file_offset:patch_file_offset + region_size]
         actual_orig_instructions = list(cs.disasm(instr_bytes, patch.address))
@@ -318,9 +318,12 @@ def apply_patches(
 
         # Assemble the patched instructions
         patched_instr_address = patch.address
+        patch_length = 0
         for patched_instr in patch.patched_instructions:
             assembled_bytes = assemble(patched_instr_address, patched_instr)
-            print(f"Assembled bytes {assembled_bytes}")
+            # It's possible for assembled Thumb instructions to take up 4 bytes: for example, THUMB bl <offset>.
+            # Therefore, check the length of the assembled bytes, rather than relying on size reported by the format
+            assembled_bytes_len = len(assembled_bytes)
             # Validate that the instruction was assembled correctly
             disassembled_instrs = list(cs.disasm(assembled_bytes, patched_instr_address))
             if len(disassembled_instrs) != 1:
@@ -334,7 +337,7 @@ def apply_patches(
                 raise ValueError(f"Expected to assemble \"{patched_instr.value}\", but assembled \"{assembled_instr_str}\"")
 
             # Apply the patch to the binary
-            patched_bytes[patch_file_offset:patch_file_offset + patched_instr.format.size] = assembled_bytes
+            patched_bytes[patch_file_offset:patch_file_offset + assembled_bytes_len] = assembled_bytes
 
             # Iterate to the next instruction location
             patched_instr_address += patched_instr.format.size

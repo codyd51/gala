@@ -7,34 +7,37 @@ from strongarm.macho import VirtualMemoryPointer
 from utils import TotalEnumMapping
 
 
-class InstructionFormat(Enum):
+class InstrFormat(Enum):
     Thumb = 0
     Arm = 1
 
     @property
-    def size(self) -> int:
+    def typical_size(self) -> int:
+        """Some instructions (such as Thumb BL) are actually encoded as two instructions, so there's not a perfect
+        mapping of mode to instruction size.
+        """
         return {
-            InstructionFormat.Thumb: 2,
-            InstructionFormat.Arm: 4,
+            InstrFormat.Thumb: 2,
+            InstrFormat.Arm: 4,
         }[self]
 
 
 @dataclass
 class Instr:
-    format: InstructionFormat
+    format: InstrFormat
     value: str
 
     @classmethod
     def thumb(cls, value: str) -> Self:
         return cls(
-            format=InstructionFormat.Thumb,
+            format=InstrFormat.Thumb,
             value=value
         )
 
     @classmethod
     def arm(cls, value: str) -> Self:
         return cls(
-            format=InstructionFormat.Arm,
+            format=InstrFormat.Arm,
             value=value
         )
 
@@ -174,10 +177,10 @@ def bitstring_to_bytes(s: str) -> bytes:
     return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='little')
 
 
-def _assemble_to_bitstring(format: InstructionFormat, address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
+def _assemble_to_bitstring(format: InstrFormat, address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
     return TotalEnumMapping({
-        InstructionFormat.Thumb: lambda: assemble_thumb(address, mnemonic, ops),
-        InstructionFormat.Arm: lambda: assemble_arm(address, mnemonic, ops),
+        InstrFormat.Thumb: lambda: assemble_thumb(address, mnemonic, ops),
+        InstrFormat.Arm: lambda: assemble_arm(address, mnemonic, ops),
     })[format]()
 
 
