@@ -92,14 +92,6 @@ class PatchRepository:
             patched_instructions=[Instr.thumb("movs r0, #3")],
         ),
         PatchRegion(
-            # In do_go_target, there's a call to validate_memory_image. We always want to consider it to have succeeded
-            # TODO(PT): This patch might not be necessary if we we patch the signature checks correctly?
-            function_name="do_go_target",
-            address=VirtualMemoryPointer(0x84000bdc),
-            orig_instructions=[Instr.thumb("bge #0x84000bee")],
-            patched_instructions=[Instr.thumb("b #0x84000bee")],
-        ),
-        PatchRegion(
             # TODO(PT): Add an `explanation` field
             # After an inner call to an image validation function, we compare the return value to zero.
             # If it's anything else, we return -1 and the image validation fails. We always want the following
@@ -116,21 +108,6 @@ class PatchRepository:
             orig_instructions=[Instr.thumb("cmp r5, #0")],
             patched_instructions=[Instr.thumb("cmp r5, r5")],
         ),
-        PatchRegion(
-            # We stay on the happy path by jumping away.
-            # It is kind of seeming like the image handle is null though...
-            function_name="",
-            address=VirtualMemoryPointer(0x8400de7a),
-            orig_instructions=[Instr.thumb("cbnz r0, #0x8400de90")],
-            patched_instructions=[Instr.thumb("b #0x8400de90")],
-        ),
-        #PatchRegion(
-        #    # We stay on the happy path by jumping away.
-        #    function_name="",
-        #    address=VirtualMemoryPointer(0x8400e1f2),
-        #    orig_instructions=[Instr.arm("bne.w #0x8400deca")],
-        #    patched_instructions=[Instr.arm("b #0x8400deca")],
-        #)
     ]
 
     @classmethod
@@ -138,26 +115,310 @@ class PatchRepository:
         # PT: This needs to be a method, rather than a class variable, because otherwise it
         # captures file data **when the class is defined/interpreted**,
         # which is before we've rebuilt the shellcode image with new code! Annoying
+        shellcode_addr = 0x840000fc
+        branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return TotalEnumMapping({
             OsBuildEnum.iPhone3_1_4_0_8A293: TotalEnumMapping({
                 ImageType.iBSS: (
                     [
+                        # More logging patches, #2 and #3 might not be needed?
+                        PatchRegion(
+                            # Load memory to find the value that should be passed to debug_enable_uarts()
+                            # We always want debug logs, so override the value here
+                            function_name="platform_early_init",
+                            address=VirtualMemoryPointer(0x84010b96),
+                            orig_instructions=[Instr.thumb("ldrb r0, [r4]")],
+                            patched_instructions=[Instr.thumb("movs r0, #3")],
+                        ),
+                        # More UART patch
+                        #PatchRegion(
+                        #    function_name="maybe_iBSS_start",
+                        #    address=VirtualMemoryPointer(0x84000994),
+                        #    orig_instructions=[Instr.arm("bl #0x840153f4")],
+                        #    patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
+                        #),
+                        ## More UART patch
+                        #PatchRegion(
+                        #    function_name="maybe_iBSS_start",
+                        #    address=VirtualMemoryPointer(0x84000838),
+                        #    orig_instructions=[Instr.arm("bl #0x840153f4")],
+                        #    patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
+                        #),
+
+                        # iBEC loading patches
+                        # Check PROD tag on image3
+                        PatchRegion(
+                            function_name="",
+                            address=VirtualMemoryPointer(0x8400df14),
+                            orig_instructions=[Instr.thumb("cmp r0, #0")],
+                            patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        ),
+                        # Check ECID tag on image3
+                        PatchRegion(
+                            function_name="",
+                            address=VirtualMemoryPointer(0x8400e00c),
+                            orig_instructions=[Instr.thumb("cbz r0, #0x8400e02e")],
+                            patched_instructions=[Instr.thumb("b #0x8400e02e")],
+                        ),
+                        #PatchRegion(
+                        #    # Replacing a call to dprintf with a func that disables the display
+                        #    function_name="",
+                        #    address=VirtualMemoryPointer(0x84000bf2),
+                        #    orig_instructions=[Instr.arm("bl #0x84016fc8")],
+                        #    patched_instructions=[branch_to_shellcode],
+                        #),
                         #PatchRegion(
                         #    function_name="",
-                        #    address=VirtualMemoryPointer(0x84000be4),
-                        #    orig_instructions=[Instr.arm("mov.w r0, #-1")],
-                        #    patched_instructions=[Instr.arm("bl #0x840000fc")],
+                        #    address=VirtualMemoryPointer(0x84000afc),
+                        #    orig_instructions=[Instr.arm('bl #0x84010604')],
+                        #    patched_instructions=[branch_to_shellcode],
                         #)
+                        # 0x8400de90 FFF794FC               bl         validate_shsh_and_cert
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400de90),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[Instr.thumb('movs r0, #0'), Instr.thumb("nop")],
+                        #)
+
+                        # Trying to patch out the call to image3_load... obviously causes no pictures to load, whether valid or not
+                        # PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x84015912),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[Instr.thumb('movs r0, #0'), Instr.thumb("nop")],
+                        #),
+
+                        # Try and patch out a call in image3_validate_signature
+                        # Patching this call causes this assert:
+                        # panic: image3_load_validate_signature: ASSERT FAILED at (lib/image/image3/image3_wrapper.c:image3_load_validate_signature:490): NULL != objectHandle
+                        # The function contains a malloc/free, so it might be some kind of load
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400e1de),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[Instr.thumb('movs r0, #0'), Instr.thumb("nop")],
+                        #),
+
+                        # Try and patch out the call to validate_shsh_and_cert
+                        # This causes both valid and invalid images to stop loading, so it contains some important load logic?
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400de90),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[Instr.thumb('movs r0, #0'), Instr.thumb("nop")],
+                        #),
+
+                        # Check whether the KBAG is checked
+                        # 0x8400e02e
+                        #PatchRegion.shellcode(0x8400d9b2),
+
+                        # Fixes a jump away with an invalid setpicture
+                        PatchRegion(
+                            function_name='',
+                            address=VirtualMemoryPointer(0x8400d9aa),
+                            orig_instructions=[Instr.thumb("cmp r5, #0")],
+                            patched_instructions=[Instr.thumb("cmp r5, r5")],
+                        ),
+
+                        # This cbz branches away for invalid pictures, but stays for valid pictures
+                        PatchRegion(
+                            function_name='',
+                            address=VirtualMemoryPointer(0x8400d9b0),
+                            orig_instructions=[],
+                            patched_instructions=[Instr.thumb("nop")],
+                        ),
+
+                        PatchRegion.quick(0x8400d9be, Instr.thumb("b #0x8400d9c4")),
+
+                        # Registers are similar for valid vs invalid images for all of these:
+                        #PatchRegion.shellcode(0x8400d83c),
+                        #PatchRegion.shellcode(0x8400d8ee),
+                        #PatchRegion.shellcode(0x8400d908),
+
+                        # R0 == 0 for a valid image, R1 == 1 for an invalid image here!
+                        #PatchRegion.shellcode(0x8400d986),
+
+                        # R1 == <Addr> for a valid image, R1 == <0> for an invalid image here!
+                        # PatchRegion.shellcode(0x8400d9b0),
+
+                        # R0 == 0 for valid image, R1 == -1 for invalid image
+                        # PatchRegion.shellcode(0x84015e08),
+
+                        #PatchRegion.shellcode(0x84016184),
+                        PatchRegion.shellcode(0x8400e0a6),
+
+                        PatchRegion.quick(0x8400def0, Instr.thumb("movs r1, #0")),
+                        # We patch the comparison, so hard-code the branch direction
+                        #PatchRegion.quick(0x8400def2, [Instr.thumb("b #0x8400e00e"), Instr.thumb("nop")], expected_length=4),
+                        #PatchRegion.quick(0x8400def2, [Instr.thumb("b #0x8400e00e"), Instr.thumb("nop")], expected_length=4),
+                        PatchRegion.quick(0x8400def2, [Instr.thumb("nop"), Instr.thumb("nop")], expected_length=4),
+                        PatchRegion.quick(0x8400df10, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")], expected_length=4),
+
+                        # Match the registers for a success call
+                        PatchRegion.quick(0x8400df5a, [Instr.thumb("movs r0, #0"), Instr.thumb("mov r1, r2"), Instr.thumb("movs r2, #1")], expected_length=6),
+
+                        # Match the registers for a success call
+                        PatchRegion.quick(0x8400dfc6, [Instr.thumb("movs r0, #0"), Instr.thumb("movs r1, #0")], expected_length=4),
+
+                        # Make sure it always acts like the success path
+                        #PatchRegion.quick(0x84015bb0, Instr.thumb("cmp r0, r0")),
+                        #PatchRegion.quick(0x84015be8, Instr.thumb("cmp r0, r0")),
+                        #PatchRegion.quick(0x84015bfe, Instr.thumb("cmp r0, r0")),
+                        #PatchRegion.quick(0x84015c16, Instr.thumb("cmp r0, r0")),
+                        #PatchRegion.quick(0x84015c48, Instr.thumb("cmp r0, r0")),
+
+                        # After the call to validate_shsh_and_cert, `r0 == 0` to indicate success. If successful,
+                        # we branch away. We always should take the branch.
+                        PatchRegion.quick(0x8400de98, Instr.thumb("b #0x8400e1e8")),
+
+                        #PatchRegion.quick(0x84015cba, Instr.thumb("b #0x84015cc0")),
+                        PatchRegion.quick(0x84015bb2, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015bea, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c00, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c18, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c4a, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c5a, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c6a, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c74, Instr.thumb("b #0x84015c7e")),
+                        PatchRegion.quick(0x84015c7a, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015c88, Instr.thumb("nop")),
+                        PatchRegion.quick(0x84015ca2, Instr.thumb("b #0x84015cb2")),
+                        PatchRegion.quick(0x84015cba, Instr.thumb("b #0x84015cc0")),
+                        PatchRegion.quick(0x8400d9ac, Instr.thumb("nop")),
+
+                        # These patches cause no image to appear?!
+                        # PatchRegion.quick(0x84015c68, Instr.thumb("cmp r0, r0")),
+                        #PatchRegion.quick(0x84015c86, Instr.thumb("cmp r0, r0")),
+
+                        # Patches for setpicture
+                        # Yes: 0x8400de2c 6169                   ldr        r1, [r4, #0x14]
+                        # Wrong!!! No : 0x8400defc 2846                   mov        r0, r5
+                        # No : 0x8400deca 09F017FF               bl         sub_84017cfc
+                        # Yes: 0x8400e1d6 14A8                   add        r0, sp, #0x50
+                        # Yes: 0x8400e1e6 39E6                   b          image3_load_copyobject*+164
+                        # No : 0x8400de72 D4F810A0               ldr.w      sl, [r4, #0x10]
+                        # Yes: 0x8400de90 FFF794FC               bl         sub_8400d7bc
+                        # Yes: 0x8400e1e8 0695                   str        r5, [sp, arg_18]
+                        # Yes: 0x8400def6 09F0FBFE               bl         sub_84017cf0
+
+                        # The below might only be valid for valid images?
+                        # Yes: 0x8400defc 2846                   mov        r0, r5
+                        # No : 0x8400df20 11AB                   add        r3, sp, #0x44
+                        # No : 0x8400df6a 0090                   str        r0, [sp, arg_0]
+                        # Yes: 0x8400df3c 09F0C6FE               bl         sub_84017ccc
+                        # Yes: 0x8400df66 059A                   ldr        r2, [sp, arg_14]
+                        # Yes: 0x8400dfac 09F09AFE               bl         sub_84017ce4
+                        # Yes: 0x8400dfce 02F063FA               bl         sub_84010498
+
+                        # Yes: 0x8400dfec 09F074FE               bl         sub_84017cd8
+                        #      On retest this doesn't run!
+                        #      On retest it runs when there's a valid image, but not when there's an invalid image
+
+                        # Yes: 0x8400e00e 0D99                   ldr        r1, [sp, arg_34]
+                        # Yes: 0x8400e018 0120                   movs       r0, #0x1
+
+                        # Retesting each of them on an invalid image...
+                        # No : 0x8400defc 2846                   mov        r0, r5
+                        # Yes: 0x8400deca 09F017FF               bl         sub_84017cfc
+                        # 0x8400def6 09F0FBFE               bl         sub_84017cf0
+                        #PatchRegion(
+                        #    function_name="",
+                        #    address=VirtualMemoryPointer(0x8400def6),
+                        #    orig_instructions=[Instr.arm("bl #0x84017cf0")],
+                        #    patched_instructions=[branch_to_shellcode],
+                        #),
+
+                        # Patch SDOM check return value in image3_load_decrypt_image
+                        #PatchRegion(
+                        #    function_name="",
+                        #    address=VirtualMemoryPointer(0x8400def0),
+                        #    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                        #    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        #),
+
+                        # This completely neuters the call to validate_shsh_and_cert
+                        # I think this function might do some important loading, so instead do a patch that specifically touches it
+                        #PatchRegion(
+                        #    function_name="",
+                        #    address=VirtualMemoryPointer(0x8400de96),
+                        #    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                        #    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        #),
+
+                        # Invalid setpicture:
+                        # Yes: 0x8400d864 6378                   ldrb       r3, [r4, #0x1]
+                        # Yes: 0x8400d882 6379                   ldrb       r3, [r4, #0x5]
+                        # Yes: 0x8400d93e 059A                   ldr        r2, [sp, #0x50 + var_3C]
+                        # No : 0x8400d9e2 737B                   ldrb       r3, [r6, #0xd]
+                        # No : 0x8400d9d0 D8F80430               ldr.w      r3, [r8, #0x4]
+                        # No : 0x8400d9c0 0546                   mov        r5, r0
+                        # Yes: 0x8400d9aa 002D                   cmp        r5, #0x0
+                        # No: 0x8400d9ae 0799                   ldr        r1, [sp, #0x50 + var_34]
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400d9ae),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[branch_to_shellcode],
+                        #),
+
+                        # Fixes a jump away with an invalid setpicture
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400d9aa),
+                        #    orig_instructions=[Instr.thumb("cmp r5, #0")],
+                        #    patched_instructions=[Instr.thumb("cmp r5, r5")],
+                        #),
+
+                        # Overrides comparing return value of sub_8401244c in image3_load_validate_constraints
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400deae),
+                        #    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                        #    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        #),
+
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400deb4),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[branch_to_shellcode],
+                        #),
+
+                        # Invalid setpicture with patch @ 0x8400d9aa:
+                        # In validate_shsh_and_cert
+                        # Yes: 0x8400d9ae 0799                   ldr        r1, [sp, #0x50 + var_34]
+                        # Yes: 0x8400d9e2 737B                   ldrb       r3, [r6, #0xd]
+                        # Yes: 0x8400d9d0 D8F80430               ldr.w      r3, [r8, #0x4]
+                        #
+                        # In image3_load_decrypt_payload
+                        # No : 0x8400def6 09F0FBFE               bl         sub_84017cf0
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400deca),
+                        #    orig_instructions=[],
+                        #    patched_instructions=[branch_to_shellcode],
+                        #),
+
+                        #PatchRegion(
+                        #    function_name='',
+                        #    address=VirtualMemoryPointer(0x8400def0),
+                        #    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                        #    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                        #),
+
+                        #PatchRegion(
+                        #    function_name="",
+                        #    address=VirtualMemoryPointer(0x8400df18),
+                        #    orig_instructions=[Instr.thumb("ldr r1, [sp, #0x34]"), Instr.arm("tst.w r1, #8")],
+                        #    patched_instructions=[branch_to_shellcode, Instr.thumb("nop")],
+                        #),
                     ],
                     [
-                        #PatchRawBytes(
-                        #    address=VirtualMemoryPointer(0x84000be4),
-                        #    new_content=Path("/Users/philliptennen/Documents/Jailbreak/jailbreak/shellcode_within_ibss/build/shellcode_within_ibss_shellcode").read_bytes(),
-                        #),
                         PatchRawBytes(
-                            address=VirtualMemoryPointer(0x840000fc),
+                            address=VirtualMemoryPointer(shellcode_addr),
                             new_content=Path("/Users/philliptennen/Documents/Jailbreak/jailbreak/shellcode_within_ibss/build/shellcode_within_ibss_shellcode").read_bytes(),
-                        )
+                        ),
                     ]
                 ),
                 ImageType.iBEC: (
