@@ -29,6 +29,26 @@ class PatchRegion:
     patched_instructions: list[Instr]
     expected_length: int | None = None
 
+    @classmethod
+    def shellcode(cls, addr: int):
+        shellcode_addr = 0x840000fc
+        branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
+        return PatchRegion(
+            function_name='',
+            address=VirtualMemoryPointer(addr),
+            orig_instructions=[],
+            patched_instructions=[branch_to_shellcode]
+        )
+
+    @classmethod
+    def quick(cls, addr: int, new_instr: Instr | list[Instr], expected_length: int | None = None):
+        return PatchRegion(
+            function_name='',
+            address=VirtualMemoryPointer(addr),
+            orig_instructions=[],
+            patched_instructions=[new_instr] if isinstance(new_instr, Instr) else new_instr,
+            expected_length=expected_length,
+        )
 
 
 @dataclass
