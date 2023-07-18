@@ -120,16 +120,18 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
                 offset11=int_to_bits_with_width(dest_offset, 11),
             )
         case "bl":
-            raise NotImplementedError()
             # 5.19 Format 19: long branch with link
             instr_template = "1111{is_low}{offset}"
             dest_address = immediate_literal_to_int(ops[0])
             offset = (dest_address - address - 4)
-            high_offset = offset >> 12
-            out = f"{instr_template.format(is_low='0', offset=int_to_bits_with_width(high_offset, 11))}"
-            low_offset = offset >> 1
-            out += f"{instr_template.format(is_low='1', offset=int_to_bits_with_width(low_offset, 11))}"
-            return out
+            offset = abs(twos_complement(offset, 23))
+
+            # Low word comes first
+            low_offset = (offset >> 1) & 0b11111111111
+            high_offset = (offset >> 1) >> 11
+            word1 = f"{instr_template.format(is_low='1', offset=int_to_bits_with_width(low_offset, 11))}"
+            word2 = f"{instr_template.format(is_low='0', offset=int_to_bits_with_width(high_offset, 11))}"
+            return f"{word1}{word2}"
 
         case _:
             raise NotImplementedError(mnemonic)
