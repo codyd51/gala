@@ -279,6 +279,7 @@ def encrypt_img3(path: Path, output_path: Path, original_img3: Path, key: str, i
 
 
 def apply_patches(
+    image_type: ImageType,
     input: Path,
     output: Path,
     structured_patches: list[PatchRegion],
@@ -286,8 +287,10 @@ def apply_patches(
 ):
     cs = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
     cs.detail = True
-    # TODO(PT): This base address should be updated for non-iBSS images?
-    base_address = 0x84000000
+
+    # TODO(PT): This may need to vary based on OS version too?
+    base_address = image_type.base_address
+
     input_bytes = input.read_bytes()
     patched_bytes = bytearray(copy(input_bytes))
     for patch in structured_patches:
@@ -356,7 +359,7 @@ def patch_decrypted_image(
     patched_image_path: Path
 ):
     structured_patches, unstructured_patches = PatchRepository.patches_for_image(os_build, image_type)
-    apply_patches(decrypted_image_path, patched_image_path, structured_patches, unstructured_patches)
+    apply_patches(image_type, decrypted_image_path, patched_image_path, structured_patches, unstructured_patches)
 
 
 def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
@@ -364,7 +367,7 @@ def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
 
-    output_dir = _JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
+    output_dir = JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
     output_dir.mkdir(parents=True, exist_ok=True)
     decrypted_image = output_dir / f"{file_name}.decrypted"
 
@@ -372,7 +375,7 @@ def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
     # (And delete any decrypted image we already produced)
     decrypted_image.unlink(missing_ok=True)
 
-    ipsw = _JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
+    ipsw = JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
     encrypted_image = ipsw / image_ipsw_subpath
     if not encrypted_image.exists():
         raise ValueError(f'Expected to find an encrypted image at {encrypted_image}')
@@ -398,4 +401,4 @@ def regenerate_patched_images(os_build: OsBuildEnum) -> Mapping[ImageType, Path]
 
 
 if __name__ == '__main__':
-    regenerate_patched_images(OsBuildEnum.iPhone3_1_5_0_9A334)
+    regenerate_patched_images(OsBuildEnum.iPhone3_1_4_0_8A293)

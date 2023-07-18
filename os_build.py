@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 
+from strongarm.macho import VirtualMemoryPointer
+
 from utils import TotalEnumMapping
 
 
@@ -12,6 +14,16 @@ class DeviceModel(Enum):
 class ImageType(Enum):
     iBSS = auto()
     iBEC = auto()
+    AppleLogo = auto()
+
+    @property
+    def base_address(self) -> VirtualMemoryPointer:
+        return TotalEnumMapping({
+            ImageType.iBSS: VirtualMemoryPointer(0x84000000),
+            # TODO(PT): This may be incorrect?
+            ImageType.iBEC: VirtualMemoryPointer(0x43000000),
+            ImageType.AppleLogo: VirtualMemoryPointer(0x0),
+        })[self]
 
 
 class OsBuildEnum(Enum):
