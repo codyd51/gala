@@ -164,6 +164,13 @@ class PatchRepository:
                     [],
                     []
                 ),
+                ImageType.AppleLogo: ([], [
+                    #PatchRawBytes(
+                    #    address=VirtualMemoryPointer(0x00007540),
+                    #    new_content=0xff_00_ff_00.to_bytes(byteorder='big', length=4) * 58,
+                    #    #new_content=0xdeadbeef.to_bytes(byteorder='little', length=4),
+                    #)
+                ]),
             }),
             OsBuildEnum.iPhone3_1_4_1_8B117: TotalEnumMapping({
                 ImageType.iBSS: (
@@ -174,6 +181,7 @@ class PatchRepository:
                     [],
                     []
                 ),
+                ImageType.AppleLogo: ([], []),
             }),
             OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping({
                 ImageType.iBSS: (
@@ -184,6 +192,7 @@ class PatchRepository:
                     [],
                     []
                 ),
+                ImageType.AppleLogo: ([], []),
             }),
             OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping({
                 ImageType.iBSS: (
@@ -252,6 +261,7 @@ class PatchRepository:
                     [],
                     [],
                 ),
+                ImageType.AppleLogo: ([], []),
             }),
         })
 

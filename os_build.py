@@ -55,6 +55,9 @@ class OsBuildEnum(Enum):
             DeviceModel.iPhone3_1: TotalEnumMapping({
                 ImageType.iBSS: Path("Firmware") / "dfu" / "iBSS.n90ap.RELEASE.dfu",
                 ImageType.iBEC: Path("Firmware") / "dfu" / "iBEC.n90ap.RELEASE.dfu",
+                ImageType.AppleLogo: (
+                    Path("Firmware") / "all_flash" / "all_flash.n90ap.production" / "applelogo-640x960.s5l8930x.img3"
+                ),
             }),
         })[self.model][image_type]
 
@@ -75,6 +78,10 @@ class KeyRepository:
             ImageType.iBEC: KeyIvPair(
                 key="15d7ef3c974c6afcdf08d575c4bbfdcef260751667ae5fc2006f10ce5b03bb2d",
                 iv="3cde603259045d2dcc7f70bd39b9d8e9",
+            ),
+            ImageType.AppleLogo: KeyIvPair(
+                key="0feb8e5306e2a529e4f7b39e24fc49e90669c15c218d29c55ac734f7516c5519",
+                iv="eab39b46e705b57f820beeea28ea051e",
             )
         }),
         OsBuildEnum.iPhone3_1_4_1_8B117: TotalEnumMapping({
@@ -85,6 +92,10 @@ class KeyRepository:
             ImageType.iBEC: KeyIvPair(
                 key="71fc41981edea73b324edfa22585a0f7cb888f370239e36262832f8df9018e85",
                 iv="fe47eae4d54b1d02f096e694e21f2967",
+            ),
+            ImageType.AppleLogo: KeyIvPair(
+                key="",
+                iv="",
             )
         }),
         OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping({
@@ -95,6 +106,10 @@ class KeyRepository:
             ImageType.iBEC: KeyIvPair(
                 key="240580fa75a672a810100daec3bfc0cd189270c621e575b469e02e62029de12b",
                 iv="d435f60732b322140217f21f1589b8b4",
+            ),
+            ImageType.AppleLogo: KeyIvPair(
+                key="",
+                iv="",
             )
         }),
         OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping({
@@ -105,6 +120,10 @@ class KeyRepository:
             ImageType.iBEC: KeyIvPair(
                 key="061695b0ba878657ae195416cff88287f222b50baabb9f72e0c2271db6b58db5",
                 iv="1168b9ddb4c5df062892810fec574f55",
+            ),
+            ImageType.AppleLogo: KeyIvPair(
+                key="",
+                iv="",
             )
         }),
     })
