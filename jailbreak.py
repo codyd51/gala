@@ -191,12 +191,13 @@ def main():
     with acquire_device(DeviceMode.Recovery) as recovery_device:
         #recovery_device.upload_data(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/applelogo-640x960.s5l8930x.img3").read_bytes())
         recovery_device.upload_data(image_types_to_paths[ImageType.AppleLogo].read_bytes())
-        if False:
+        if True:
             print("Writing setpicture command")
             recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="setpicture".encode() + b'\x00', timeout=30000)
             print("Wrote setpicture command!")
             print("Writing bgcolor...")
-            recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="bgcolor 130 150 220".encode() + b'\x00', timeout=30000)
+            #recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="bgcolor 130 150 220".encode() + b'\x00', timeout=30000)
+            recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="bgcolor 255 255 0".encode() + b'\x00', timeout=30000)
             print("Wrote bgcolor!")
 
         return

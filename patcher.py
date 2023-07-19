@@ -652,6 +652,10 @@ def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     reencrypted_image = output_dir / f"{file_name}.reencrypted"
 
+    if image_type in [
+        ImageType.AppleLogo
+    ]:
+        patches = PatchRepository.patches_for_image(os_build, image_type)
         # Only a single blob patche is supported
         # TODO(PT): Validate
         new_content: BlobPatch = patches[0]

@@ -71,3 +71,9 @@ I thought it was poking a live/running system, but instead this is no longer iOS
 Madea  program that can dump register state over dprintf
 
 In the blog post, we could 'show' a disassembler, and when you patch this, then insert shellcode there, you get a register dump, then when you patch this other thing, you get a different dump. 
+
+Finally found xerub's xpwntool which has some fixes?
+
+# 3 types of patches:
+
+1. structured patch
