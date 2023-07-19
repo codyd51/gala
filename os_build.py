@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -24,6 +26,36 @@ class ImageType(Enum):
             ImageType.iBEC: VirtualMemoryPointer(0x43000000),
             ImageType.AppleLogo: VirtualMemoryPointer(0x0),
         })[self]
+
+    @classmethod
+    def picture_types(cls) -> list[ImageType]:
+        return [ImageType.AppleLogo]
+
+    @classmethod
+    def binary_types(cls) -> list[ImageType]:
+        return [
+            ImageType.iBSS,
+            ImageType.iBEC,
+        ]
+
+    @classmethod
+    def validate_type_subsets(cls):
+        all_types = {t for t in ImageType}
+        binary_types = set(cls.binary_types())
+        picture_types = set(cls.picture_types())
+
+        # Ensure binary types + picture types cover all defined image types
+        if binary_types | picture_types != all_types:
+            raise ValueError("The union of binary types and picture types didn't yield all image types")
+
+        # Ensure there's no overlap between binary types and picture types
+        if not binary_types.isdisjoint(picture_types):
+            raise ValueError("Binary types and picture types must be disjoint")
+
+
+# Post-class construction validation to sanity check the image type subsets
+# Unfortunately, Python doesn't let us easily scope this within the class itself
+ImageType.validate_type_subsets()
 
 
 class OsBuildEnum(Enum):
