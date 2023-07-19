@@ -55,6 +55,11 @@ class Device:
             case DeviceMode.Recovery:
                 self._upload_data_recovery(data)
 
+    def send_command(self, command: str) -> None:
+        if self.mode != DeviceMode.Recovery:
+            raise ValueError(f"Sending commands is only supported in Recovery Mode")
+        self.handle.ctrl_transfer(0x40, 0, data_or_wLength=command.encode() + b'\x00', timeout=30000)
+
     def _upload_data_dfu(self, data: bytes) -> None:
         max_dfu_upload_chunk_size = 0x800
         for chunk in chunks(data, max_dfu_upload_chunk_size):
@@ -192,28 +197,25 @@ def main():
 
     exploit_and_upload_image(image_types_to_paths[ImageType.iBSS])
 
-    # Send iBEC
+    # The exploit payload will load and jump to the iBSS, which will present as a Recovery Mode device
     with acquire_device(DeviceMode.Recovery) as recovery_device:
-        #recovery_device.upload_data(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/applelogo-640x960.s5l8930x.img3").read_bytes())
+        # Upload and set the boot logo
         recovery_device.upload_data(image_types_to_paths[ImageType.AppleLogo].read_bytes())
-        if True:
-            print("Writing setpicture command")
-            recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="setpicture".encode() + b'\x00', timeout=30000)
-            print("Wrote setpicture command!")
-            print("Writing bgcolor...")
-            #recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="bgcolor 130 150 220".encode() + b'\x00', timeout=30000)
-            recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="bgcolor 255 255 0".encode() + b'\x00', timeout=30000)
-            print("Wrote bgcolor!")
+        recovery_device.send_command("setpicture")
+        recovery_device.send_command("bgcolor 255 255 0")
 
-        return
+        # Upload and jump to the iBEC
         recovery_device.upload_data(image_types_to_paths[ImageType.iBEC].read_bytes())
-        print(f'Sent iBEC!')
-        time.sleep(3)
 
-        # TODO: Add assert?
-        print("Writing go command")
-        recovery_device.handle.ctrl_transfer(0x40, 0, data_or_wLength="go".encode() + b'\x00', timeout=30000)
-        print("Wrote go command!")
+        try:
+            recovery_device.send_command("go")
+        except usb.core.USBError:
+            # The device may drop the connection when jumping to the iBEC, but it's no problem and we'll reconnect
+            # just below.
+            pass
+
+    with acquire_device(DeviceMode.Recovery) as recovery_device:
+        print(f'Device is now running iBEC {recovery_device}')
 
 
 if __name__ == '__main__':
