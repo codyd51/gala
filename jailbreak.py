@@ -13,7 +13,7 @@ from usb.backend import libusb1
 from usb.backend.libusb1 import _LibUSB
 
 from os_build import OsBuildEnum, ImageType
-from patcher import regenerate_patched_images
+from patcher import regenerate_patched_images, IpswPatcherConfig
 from recompile_payloads import recompile_payloads
 from utils import TotalEnumMapping, chunks
 
@@ -175,10 +175,15 @@ def exploit_and_upload_image(image_path: Path):
 
 
 def main():
-    os_build = OsBuildEnum.iPhone3_1_4_0_8A293
+    patcher_config = IpswPatcherConfig(
+        OsBuildEnum.iPhone3_1_4_0_8A293,
+        replacement_pictures={
+            ImageType.AppleLogo: Path("/Users/philliptennen/Downloads/mango_logo.png"),
+        }
+    )
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
     recompile_payloads()
-    image_types_to_paths = regenerate_patched_images(os_build)
+    image_types_to_paths = regenerate_patched_images(patcher_config)
 
     # Wait for a DFU device to connect
     print('Awaiting DFU device...')

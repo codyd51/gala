@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Mapping
+from typing import Tuple, Mapping, Optional, Any
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from strongarm.macho import MachoParser, VirtualMemoryPointer
@@ -169,6 +169,10 @@ class FunctionRepository:
         return names_to_functions[name]
 
 
+def _binary_types_mapping(mapping: dict[ImageType, Any]):
+    return TotalEnumMapping(mapping, omitted_variants=ImageType.picture_types())
+
+
 class PatchRepository:
     @classmethod
     def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
@@ -178,7 +182,7 @@ class PatchRepository:
         shellcode_addr = 0x840000fc
         branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return TotalEnumMapping({
-            OsBuildEnum.iPhone3_1_4_0_8A293: TotalEnumMapping({
+            OsBuildEnum.iPhone3_1_4_0_8A293: _binary_types_mapping({
                 ImageType.iBSS: [
                     # More logging patches, #2 and #3 might not be needed?
                     InstructionPatch(
@@ -478,29 +482,16 @@ class PatchRepository:
                     )
                 ],
                 ImageType.iBEC: [],
-                ImageType.AppleLogo: [
-                    #BlobPatch(
-                    #    address=VirtualMemoryPointer(0x00007540),
-                    #    new_content=0x1a29.to_bytes(byteorder='little', length=2) * 4000,
-                    #    #new_content=0xdeadbeef.to_bytes(byteorder='little', length=4),
-                    #)
-                    BlobPatch(
-                        address=VirtualMemoryPointer(0),
-                        new_content=Path("/Users/philliptennen/Downloads/output-onlinepngtools copy.png").read_bytes(),
-                    )
-                ],
             }),
-            OsBuildEnum.iPhone3_1_4_1_8B117: TotalEnumMapping({
+            OsBuildEnum.iPhone3_1_4_1_8B117: _binary_types_mapping({
                 ImageType.iBSS: [],
                 ImageType.iBEC: [],
-                ImageType.AppleLogo: [],
             }),
-            OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping({
+            OsBuildEnum.iPhone3_1_5_0_9A334: _binary_types_mapping({
                 ImageType.iBSS: [],
                 ImageType.iBEC: [],
-                ImageType.AppleLogo: [],
             }),
-            OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping({
+            OsBuildEnum.iPhone3_1_6_1_10B144: _binary_types_mapping({
                 ImageType.iBSS: [
                     InstructionPatch(
                         function_name="image3_load_validate_signature",
@@ -561,7 +552,6 @@ class PatchRepository:
                 ],
                 # Not implemented yet
                 ImageType.iBEC: [],
-                ImageType.AppleLogo: [],
             }),
         })
 
@@ -638,7 +628,14 @@ def patch_decrypted_image(
     apply_patches(image_type, decrypted_image_path, patched_image_path, patches)
 
 
-def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
+@dataclass
+class IpswPatcherConfig:
+    os_build: OsBuildEnum
+    replacement_pictures: dict[ImageType, Path]
+
+
+def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
+    os_build = config.os_build
     key_pair = KeyRepository.key_iv_pair_for_image(os_build, image_type)
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
@@ -652,26 +649,20 @@ def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     reencrypted_image = output_dir / f"{file_name}.reencrypted"
 
-    if image_type in [
-        ImageType.AppleLogo
-    ]:
-        patches = PatchRepository.patches_for_image(os_build, image_type)
-        # Only a single blob patche is supported
-        # TODO(PT): Validate
-        new_content: BlobPatch = patches[0]
-        assert isinstance(new_content, BlobPatch)
-        new_boot_image = Path("/Users/philliptennen/Downloads/output-onlinepngtools copy.png")
-        run_and_check(
-            [
-                _IMAGETOOL.as_posix(),
-                "inject",
-                new_boot_image.as_posix(),
-                reencrypted_image.as_posix(),
-                encrypted_image.as_posix(),
-                key_pair.iv,
-                key_pair.key,
-            ],
-        )
+    if image_type in ImageType.picture_types():
+        # Check whether a replacement image has been specified
+        if image_type in config.replacement_pictures:
+            run_and_check(
+                [
+                    _IMAGETOOL.as_posix(),
+                    "inject",
+                    config.replacement_pictures[image_type].as_posix(),
+                    reencrypted_image.as_posix(),
+                    encrypted_image.as_posix(),
+                    key_pair.iv,
+                    key_pair.key,
+                ],
+            )
     else:
         # Decrypt the image
         # (And delete any decrypted image we already produced)
@@ -692,12 +683,12 @@ def patch_image(os_build: OsBuildEnum, image_type: ImageType) -> Path:
     return reencrypted_image
 
 
-def regenerate_patched_images(os_build: OsBuildEnum) -> Mapping[ImageType, Path]:
+def regenerate_patched_images(config: IpswPatcherConfig) -> Mapping[ImageType, Path]:
     return TotalEnumMapping({
-        image_type: patch_image(os_build, image_type)
+        image_type: patch_image(config, image_type)
         for image_type in ImageType
     })
 
 
 if __name__ == '__main__':
-    regenerate_patched_images(OsBuildEnum.iPhone3_1_4_0_8A293)
+    regenerate_patched_images(IpswPatcherConfig(os_build=OsBuildEnum.iPhone3_1_4_0_8A293, replacement_pictures={}))
