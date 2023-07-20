@@ -48,7 +48,9 @@ class Device:
     handle: usb.core.Device
     mode: DeviceMode
 
-    def upload_data(self, data: bytes) -> None:
+    def upload_file(self, path: Path) -> None:
+        print(f'Uploading {path.name} to connected {self.mode.name} Mode device...')
+        data = path.read_bytes()
         match self.mode:
             case DeviceMode.DFU:
                 self._upload_data_dfu(data)
@@ -172,7 +174,7 @@ def exploit_and_upload_image(image_path: Path):
     with acquire_device_with_timeout(DeviceMode.DFU, timeout=3) as dfu_device:
         # Send the image (in DFU mode)
         print(f'Sending {image_path.name} to DFU device...')
-        dfu_device.upload_data(image_path.read_bytes())
+        dfu_device.upload_file(image_path)
 
     # Call this just for the side effect of waiting until the Recovery Mode device pops up
     # If it does, everything worked, and we're all done here
@@ -200,22 +202,34 @@ def main():
     # The exploit payload will load and jump to the iBSS, which will present as a Recovery Mode device
     with acquire_device(DeviceMode.Recovery) as recovery_device:
         # Upload and set the boot logo
-        recovery_device.upload_data(image_types_to_paths[ImageType.AppleLogo].read_bytes())
+        recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
         recovery_device.send_command("bgcolor 255 255 0")
 
         # Upload and jump to the iBEC
-        recovery_device.upload_data(image_types_to_paths[ImageType.iBEC].read_bytes())
+        recovery_device.upload_file(image_types_to_paths[ImageType.iBEC])
 
         try:
             recovery_device.send_command("go")
         except usb.core.USBError:
-            # The device may drop the connection when jumping to the iBEC, but it's no problem and we'll reconnect
+            # The device may drop the connection when jumping to the iBEC, but it's no problem, and we'll reconnect
             # just below.
             pass
 
+    # Give the device a moment to disconnect and reconnect
+    time.sleep(5)
+
     with acquire_device(DeviceMode.Recovery) as recovery_device:
         print(f'Device is now running iBEC {recovery_device}')
+        recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
+        recovery_device.send_command("devicetree")
+        time.sleep(2)
+        recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6306-403.dmg"))
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6303-385.dmg"))
+        recovery_device.send_command("ramdisk")
+        time.sleep(2)
+        recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/kernelcache.release.n90"))
+        recovery_device.send_command("bootx")
 
 
 if __name__ == '__main__':
