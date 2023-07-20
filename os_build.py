@@ -17,6 +17,7 @@ class ImageType(Enum):
     iBSS = auto()
     iBEC = auto()
     AppleLogo = auto()
+    KernelCache = auto()
 
     @property
     def base_address(self) -> VirtualMemoryPointer:
@@ -25,6 +26,7 @@ class ImageType(Enum):
             # TODO(PT): This may be incorrect?
             ImageType.iBEC: VirtualMemoryPointer(0x5ff00000),
             ImageType.AppleLogo: VirtualMemoryPointer(0x0),
+            ImageType.KernelCache: VirtualMemoryPointer(0x0),
         })[self]
 
     @classmethod
@@ -36,6 +38,7 @@ class ImageType(Enum):
         return [
             ImageType.iBSS,
             ImageType.iBEC,
+            ImageType.KernelCache,
         ]
 
     @classmethod
@@ -90,6 +93,7 @@ class OsBuildEnum(Enum):
                 ImageType.AppleLogo: (
                     Path("Firmware") / "all_flash" / "all_flash.n90ap.production" / "applelogo-640x960.s5l8930x.img3"
                 ),
+                ImageType.KernelCache: Path("kernelcache.release.n90"),
             }),
         })[self.model][image_type]
 
@@ -114,7 +118,11 @@ class KeyRepository:
             ImageType.AppleLogo: KeyIvPair(
                 key="0feb8e5306e2a529e4f7b39e24fc49e90669c15c218d29c55ac734f7516c5519",
                 iv="eab39b46e705b57f820beeea28ea051e",
-            )
+            ),
+            ImageType.KernelCache: KeyIvPair(
+                key="f241daee7e32a7caf99d55fa0ab17e41501d03d69fe2e02b57688d0b1781e659",
+                iv="8e4c493706b43f9fd92021126bebfeda",
+            ),
         }),
         OsBuildEnum.iPhone3_1_4_1_8B117: TotalEnumMapping({
             ImageType.iBSS: KeyIvPair(
@@ -128,7 +136,11 @@ class KeyRepository:
             ImageType.AppleLogo: KeyIvPair(
                 key="",
                 iv="",
-            )
+            ),
+            ImageType.KernelCache: KeyIvPair(
+                key="",
+                iv="",
+            ),
         }),
         OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping({
             ImageType.iBSS: KeyIvPair(
@@ -142,7 +154,11 @@ class KeyRepository:
             ImageType.AppleLogo: KeyIvPair(
                 key="",
                 iv="",
-            )
+            ),
+            ImageType.KernelCache: KeyIvPair(
+                key="",
+                iv="",
+            ),
         }),
         OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping({
             ImageType.iBSS: KeyIvPair(
@@ -156,7 +172,11 @@ class KeyRepository:
             ImageType.AppleLogo: KeyIvPair(
                 key="",
                 iv="",
-            )
+            ),
+            ImageType.KernelCache: KeyIvPair(
+                key="",
+                iv="",
+            ),
         }),
     })
 
