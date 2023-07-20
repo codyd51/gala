@@ -23,7 +23,7 @@ class ImageType(Enum):
         return TotalEnumMapping({
             ImageType.iBSS: VirtualMemoryPointer(0x84000000),
             # TODO(PT): This may be incorrect?
-            ImageType.iBEC: VirtualMemoryPointer(0x43000000),
+            ImageType.iBEC: VirtualMemoryPointer(0x5ff00000),
             ImageType.AppleLogo: VirtualMemoryPointer(0x0),
         })[self]
 
