@@ -221,6 +221,11 @@ def main():
 
     with acquire_device(DeviceMode.Recovery) as recovery_device:
         print(f'Device is now running iBEC {recovery_device}')
+        # Set the Apple logo again
+        recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
+        recovery_device.send_command("setpicture")
+        recovery_device.send_command("bgcolor 255 0 255")
+
         recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
         recovery_device.send_command("devicetree")
         time.sleep(2)

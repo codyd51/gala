@@ -251,6 +251,7 @@ class PatchRepository:
                             # Custom boot logo patches
                             InstructionPatch.quick(0x8400def0, Instr.thumb("movs r1, #0")),
                             # We patch the comparison, so hard-code the branch direction
+                            # TODO(PT): This looks like it conflicts with the "PROD" patch for loading img3's?
                             InstructionPatch.quick(0x8400df10, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")], expected_length=4),
 
                             # Match the registers for a success call
@@ -313,17 +314,31 @@ class PatchRepository:
                         ]
                     ),
                     PatchSet(
-                        name="Prototyping",
+                        name="Enable verbose boot",
                         patches=[
-                            #InstructionPatch.shellcode(0x5ff0dbf8),
-                            #BlobPatch(
-                            #    address=VirtualMemoryPointer(0x5ff000fc),
-                            #    new_content=Path("/Users/philliptennen/Documents/Jailbreak/jailbreak/shellcode_within_ibss/build/shellcode_within_ibss_shellcode").read_bytes(),
-                            #)
                             BlobPatch(
                                 address=VirtualMemoryPointer(0x5ff19d68),
                                 new_content="rd=md0 -v nand-enable-reformat=1 -progress\0".encode(),
                             )
+                        ]
+                    ),
+                    PatchSet(
+                        name="Custom boot logo",
+                        patches=[
+                            # Check SDOM
+                            InstructionPatch.quick(0x5ff0dadc, Instr.thumb("movs r1, #0")),
+                            # TODO(PT): This looks like it conflicts with the "PROD" patch for loading img3's?
+                            # Check PROD tag
+                            InstructionPatch.quick(0x5ff0dafc, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")], expected_length=4),
+
+                            # Match the registers for a success call
+                            InstructionPatch.quick(0x5ff0db46, [Instr.thumb("movs r0, #0"), Instr.thumb("mov r1, r2"), Instr.thumb("movs r2, #1")], expected_length=6),
+
+                            # After the call to validate_shsh_and_cert, `r0 == 0` to indicate success. If successful,
+                            # we branch away. We always should take the branch.
+                            InstructionPatch.quick(0x5ff0da84, Instr.thumb("b #0x5ff0ddd4")),
+
+                            InstructionPatch.quick(0x5ff0dc92, Instr.thumb("cmp r3, r3")),
                         ]
                     )
                 ],
