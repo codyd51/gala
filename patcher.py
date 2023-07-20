@@ -53,7 +53,7 @@ class InstructionPatch(Patch):
 
     @classmethod
     def shellcode(cls, addr: int) -> InstructionPatch:
-        shellcode_addr = 0x840000fc
+        shellcode_addr = 0x5ff000fc
         branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return cls(
             function_name='',
@@ -264,77 +264,85 @@ class PatchRepository:
                         ],
                     ),
                 ],
-                ImageType.iBEC: [],
+                ImageType.iBEC: [
+                    PatchSet(
+                        name="Enable UART debug logs",
+                        patches=[
+                            # TODO(PT): These patches seem ineffectual?
+                            InstructionPatch(
+                                # Load memory to find the value that should be passed to debug_enable_uarts()
+                                # We always want debug logs, so override the value here
+                                function_name="platform_early_init",
+                                address=VirtualMemoryPointer(0x5ff10546),
+                                orig_instructions=[Instr.thumb("ldrb r0, [r4]")],
+                                patched_instructions=[Instr.thumb("movs r0, #3")],
+                            ),
+                            # More UART patch
+                            InstructionPatch(
+                                function_name="maybe_iBSS_start",
+                                address=VirtualMemoryPointer(0x5ff008f4),
+                                orig_instructions=[Instr.arm("bl #0x5ff14d48")],
+                                patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
+                            ),
+                            # More UART patch
+                            InstructionPatch(
+                                function_name="maybe_iBSS_start",
+                                address=VirtualMemoryPointer(0x5ff00798),
+                                orig_instructions=[Instr.arm("bl #0x5ff14d48")],
+                                patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
+                            ),
+                        ]
+                    ),
+                    PatchSet(
+                        name="Load unsigned kernelcache",
+                        patches=[
+                            # Check PROD tag on image3
+                            InstructionPatch(
+                                function_name="",
+                                address=VirtualMemoryPointer(0x5ff0db00),
+                                orig_instructions=[Instr.thumb("cmp r0, #0")],
+                                patched_instructions=[Instr.thumb("cmp r0, r0")],
+                            ),
+                            # Check ECID tag on image3
+                            InstructionPatch(
+                                function_name="",
+                                address=VirtualMemoryPointer(0x5ff0dbf8),
+                                orig_instructions=[Instr.thumb("cbz r0, #0x5ff0dc1a")],
+                                patched_instructions=[Instr.thumb("b #0x5ff0dc1a")],
+                            ),
+                        ]
+                    ),
+                    PatchSet(
+                        name="Prototyping",
+                        patches=[
+                            #InstructionPatch.shellcode(0x5ff0dbf8),
+                            #BlobPatch(
+                            #    address=VirtualMemoryPointer(0x5ff000fc),
+                            #    new_content=Path("/Users/philliptennen/Documents/Jailbreak/jailbreak/shellcode_within_ibss/build/shellcode_within_ibss_shellcode").read_bytes(),
+                            #)
+                            BlobPatch(
+                                address=VirtualMemoryPointer(0x5ff19d68),
+                                new_content="rd=md0 -v nand-enable-reformat=1 -progress\0".encode(),
+                            )
+                        ]
+                    )
+                ],
+                ImageType.KernelCache: [],
             }),
             OsBuildEnum.iPhone3_1_4_1_8B117: _binary_types_mapping({
                 ImageType.iBSS: [],
                 ImageType.iBEC: [],
+                ImageType.KernelCache: [],
             }),
             OsBuildEnum.iPhone3_1_5_0_9A334: _binary_types_mapping({
                 ImageType.iBSS: [],
                 ImageType.iBEC: [],
+                ImageType.KernelCache: [],
             }),
             OsBuildEnum.iPhone3_1_6_1_10B144: _binary_types_mapping({
-                ImageType.iBSS: [
-                    InstructionPatch(
-                        function_name="image3_load_validate_signature",
-                        address=VirtualMemoryPointer(0x84005694),
-                        # PT: This comment is unverified
-                        # This test is followed by a `bne`. The taken direction is a "validation failed" path, so we want to stay here.
-                        orig_instructions=[Instr.arm("tst.w r0, #1")],
-                        patched_instructions=[
-                            Instr.thumb("cmp r0, r0"),
-                            Instr.thumb("nop")
-                        ],
-                    ),
-                    InstructionPatch(
-                        function_name="image3_load_validate_signature",
-                        address=VirtualMemoryPointer(0x840056ac),
-                        # PT: This comment is unverified
-                        # The branch just preceding this calls a validation function,
-                        # and the comparison following this branches away to a failure path. We want the validation to always succeed.
-                        orig_instructions=[Instr.thumb("cmp r0, #0")],
-                        patched_instructions=[Instr.thumb("cmp r0, r0")],
-                    ),
-                    # More comparison patches follow
-                    InstructionPatch(
-                        function_name="image3_load_validate_signature",
-                        address=VirtualMemoryPointer(0x8400570e),
-                        orig_instructions=[Instr.thumb("cmp r0, #0")],
-                        patched_instructions=[Instr.thumb("cmp r0, r0")],
-                    ),
-                    InstructionPatch(
-                        function_name="image3_load_validate_signature",
-                        address=VirtualMemoryPointer(0x84005712),
-                        # Replace the call to the 'image3_validate_constraints' function with a direct return value
-                        # This return value is compared to 0x1 just below, so set it upfront
-                        orig_instructions=[Instr.thumb("beq #0x84005746")],
-                        patched_instructions=[Instr.thumb("movs r0, #1")],
-                    ),
-                    InstructionPatch(
-                        function_name="image3_load_validate_signature",
-                        address=VirtualMemoryPointer(0x84005726),
-                        orig_instructions=[Instr.thumb("cmp r0, #0")],
-                        patched_instructions=[Instr.thumb("cmp r0, r0")],
-                    ),
-                    InstructionPatch(
-                        function_name="image3_load_validate_signature",
-                        address=VirtualMemoryPointer(0x8400573a),
-                        orig_instructions=[Instr.thumb("cmp r0, #1")],
-                        patched_instructions=[Instr.thumb("cmp r0, r0")],
-                    ),
-                    InstructionPatch(
-                        function_name="main_ibss",
-                        address=VirtualMemoryPointer(0x84000940),
-                        # Just above is a function call, maybe to dfu_parse_ticket?
-                        # If the call returns zero, we jump back to the 'receive a DFU image' loop, and don't do further
-                        # processing. We always want to process the image.
-                        orig_instructions=[Instr.thumb("cbnz r0, #0x84000964")],
-                        patched_instructions=[Instr.thumb("b #0x84000964")],
-                    ),
-                ],
-                # Not implemented yet
+                ImageType.iBSS: [],
                 ImageType.iBEC: [],
+                ImageType.KernelCache: [],
             }),
         })
 
