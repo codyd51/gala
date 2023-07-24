@@ -1,5 +1,8 @@
+import io
 import os
+import selectors
 import subprocess
+import sys
 from collections.abc import Collection
 from enum import Enum
 from pathlib import Path
@@ -57,6 +60,24 @@ def run_and_check(cmd_list: list[str], cwd: Path = None, env_additions: dict[str
     status = subprocess.run(cmd_list, cwd=cwd.as_posix() if cwd else None, env=env)
     if status.returncode != 0:
         raise RuntimeError(f'Running "{" ".join(cmd_list)}" failed with exit code {status.returncode}')
+
+
+def run_and_capture_output_and_check(cmd_list: list[str], cwd: Path = None) -> bytes:
+    """Beware this will strip ASCII escape codes, so you'll lose colors."""
+    # https://gist.github.com/nawatts/e2cdca610463200c12eac2a14efc0bfb
+    # Start subprocess
+    # bufsize = 1 means output is line buffered
+    # universal_newlines = True is required for line buffering
+    process = subprocess.Popen(
+        cmd_list,
+        cwd=cwd.as_posix() if cwd else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if return_code := process.wait() != 0:
+        raise RuntimeError(f'Running "{" ".join(cmd_list)}" failed with exit code {return_code}')
+
+    return process.stdout.read()
 
 
 def hexdump(src: bytes) -> None:
