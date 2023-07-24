@@ -79,7 +79,6 @@ def run_and_capture_output_and_check(cmd_list: list[str], cwd: Path = None) -> b
 
     return process.stdout.read()
 
-
 def hexdump(src: bytes) -> None:
     length = 16
     sep = '.'
@@ -87,11 +86,14 @@ def hexdump(src: bytes) -> None:
     lines = []
     for c in range(0, len(src), length):
         chars = src[c: c + length]
-        hex_ = ' '.join(['{:02x}'.format(x) for x in chars])
-        if len(hex_) > 24:
-            hex_ = '{} {}'.format(hex_[:24], hex_[24:])
+        hex_ = ''
+        for word in range(0, len(chars), 4):
+            for j in range(0, 4):
+                hex_ += f"{chars[word + j]:02x}"
+            hex_ += ' '
+
         printable = ''.join(['{}'.format((x <= 127 and filter[x]) or sep) for x in chars])
-        lines.append('{0:08x}  {1:{2}s} |{3:{4}s}|'.format(c, hex_, length * 3, printable, length))
+        lines.append(f'{c:08x}: {hex_}  {printable}')
     for line in lines:
         print(line)
 
