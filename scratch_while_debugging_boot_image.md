@@ -1074,7 +1074,8 @@ panic: __stack_chk_fail: stack corrupted
 
 Registers are the same
 
-New hypothesis: func@0x84015b74 succeeds the first 2 times it's called, but on call #3 it fails for invalid images!
+New hypothesis: func@0x84015b74 succeeds the first 2 times 
+it's called, but on call #3 it fails for invalid images!
 Might be tough to debug...
 
 # 0x840160f4

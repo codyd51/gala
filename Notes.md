@@ -79,3 +79,19 @@ Finally found xerub's xpwntool which has some fixes?
 1. structured patch
 difficult to find where the relevant code was, had to start form random places looking for strings/xrefs that looked like they could be relevant, like the game where you try to traverse wikipedia in the fewest clicks
 One thing that i think is really interesting about this is that no one has publicly admitted that they know exactly how it works. geohot says "i have no idea", and p0sixninja has theories. the magic of fuzzing closed-source binaries: it's like a benevolent gift that we can use but don't understand
+
+I did a failed restore that cleared NAND before failing, so now I can't boot the device at all until I patch the validation -- good incentive!
+
+Now we're really in a full system -- there's a filesystem that loads Mach-Os, and the binaries are written in Objective-C (or at least use CFStrings) -- there's dynamic linking, `Foundation.framework`, etc
+This is where you really get the sense that you're running something that's no longer under your control
+
+void AppleUSBDeviceMux::handleConnectResult(BulkUSBMuxSession*, errno_t) new session to port 12345 failed: 61
+int AppleMobileFileIntegrity::validateCodeDirectoryHashInDaemon(vnode*, uint8_t*): no registered daemon port
+Sandbox: hook..execve() killing pid 11: outside of container && !i_can_has_debugger
+
+com.apple.launchd 1     com.apple.launchd 1     *** launchd[1] has started up. ***
+
+Bug where I was assuming there was a single virtual base, but Mach-Os have different segments that can have different relative offsets from the vbase to file data, so I was overwriting random data in the binary
+
+Boot image was by far the most difficult part -- thousands of lines of notes comparing register snapshots between valid and invalid image
+Once that was all working, it was trivial to port the patches to iBEC
