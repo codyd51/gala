@@ -209,5 +209,39 @@ def regenerate_patched_images(config: IpswPatcherConfig) -> Mapping[ImageType, P
     })
 
 
+def generate_patched_ipsw(os_build: OsBuildEnum, image_types_to_paths: Mapping[ImageType, Path]) -> None:
+    # Produce a patched IPSW
+    ipsw = JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
+    output_dir = JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
+    unzipped_patched_ipsw = output_dir / "patched.ipsw.unzipped"
+    if unzipped_patched_ipsw.exists():
+        shutil.rmtree(unzipped_patched_ipsw)
+    shutil.copytree(ipsw, unzipped_patched_ipsw)
+    patched_restore_ramdisk = image_types_to_paths[ImageType.RestoreRamdisk]
+    restore_ramdisk_relative_path = os_build.ipsw_path_for_image_type(ImageType.RestoreRamdisk)
+    restore_ramdisk_to_overwrite = unzipped_patched_ipsw / restore_ramdisk_relative_path
+    print(restore_ramdisk_to_overwrite)
+    restore_ramdisk_to_overwrite.write_bytes(patched_restore_ramdisk.read_bytes())
+
+    for file in unzipped_patched_ipsw.rglob("**/*"):
+        print(file)
+        if file.name == ".DS_Store":
+            print(f'unlinking {file}')
+            file.unlink()
+
+    # Zip it
+    zipped_patched_ipsw = output_dir / "patched.ipsw.zip"
+    zipped_patched_ipsw_without_extension = output_dir / "patched.ipsw"
+    shutil.make_archive(zipped_patched_ipsw_without_extension.as_posix(), 'zip', unzipped_patched_ipsw.as_posix())
+    shutil.move(zipped_patched_ipsw, zipped_patched_ipsw_without_extension)
+
+
 if __name__ == '__main__':
-    regenerate_patched_images(IpswPatcherConfig(os_build=OsBuildEnum.iPhone3_1_4_0_8A293, replacement_pictures={}))
+    os_build = OsBuildEnum.iPhone3_1_4_0_8A293
+    image_types_to_paths = regenerate_patched_images(
+        IpswPatcherConfig(
+            os_build=os_build,
+            replacement_pictures={}
+        )
+    )
+    generate_patched_ipsw(os_build, image_types_to_paths)
