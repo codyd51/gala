@@ -116,6 +116,7 @@ def maybe_acquire_device(mode: DeviceMode) -> Iterator[Optional[Device]]:
             handle=device_handle,
             mode=mode
         )
+        usb.util.dispose_resources(device_handle)
 
 
 @contextmanager

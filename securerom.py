@@ -110,4 +110,3 @@ def execute_securerom_payload(device: Device, payload: bytes) -> None:
     device.dfu_notify_upload_finished()
     with acquire_device(DeviceMode.DFU):
         print('Device reconnected limera1n exploit successful')
-    usb.util.dispose_resources(device.handle)
