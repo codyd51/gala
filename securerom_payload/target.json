@@ -1,0 +1,16 @@
+{
+	"arch": "arm",
+	"cpu": "arm",
+	"dynamic-linking": false,
+	"llvm-target": "arm",
+	"executables": true,
+	"os": "axle",
+	"position-independent-executables": false,
+	"target-pointer-width": "32",
+	"panic-strategy": "abort",
+	"target-family": [
+		"axle"
+	],
+	"max-atomic-width": 32,
+	"linker-flavor": "ld"
+}
