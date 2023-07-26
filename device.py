@@ -11,6 +11,7 @@ import usb.core
 from usb.backend import libusb1
 from usb.backend.libusb1 import _LibUSB
 
+from os_build import DeviceModel
 from utils import TotalEnumMapping, chunks
 
 
@@ -44,16 +45,21 @@ class Device:
     handle: usb.core.Device
     mode: DeviceMode
 
+    @property
+    def model(self) -> DeviceModel:
+        # TODO(PT): Figure this out dynamically
+        return DeviceModel.iPhone3_1
+
     def upload_file(self, path: Path) -> None:
         print(f'Uploading {path.name} to connected {self.mode.name} Mode device...')
         data = path.read_bytes()
         match self.mode:
             case DeviceMode.DFU:
-                self._dfu_upload_data(data)
+                self.dfu_upload_data(data)
                 # For DFU devices, immediately ask the device to validate the file.
-                self._dfu_notify_upload_finished()
+                self.dfu_notify_upload_finished()
             case DeviceMode.Recovery:
-                self._recovery_upload_data(data)
+                self.recovery_upload_data(data)
                 # For Recovery Mode devices, the logic to notify the device that the upload is ready will differ
                 # depending on what the image is for, so allow them to deal with it.
 
@@ -62,7 +68,7 @@ class Device:
             raise ValueError(f"Sending commands is only supported in Recovery Mode")
         self.handle.ctrl_transfer(0x40, 0, data_or_wLength=command.encode() + b'\x00', timeout=30000)
 
-    def _dfu_upload_data(self, data: bytes, timeout_ms: int = 3000) -> None:
+    def dfu_upload_data(self, data: bytes, timeout_ms: int = 3000) -> None:
         max_dfu_upload_chunk_size = 0x800
         for chunk in chunks(data, max_dfu_upload_chunk_size):
             print(f'Uploading chunk of {len(chunk)} bytes...')
@@ -70,7 +76,7 @@ class Device:
             if sent_bytes_count != len(chunk):
                 raise ValueError(f'Expected to transfer {len(chunk)} bytes, but only managed to send {sent_bytes_count} bytes')
 
-    def _dfu_notify_upload_finished(self) -> None:
+    def dfu_notify_upload_finished(self) -> None:
         print(f'Informing the DFU device that the upload has finished...')
         self.handle.ctrl_transfer(0x21, 1, 0, 0, 0, timeout=100)
         # Send a 'Get Status' three times
@@ -86,7 +92,7 @@ class Device:
             # Sometimes this throws an error, but the image load starts anyway
             pass
 
-    def _recovery_upload_data(self, file_data: bytes) -> None:
+    def recovery_upload_data(self, file_data: bytes) -> None:
         max_recovery_upload_chunk_size = 0x4000
         if self.handle.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
             raise ValueError(f'Expected a response of 0')
@@ -102,7 +108,7 @@ def maybe_acquire_device(mode: DeviceMode) -> Iterator[Optional[Device]]:
     """Technically doesn't need to be a context manager,
     but helps describe the semantics of how we interact with the device.
     """
-    device_handle = usb.core.find(idVendor=0x5ac, idProduct=mode.usb_product_id, backend=get_libusb_backend())
+    device_handle = usb.core.find(idVendor=0x5ac, idProduct=mode.usb_product_id, backend=_get_libusb_backend())
     if not device_handle:
         yield None
     else:
