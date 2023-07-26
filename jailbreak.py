@@ -189,7 +189,7 @@ def main():
     patcher_config = IpswPatcherConfig(
         OsBuildEnum.iPhone3_1_4_0_8A293,
         replacement_pictures={
-            ImageType.AppleLogo: Path("/Users/philliptennen/Downloads/mango_logo.png"),
+            ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
         }
     )
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
