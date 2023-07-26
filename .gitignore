@@ -2,3 +2,4 @@ build/
 *.o
 *.bin
 *.i64
+target/
