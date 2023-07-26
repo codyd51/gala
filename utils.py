@@ -79,6 +79,7 @@ def run_and_capture_output_and_check(cmd_list: list[str], cwd: Path = None) -> b
 
     return process.stdout.read()
 
+
 def hexdump(src: bytes) -> None:
     length = 16
     sep = '.'
