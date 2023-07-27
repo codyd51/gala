@@ -70,21 +70,25 @@ class Device:
 
     def dfu_upload_data(self, data: bytes, timeout_ms: int = 3000) -> None:
         max_dfu_upload_chunk_size = 0x800
+        sent_bytes_counter = 0
         for chunk in chunks(data, max_dfu_upload_chunk_size):
-            print(f'Uploading chunk of {len(chunk)} bytes...')
+            percent_complete = int((sent_bytes_counter / len(data)) * 100)
+            print(f'Uploading chunk of {len(chunk)} bytes ({percent_complete}%)...')
             sent_bytes_count = self.handle.ctrl_transfer(0x21, 1, 0, 0, chunk, timeout_ms)
             if sent_bytes_count != len(chunk):
                 raise ValueError(f'Expected to transfer {len(chunk)} bytes, but only managed to send {sent_bytes_count} bytes')
+            sent_bytes_counter += len(chunk)
 
     def dfu_notify_upload_finished(self) -> None:
+        #  Ref: https://archive.conference.hitb.org/hitbsecconf2013kul/materials/D2T1%20-%20Joshua%20'p0sixninja'%20Hill%20-%20SHAttered%20Dreams.pdf
+        # "Image validation starts whenever the global “file received” variable has been set."
+        # "This can be caused by sending 1 empty “Send Data” packet, and 3 “Get Status” packets followed by a USB reset."
         print(f'Informing the DFU device that the upload has finished...')
         self.handle.ctrl_transfer(0x21, 1, 0, 0, 0, timeout=100)
         # Send a 'Get Status' three times
-        time.sleep(1)
         for _ in range(3):
             out = bytearray(6)
-            ret = self.handle.ctrl_transfer(0xa1, 3, 0, 0, out, timeout=100)
-            print(f'get_status ret = {ret}')
+            self.handle.ctrl_transfer(0xa1, 3, 0, 0, out, timeout=100)
 
         try:
             self.handle.reset()
@@ -94,13 +98,19 @@ class Device:
 
     def recovery_upload_data(self, file_data: bytes) -> None:
         max_recovery_upload_chunk_size = 0x4000
-        if self.handle.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
-            raise ValueError(f'Expected a response of 0')
+        try:
+            if self.handle.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
+                raise ValueError(f'Expected a response of 0')
+        except Exception as e:
+            print(f'Skipping exception {e}')
+        sent_bytes_counter = 0
         for chunk in chunks(file_data, max_recovery_upload_chunk_size):
-            print(f'Uploading chunk of {len(chunk)} bytes...')
+            percent_complete = int((sent_bytes_counter / len(file_data)) * 100)
+            print(f'Uploading chunk of {len(chunk)} bytes ({percent_complete}%)...')
             wrote_bytes = self.handle.write(0x04, chunk, timeout=1000)
             if wrote_bytes != len(chunk):
                 raise RuntimeError(f"Expected to write {len(chunk)} bytes, but only wrote {wrote_bytes}")
+            sent_bytes_counter += wrote_bytes
 
 
 @contextmanager
@@ -112,6 +122,7 @@ def maybe_acquire_device(mode: DeviceMode) -> Iterator[Optional[Device]]:
     if not device_handle:
         yield None
     else:
+        device_handle.set_configuration()
         yield Device(
             handle=device_handle,
             mode=mode

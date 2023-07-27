@@ -26,16 +26,14 @@ def main():
     image_types_to_paths = regenerate_patched_images(patcher_config)
     generate_patched_ipsw(patcher_config.os_build, image_types_to_paths)
 
-    # Wait for a DFU device to connect
-    print('Awaiting DFU device...')
-    with acquire_device_with_timeout(DeviceMode.DFU, timeout=100) as dfu_device:
-        print(f'Got DFU device')
+    # Run our payload in SecureROM on a connected DFU device
+    securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
+    securerom_shellcode = securerom_shellcode_path.read_bytes()
+    print(f'SecureROM shellcode length: {len(securerom_shellcode)}')
+    execute_securerom_payload(securerom_shellcode)
 
-        # Run our payload in SecureROM
-        securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
-        securerom_shellcode = securerom_shellcode_path.read_bytes()
-        print(f'SecureROM shellcode length: {len(securerom_shellcode)}')
-        execute_securerom_payload(dfu_device, securerom_shellcode)
+    # Give the on-device payload a chance to run
+    time.sleep(3)
 
     # Re-acquire the device as our previous connection is invalidated after running the exploit
     # Allow the device a moment to await an image again
@@ -46,10 +44,12 @@ def main():
         dfu_device.upload_file(ibss_path)
 
     # Give the iBSS a moment to come up cleanly
-    time.sleep(3)
+    # Call this just for the side effect of waiting until the Recovery Mode device pops up
+    # If it does, the iBSS has successfully launched
+    acquire_device_with_timeout(DeviceMode.Recovery)
 
     # The exploit payload will load and jump to the iBSS, which will present as a Recovery Mode device
-    with acquire_device_with_timeout(DeviceMode.Recovery) as recovery_device:
+    with acquire_device(DeviceMode.Recovery) as recovery_device:
         # Upload and set the boot logo
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
@@ -78,10 +78,7 @@ def main():
         recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
         recovery_device.send_command("devicetree")
         time.sleep(2)
-        # recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6306-403.dmg"))
         recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6305-405.dmg"))
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6303-385.dmg"))
         recovery_device.send_command("ramdisk")
         time.sleep(2)
         recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/kernelcache.release.n90"))
