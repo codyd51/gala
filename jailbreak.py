@@ -79,9 +79,17 @@ def main():
 
         # Upload the device tree, ramdisk, and kernelcache
         recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
+        # recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
         recovery_device.send_command("devicetree")
         time.sleep(2)
         recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/018-6306-403.dmg.manual_reencrypted"))
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/test/ramdisk.dmg.reencrypted"))
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/test/ramdisk.reencrypted2.dmg"))
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/test2.encrypted.dmg"))
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6306-403.dmg"))
+        # recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/tools/image3maker/test2.img"))
+        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/test3.encrypted.dmg"))
         recovery_device.send_command("ramdisk")
         time.sleep(2)
         #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/kernelcache.release.n90"))
