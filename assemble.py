@@ -105,7 +105,8 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
 
             if dest_offset < 2048:
                 # Relative offset from pc
-                return f"111000{int_to_bits_with_width(dest_offset >> 1, 10)}"
+                sign_bit = "0" if dest_offset > 0 else "1"
+                return f"11100{sign_bit}{int_to_bits_with_width(twos_complement(dest_offset >> 1, 10), 10)}"
 
             # "The address specified by label is a full 12-bit two’s complement address,
             # but must always be halfword aligned (ie bit 0 set to 0),
