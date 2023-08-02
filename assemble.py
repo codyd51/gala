@@ -140,11 +140,15 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             dest_reg = int(ops[0].split("r")[1])
             source_is_high = source_reg >= 8
             dest_is_high = dest_reg >= 8
+
+            shifted_source = source_reg - 8 if source_is_high else source_reg
+            shifted_dest = dest_reg - 8 if dest_is_high else dest_reg
+
             return "01000110{h1}{h2}{rs}{rd}".format(
                 h1="1" if dest_is_high else "0",
                 h2="1" if source_is_high else "0",
-                rs=register_name_to_encoded_value(ops[1]),
-                rd=register_name_to_encoded_value(ops[0]),
+                rs=register_name_to_encoded_value(f"r{shifted_source}"),
+                rd=register_name_to_encoded_value(f"r{shifted_dest}"),
             )
 
         case _:
@@ -205,6 +209,7 @@ def assemble_arm(address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -
                 link=link,
                 offset=int_to_bits_with_width(dest_offset, 24)
             )
+    raise NotImplementedError(mnemonic)
 
 
 def bitstring_to_bytes(s: str) -> bytes:
