@@ -95,3 +95,91 @@ Bug where I was assuming there was a single virtual base, but Mach-Os have diffe
 
 Boot image was by far the most difficult part -- thousands of lines of notes comparing register snapshots between valid and invalid image
 Once that was all working, it was trivial to port the patches to iBEC
+
+entering modify_fstab
+entering clear_persistent_boot_args
+executing /usr/sbin/nvram
+entering update_NOR
+entering img3_update_NOR
+img3_flash_NOR_image: flashing LLB data (length = 0x13984)
+IOConnectCallStructMethod(0) failed: 0xe00002e2
+
+If ASR fails to validate source, you have to unplug/re-plug to get it to work again?
+
+Did not need to un-re-plug to get it to work, after flashing LLB failde
+
+ASR sends over plists to report progress, request the next image, etc
+
+virtual bool AppleMobileFileIntegrity::start(IOService*): built Jun  1 2010 18:13:35
+virtual bool AppleMobileFileIntegrity::start(IOService*): unrestricted task_for_pid enabled by boot-arg
+virtual bool AppleMobileFileIntegrity::start(IOService*): signature enforcement disabled by boot-arg
+virtual bool AppleMobileFileIntegrity::start(IOService*): signature enforcement disabled by boot-arg
+virtual bool AppleMobileFileIntegrity::start(IOService*): cs_enforcement disabled by boot-arg
+
+> As I mentioned somewhere before, xpwntool often produces broken IMG3 files (especially kernelcaches and logos) in my case. So I'll use reimagine instead, because I've never had any issues with it
+
+Part 1: Gaining Entry
+Part 2: Bootstrapping the bootchain? Something B-bootchain / bypassing the bootchain?
+
+restored_external, people just overwrite the `restored_external` binary to do anything as it's conveniently set up to run at boot. We _could_ modify the launchd stuff to run a different binary instead, but this is easier.
+
+asr sends tons of redundant plist metadata on every exchange
+
+rc ) grep -arl "Authentication" /Volumes/ramdisk/
+/Volumes/ramdisk//System/Library/Frameworks/IOKit.framework/Versions/A/IOKit
+/Volumes/ramdisk//System/Library/Frameworks/Security.framework/Security
+/Volumes/ramdisk//usr/lib/libSystem.B.dylib
+/Volumes/ramdisk//usr/local/standalone/firmware/ICE04.05.04_G.fls
+
+$ grep -arl "Authentication error" /Volumes/ramdisk/
+/Volumes/ramdisk//usr/lib/libSystem.B.dylib
+
+"Authentication error" comes from libSystem.B.dylib, it's because it's strerror()!
+
+/usr/sbin/asr restore --source asr://localhost:12345 --target /dev/disk0s1 -erase --debug --verbose
+
+Finally got register dumps from asr:
+
+src ) ssh -oHostKeyAlgorithms=+ssh-dss root@localhost -p 2222
+root@localhost's password:
+Use mount.sh script to mount the partitions
+Use reboot_bak to reboot
+Use 'device_infos' to dump EMF keys (when imaging user volume)
+-sh-4.0# /usr/sbin/asr restore --source asr://localhost:12345 --target /dev/disk0s1 -erase --debug --verbose
+
+Decrypting then re-encrypting the ramdisk immediately makes ASR succeed, so it's not xpwntool problem?
+What if the name doesn't end in .dmg? Still works
+
+*** CALLING _mount_dmg CAUSES THE IMAGE TO BE INVALID SOMEHOW?!
+
+=======================================
+::
+:: iBEC for n90ap, Copyright 2010, Apple Inc.
+::
+::      BUILD_TAG: iBoot-889.24
+::
+::      BUILD_STYLE: RELEASE
+::
+::      USB_SERIAL_NUMBER: CPID:8930 CPRV:20 CPFM:03 SCEP:01 BDID:00 ECID:00000363F615C377 IBFL:00 SRNM:[84033X5RA4S]
+::
+=======================================
+
+Entering recovery mode, starting command prompt
+creating device tree at 0x43f00000 of size 0xe04c, from image at 0x41000000
+creating ramdisk at 0x44000000 of size 0xd15000, from image at 0x41000000
+panic: arm_exception_abort: ARM undefined instruction abort in supervisor mode at 0x61000064 due to <unknown cause>: far 0x61000064 dfsr 0xffffffff
+r0 0x5ff00f8a 0x00000000 0x00000000 0x47415244
+r4 0x5ff1d044 0x00000000 0x00000000 0x00000000
+r8 0x5ff16940 0x00000000 0x00000001 0x00000075 0x00000000
+sp 0x5ff43085 lr 0x5ff16950 spsr 0x20000053
+
+Is "Hardware AES" shown before or after the delay?
+For VALID, "Hardware AES" shows up for the first time AFTER the delay!
+For INVALID, "Hardware AES" shows up ONCE BEFORE the delay!
+Actually, maybe for invalid it only shows after the delay
+It does look like "Hardware AES" is always after the wait
+
+Trying to patch a random byte in the DMG instead of mounting it
+Changing a single byte in the restore ramdisk causes the restore to fail...
+
+Changing any bytes at all in the DMG causes the restore to fail...
