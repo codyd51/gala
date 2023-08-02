@@ -295,8 +295,21 @@ class RamdiskPatchSet(Patch):
                 print(f'Unmounted {path.name}')
 
 
+@dataclass
+class RamdiskApplyTarPatch(RamdiskPatch):
+    tar_path: Path
 
-            image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
+    def apply(self, mounted_ramdisk_path: Path) -> None:
+        print(f'Applying tar {self.tar_path} to ramdisk...')
+        run_and_check([
+            'tar',
+            '-xvf',
+            '/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar',
+            '-C',
+            mounted_ramdisk_path.as_posix(),
+        ])
+
+
 @dataclass
 class RamdiskBinaryPatch(RamdiskPatch):
     # PT: Instead of having the binary at the top level, this could just contain a PatchSet
