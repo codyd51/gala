@@ -25,6 +25,8 @@ def recompile_payloads():
     build(root / "payload_stage1")
     build(root / "payload_stage2")
     build(root / "shellcode_within_ibss")
+    build(root / "shellcode_in_asr")
+    build(root / "shellcode_within_ibec")
 
 
 if __name__ == '__main__':
