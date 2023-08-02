@@ -53,8 +53,18 @@ class InstructionPatch(Patch):
 
     @classmethod
     def shellcode(cls, addr: int) -> InstructionPatch:
-        shellcode_addr = 0x5ff000fc
+        shellcode_addr = 0x8057a314
         branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
+        return cls(
+            function_name='',
+            address=VirtualMemoryPointer(addr),
+            orig_instructions=[],
+            patched_instructions=[branch_to_shellcode]
+        )
+
+    @classmethod
+    def shellcode2(cls, shellcode_addr: int, addr: int) -> InstructionPatch:
+        branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr+1)}")
         return cls(
             function_name='',
             address=VirtualMemoryPointer(addr),
@@ -201,7 +211,7 @@ class PatchSet(Patch):
 
 
 @contextmanager
-def _mount_dmg(path: Path) -> Iterable[Path]:
+def _mount_dmg_old(path: Path) -> Iterable[Path]:
     print(f'Mounting {path.name}')
     hdiutil_output_raw = run_and_capture_output_and_check([
         "hdiutil",
@@ -226,25 +236,23 @@ def _mount_dmg(path: Path) -> Iterable[Path]:
 
 
 @dataclass
-class RamdiskBinaryPatch(Patch):
-    # PT: Instead of having the binary at the top level, this could just contain a PatchSet
-    # Then we could apply the binary patches in the patch set, so we only mount the ramdisk once
-    binary_path: Path
-    inner_patch: Patch
+class RamdiskPatch:
+    def apply(self, mounted_dmg_path: Path) -> None:
+        pass
+
+
+@dataclass
+class RamdiskPatchSet(Patch):
+    patches: list[RamdiskPatch]
 
     def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
-        print(f'Applying ramdisk patch to binary {self.binary_path}')
-        # Mount the ramdisk
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
-            # hdiutil (annoyingly) requires that the ramdisk end in .dmg instead of .dmg.decrypted,
-            # so create a temporary copy now with the correct extension
             decrypted_ramdisk_with_dmg_extension = temp_dir / "ramdisk.dmg"
-            shutil.copy(decrypted_image_path, decrypted_ramdisk_with_dmg_extension)
+            decrypted_ramdisk_with_dmg_extension.write_bytes(image_data)
 
             # Resize the ramdisk so we have room to write to it
             # Ref: https://apple.stackexchange.com/questions/60613
-            # TODO(PT): Shrink the ramdisk again
             run_and_check([
                 "hdiutil",
                 "resize",
@@ -253,14 +261,51 @@ class RamdiskBinaryPatch(Patch):
                 decrypted_ramdisk_with_dmg_extension.as_posix(),
             ])
 
-            with _mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
-                print(f'Mounted {decrypted_image_path.name}, applying patch...')
-                self._apply_patch(mounted_dmg_root)
-                print(f'Applied patch! dmg is now modified')
+            if False:
+                with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
+                    print(f'Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}')
+                    for patch in self.patches:
+                        patch.apply(mounted_dmg_root)
+                image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
+
+    @staticmethod
+    @contextmanager
+    def _mount_dmg(path: Path) -> Iterable[Path]:
+        print(f'Mounting {path.name}')
+        with tempfile.TemporaryDirectory() as mount_dir_raw:
+            mount_point = Path(mount_dir_raw) / "dmg_mount_point"
+            run_and_check([
+                "hdiutil",
+                "attach",
+                "-mountpoint",
+                f"{mount_point.as_posix()}/",
+                path.as_posix(),
+            ])
+            print(f'Mounted to {mount_point.as_posix()}')
+
+            try:
+                yield mount_point
+            finally:
+                # Unmount the disk
+                run_and_check([
+                    "hdiutil",
+                    "detach",
+                    mount_point.as_posix(),
+                ])
+                print(f'Unmounted {path.name}')
+
+
 
             image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
+@dataclass
+class RamdiskBinaryPatch(RamdiskPatch):
+    # PT: Instead of having the binary at the top level, this could just contain a PatchSet
+    # Then we could apply the binary patches in the patch set, so we only mount the ramdisk once
+    binary_path: Path
+    inner_patch: Patch
 
-    def _apply_patch(self, ramdisk_root: Path) -> None:
+    def apply(self, ramdisk_root: Path) -> None:
+        print(f'Applying ramdisk patch to binary {self.binary_path}')
         # Find the binary
         qualified_binary_path = ramdisk_root / self.binary_path
         if not qualified_binary_path.exists():

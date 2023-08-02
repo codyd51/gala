@@ -123,6 +123,9 @@ def apply_patches(
 ):
     print(f'Applying {len(patches)} patches to {image_type.name}, output={output}...')
     # TODO(PT): The base address may need to vary based on OS version as well as image type?
+    # TODO(PT): The base address should perhaps be renamed to something like `a_priori_load_address`
+    # For Mach-O's, the MachO contains the load address. We just need to know it for objects like the iBSS and iBEC, which are 'raw'
+    # For pictures and ramdisks it's irrelevant
     base_address = image_type.base_address
     input_bytes = input.read_bytes()
     patched_bytes = bytearray(copy(input_bytes))
