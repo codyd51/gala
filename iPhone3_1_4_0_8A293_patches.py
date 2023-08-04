@@ -5,8 +5,7 @@ from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
 from os_build import ImageType
-from patches import PatchSet, InstructionPatch, BlobPatch, RamdiskBinaryPatch, Patch, MachoBlobPatch, RamdiskPatch, \
-    RamdiskPatchSet, RamdiskApplyTarPatch
+from patches import PatchSet, InstructionPatch, BlobPatch, RamdiskBinaryPatch, Patch, RamdiskPatchSet, RamdiskApplyTarPatch
 
 
 def _get_ibss_patches() -> list[Patch]:
@@ -141,10 +140,19 @@ def _get_ibec_patches() -> list[Patch]:
                     #
                     # new_content="rd=md0 -v nand-enable-reformat=1 -progress debug=0x14e serial=3\0".encode(), <-- these boot args make the 'restore' screen not show up, and make it impossible to run ASR
                     # these boot args below make the restore sceren show up and it's possible to start ASR'
-                    new_content="rd=md0 nand-enable-reformat=1 amfi_get_out_of_my_way=1 serial=3\0".encode(),
                     #new_content="rd=md0 amfi=0xff cs_enforcement_disable=1 pio-error=0\0".encode(),
                     #new_content="rd=md0 serial=3 amfi=0xff cs_enforcement_disable=1 pio-error=0\0".encode(),
                     #new_content="rd=md0 serial=3 amfi_get_out_of_my_way=1 cs_enforcement_disable=1\0".encode(),
+
+                    #new_content="rd=md0 nand-enable-reformat=1 amfi_get_out_of_my_way=1 serial=3\0".encode(),
+                    #new_content="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
+                    #new_content="rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
+                    #new_content="rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
+                    new_content="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
+                    #new_content="rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
+                    #new_content="rd=disk0s1 amfi_get_out_of_my_way=1 serial=3\0".encode(),
+                    #new_content="rd=disk0s1 -v\0".encode(),
+                    #new_content="amfi_get_out_of_my_way=1 serial=3\0".encode(),
                 )
             ]
         ),
@@ -178,7 +186,7 @@ def _get_ibec_patches() -> list[Patch]:
                     address=VirtualMemoryPointer(ibec_shellcode_addr),
                     new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/shellcode_within_ibec/build/shellcode_within_ibec_shellcode").read_bytes(),
                 ),
-                #InstructionPatch.shellcode2(ibec_shellcode_addr, 0x5ff0db24),
+                InstructionPatch.shellcode2(ibec_shellcode_addr, 0x5ff0db24),
                 #InstructionPatch.shellcode2(ibec_shellcode_addr, 0x5ff00cae),
                 #InstructionPatch.shellcode2(ibec_shellcode_addr, 0x5ff0db4e),
                 #InstructionPatch.shellcode2(ibec_shellcode_addr, 0x5ff0db6e),
@@ -201,6 +209,15 @@ def _get_ibec_patches() -> list[Patch]:
                 InstructionPatch.quick(0x5ff0dc2e, Instr.thumb("cmp r0, r0")),
             ]
         ),
+        PatchSet(
+            name="",
+            patches=[
+                #BlobPatch(address=VirtualMemoryPointer(0x5ff0028e), new_content="rd=disk0s1 serial=3 -v\0".encode()),
+                #BlobPatch(address=VirtualMemoryPointer(0x5ff0ecc0), new_content=int(0x5ff0028e).to_bytes(4, byteorder="little")),
+                #BlobPatch(address=VirtualMemoryPointer(0x5ff0ecc0), new_content=int(0x5ff19d68).to_bytes(4, byteorder="little")),
+                BlobPatch(address=VirtualMemoryPointer(0x5ff1a150), new_content="AAA".encode()),
+            ]
+        )
     ]
 
 
@@ -215,8 +232,15 @@ def _get_kernelcache_patches() -> list[Patch]:
                 #InstructionPatch(VirtualMemoryPointer(0x801d59b2), new_content=int(1).to_bytes(4, byteorder='little', signed=False))
 
                 # PE_i_can_has_debugger
-                InstructionPatch.quick(VirtualMemoryPointer(0x801d59b0), [Instr.thumb("movs r0, #1"), Instr.thumb("b #0x801d59bc")], expected_length=4),
-
+                #InstructionPatch.quick(VirtualMemoryPointer(0x801d59b0), [Instr.thumb("movs r0, #1"), Instr.thumb("b #0x801d59bc")], expected_length=4),
+                #InstructionPatch.quick(VirtualMemoryPointer(0x801d59b0), [Instr.thumb("movs r0, #1"), Instr.thumb("b #0x801d59bc")], expected_length=4),
+                # PT: We might need a shellcode program that sets that var to 1, but how to run it at startup?
+                #BlobPatch(address=VirtualMemoryPointer(0x8027986c), new_content=int(1).to_bytes(length=4, byteorder="little")),
+                BlobPatch(address=VirtualMemoryPointer(0x80966080), new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/kernelcache_set_debug_enabled/build/kernelcache_set_debug_enabled_shellcode").read_bytes()),
+                # 0x80966080
+                # 0x8026a800
+                #InstructionPatch.quick(0x801d5bea, Instr.thumb("bl #0x80966080")),
+                BlobPatch(address=VirtualMemoryPointer(0x801d5bea), new_content=bytes([0x90, 0xF3, 0x49, 0xF2])),
                 # Virtual address: 0x803b6034
                 #                  0x803ec04c
                 #BlobPatch(VirtualMemoryPointer(0x803b604c), new_content="HELLO".encode()),
@@ -230,12 +254,18 @@ def _get_kernelcache_patches() -> list[Patch]:
             ]
         ),
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
-        #InstructionPatch.quick(0x8080e826, Instr.thumb("b #0x8080e85a")),
+        InstructionPatch.quick(0x8080e826, Instr.thumb("b #0x8080e85a")),
         PatchSet(
             name="Image3NOR patches",
             patches=[
                 # Patch comparison of retval for bl maybe_some_kind_of_image_validation
-                #InstructionPatch.quick(0x8057c800, Instr.thumb("cmp r0, r0"), expected_length=2),
+                InstructionPatch.quick(0x8057c800, Instr.thumb("cmp r0, r0"), expected_length=2),
+                InstructionPatch.quick(0x8057c7e4, Instr.thumb("cmp r0, r0"), expected_length=2),
+                InstructionPatch.quick(0x8057c7f2, Instr.thumb("cmp r0, r0"), expected_length=2),
+                InstructionPatch.quick(0x8057c826, Instr.thumb("cmp r0, r0"), expected_length=2),
+                InstructionPatch.quick(0x8057c876, Instr.thumb("cmp r0, r0"), expected_length=2),
+                InstructionPatch.quick(0x8057c88a, Instr.thumb("cmp r0, r0"), expected_length=2),
+                #InstructionPatch.shellcode2(kernelcache_shellcode_addr, 0x8057c906),
                 # TODO(PT): Next we have to prevent the baseband update...
             ],
         ),
@@ -256,7 +286,7 @@ def _get_kernelcache_patches() -> list[Patch]:
                 #InstructionPatch.quick(0x803ab746, Instr.thumb("nop")),
                 #InstructionPatch.shellcode2(kernelcache_shellcode_addr, 0x803ab774),
                 #InstructionPatch.shellcode2(kernelcache_shellcode_addr, 0x803ab734),
-                InstructionPatch.shellcode2(kernelcache_shellcode_addr, 0x8057c38c),
+                #InstructionPatch.shellcode2(kernelcache_shellcode_addr, 0x8057c38c),
             ]
         ),
         PatchSet(
@@ -267,7 +297,6 @@ def _get_kernelcache_patches() -> list[Patch]:
                 InstructionPatch.quick(0x803ac4fe, Instr.thumb("cmp r0, r0")),
                 # CERT
                 InstructionPatch.quick(0x803ac560, Instr.thumb("cmp r0, r0")),
-
                 # cmp        r0, #0x0?
                 # ite        eq?
                 # moveq      r4, r3
@@ -380,15 +409,15 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
                         address=VirtualMemoryPointer(asr_shellcode_addr),
                         new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_asr/build/shellcode_in_asr_shellcode").read_bytes(),
                     ),
-                    InstructionPatch.quick(0x00013608, Instr.thumb("b #0x135fe")),
-                    InstructionPatch.quick(0x000087ea, jump_to_comms),
-                    InstructionPatch.quick(0x00015776, jump_to_comms),
-                    InstructionPatch.quick(0x00015790, jump_to_comms),
-                    InstructionPatch.quick(0x00003c72, jump_to_comms),
-                    InstructionPatch.quick(0x000046aa, jump_to_comms),
-                    InstructionPatch.quick(0x000105a2, jump_to_comms),
-                    InstructionPatch.quick(0x00011106, [jump_to_comms, Instr.thumb("nop")], expected_length=6),
-                    InstructionPatch.quick(0x0001093a, jump_to_comms),
+                    #InstructionPatch.quick(0x00013608, Instr.thumb("b #0x135fe")),
+                    #InstructionPatch.quick(0x000087ea, jump_to_comms),
+                    #InstructionPatch.quick(0x00015776, jump_to_comms),
+                    #InstructionPatch.quick(0x00015790, jump_to_comms),
+                    #InstructionPatch.quick(0x00003c72, jump_to_comms),
+                    #InstructionPatch.quick(0x000046aa, jump_to_comms),
+                    #InstructionPatch.quick(0x000105a2, jump_to_comms),
+                    #InstructionPatch.quick(0x00011106, [jump_to_comms, Instr.thumb("nop")], expected_length=6),
+                    #InstructionPatch.quick(0x0001093a, jump_to_comms),
                     #InstructionPatch.quick(0x0001069a, jump_to_comms),
                     # Skip passphrase block?
                     #InstructionPatch.quick(0x0001069a, Instr.thumb("b #0x106a6")),
@@ -424,6 +453,25 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
         #        ],
         #    ),
         #),
+        RamdiskBinaryPatch(
+            binary_path=Path("usr/local/bin/restored_external"),
+            inner_patch=PatchSet(
+                name="",
+                patches=[
+                    # Don't clear effaceable storage
+                    InstructionPatch.quick(0x0000526c, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                    # Don't wait for server ASR
+                    InstructionPatch.quick(0x000052ac, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                    # Don't create partitions
+                    InstructionPatch.quick(0x0000529c, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                    # No fixup /var
+                    InstructionPatch.quick(0x000052ec, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                    # No baseband update
+                    InstructionPatch.quick(0x00005338, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                    BlobPatch(VirtualMemoryPointer(0x0007267c), new_content=int(0x00030e30).to_bytes(4, byteorder="little")),
+                ]
+            )
+        ),
     ]
     return [RamdiskPatchSet(patches=patches)]
 
@@ -434,7 +482,4 @@ def get_iphone_3_1_4_0_8a293_patches() -> Mapping[ImageType, list[Patch]]:
         ImageType.iBEC: _get_ibec_patches(),
         ImageType.KernelCache: _get_kernelcache_patches(),
         ImageType.RestoreRamdisk: _get_restore_ramdisk_patches(),
-        #ImageType.iBSS: [],
-        #ImageType.iBEC: [],
-        #ImageType.RestoreRamdisk: [],
     })

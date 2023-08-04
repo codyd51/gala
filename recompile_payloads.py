@@ -27,6 +27,7 @@ def recompile_payloads():
     build(root / "shellcode_within_ibss")
     build(root / "shellcode_in_asr")
     build(root / "shellcode_within_ibec")
+    build(root / "kernelcache_set_debug_enabled")
 
 
 if __name__ == '__main__':
