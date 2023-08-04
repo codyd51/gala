@@ -183,3 +183,64 @@ Trying to patch a random byte in the DMG instead of mounting it
 Changing a single byte in the restore ramdisk causes the restore to fail...
 
 Changing any bytes at all in the DMG causes the restore to fail...
+
+ssh mount.sh
+scp -P 2222 -o StrictHostKeyChecking=no -oHostKeyAlgorithms=+ssh-dss /Users/philliptennen/Documents/Jailbreak/tools/xpwn/dmg/UDZO-2.dmg root@localhost:/mnt2
+ssh /usr/sbin/asr restore --source /mnt2/UDZO-2.dmg --target /dev/disk0s1 --erase --debug --verbose
+    /usr/sbin/asr restore --source /mnt2/UDZO-2.dmg --target /dev/disk0s1 -erase --debug --verbose
+
+Procedure will be:
+First boot
+SSH in and mount FS
+SCP rootFS
+Flash with ASR
+Unmount/reboot?
+Then, just start the restore?
+
+Procedure:
+First boot
+SSH in and mount FS
+SCP rootFS
+Then, just start the restore?
+
+# Test1
+Mount Data
+SCP rootFS
+Restore to System
+fsck System
+Reboot
+Restored, don't wipe and don't run asr
+disk0s2s1: ioctl(_IOW,'d',24,4) is unsupported.
+** /dev/rdisk0s2s1
+Executing fsck_hfs (version diskdev_cmds-488.1.7~39).
+** Checking Journaled HFS Plus volume.
+** Detected a case-sensitive volume.
+** Checking extents overflow file.
+** Checking catalog file.
+** Checking multi-linked files.
+** Checking catalog hierarchy.
+** Checking extended attributes file.
+** Checking volume bitmap.
+** Checking volume information.
+** The volume Data appears to be OK.
+executing /sbin/mount
+entering fixup_var
+copy /mnt1/private/var to /mnt2 failed: 0x
+
+# Test2
+Mount Data
+SCP rootFS
+Restore to System
+fsck System
+Mount /dev/disk0s1
+scp /mnt1/private/var to host
+scp back to /mnt2/
+rm -rf /mnt1/private/var
+scp /mnt1/etc/fstab to host
+Edit /dev/disk0s2 to /dev/disk0s2s1
+scp fstab back to device
+Reboot
+(PT: Maybe need to fsck Data?)
+Restored, don't wipe, don't run asr, don't fixup var
+
+* Need to make sure /private/var still exists?
