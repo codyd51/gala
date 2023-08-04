@@ -64,7 +64,7 @@ class InstructionPatch(Patch):
 
     @classmethod
     def shellcode2(cls, shellcode_addr: int, addr: int) -> InstructionPatch:
-        branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr+1)}")
+        branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return cls(
             function_name='',
             address=VirtualMemoryPointer(addr),
@@ -166,7 +166,7 @@ class BlobPatch(Patch):
         try:
             macho_parser = MachoParser(decrypted_image_path)
             if macho_parser.is_magic_supported():
-                print(f'Applying instruction patch to a Mach-O')
+                print(f'Applying blob patch to a Mach-O')
                 binary = macho_parser.get_armv7_slice()
                 patch_file_offset = binary.file_offset_for_virtual_address(self.address)
             else:
@@ -180,19 +180,6 @@ class BlobPatch(Patch):
             raise ValueError(f'Invalid offset {patch_file_offset}')
         print(f'File offset for {self.new_content} is {hex(patch_file_offset)}')
         image_data[patch_file_offset:patch_file_offset + len(self.new_content)] = self.new_content
-
-
-@dataclass
-class MachoBlobPatch(Patch):
-    address: VirtualMemoryPointer
-    new_content: bytes
-
-    def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
-        binary = MachoParser(decrypted_image_path).get_armv7_slice()
-        writer = MachoBinaryWriter(binary)
-        with writer:
-            writer.write_bytes(self.new_content, self.address)
-        image_data[:] = writer.modified_binary._cached_binary
 
 
 @dataclass
@@ -261,7 +248,7 @@ class RamdiskPatchSet(Patch):
                 decrypted_ramdisk_with_dmg_extension.as_posix(),
             ])
 
-            if False:
+            if True:
                 with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
                     print(f'Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}')
                     for patch in self.patches:
