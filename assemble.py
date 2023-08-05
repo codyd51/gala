@@ -28,6 +28,13 @@ class Instr:
     value: str
 
     @classmethod
+    def thumb_nop(cls) -> Self:
+        return cls(
+            format=InstrFormat.Thumb,
+            value="nop",
+        )
+
+    @classmethod
     def thumb(cls, value: str) -> Self:
         return cls(
             format=InstrFormat.Thumb,
