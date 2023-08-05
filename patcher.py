@@ -10,8 +10,9 @@ from strongarm.macho import MachoParser, VirtualMemoryPointer
 
 from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches
 from os_build import OsBuildEnum, KeyRepository, ImageType
-from patches import Function, Patch
+from patches import Function, Patch, IpswPatcherConfig
 from utils import run_and_check, TotalEnumMapping
+
 
 JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
 _XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
@@ -44,12 +45,12 @@ class FunctionRepository:
 
 class PatchRepository:
     @classmethod
-    def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
+    def builds_to_image_patches(cls, config: IpswPatcherConfig) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
         # PT: This needs to be a method, rather than a class variable, because otherwise it
         # captures file data **when the class is defined/interpreted**,
         # which is before we've rebuilt the shellcode image with new code! Annoying
         return TotalEnumMapping({
-            OsBuildEnum.iPhone3_1_4_0_8A293: get_iphone_3_1_4_0_8a293_patches(),
+            OsBuildEnum.iPhone3_1_4_0_8A293: get_iphone_3_1_4_0_8a293_patches(config),
             OsBuildEnum.iPhone3_1_4_1_8B117: ImageType.binary_types_mapping({
                 ImageType.iBSS: [],
                 ImageType.iBEC: [],
@@ -71,8 +72,8 @@ class PatchRepository:
         })
 
     @classmethod
-    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType) -> list[Patch]:
-        image_patches_for_build = cls.builds_to_image_patches()[os_build]
+    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType, config: IpswPatcherConfig) -> list[Patch]:
+        image_patches_for_build = cls.builds_to_image_patches(config)[os_build]
         return image_patches_for_build[image]
 
 
@@ -116,6 +117,7 @@ def encrypt_img3(path: Path, output_path: Path, original_img3: Path, key: str, i
 
 
 def apply_patches(
+    patcher_config: IpswPatcherConfig,
     image_type: ImageType,
     input: Path,
     output: Path,
@@ -131,7 +133,7 @@ def apply_patches(
     patched_bytes = bytearray(copy(input_bytes))
 
     for patch in patches:
-        patch.apply(input, base_address, patched_bytes)
+        patch.apply(patcher_config, input, base_address, patched_bytes)
 
     if patched_bytes != input_bytes:
         print(f'Bytes successfully modified?')
@@ -142,18 +144,13 @@ def apply_patches(
 def patch_decrypted_image(
     os_build: OsBuildEnum,
     image_type: ImageType,
+    patcher_config: IpswPatcherConfig,
     decrypted_image_path: Path,
     patched_image_path: Path
 ):
-    patches = PatchRepository.patches_for_image(os_build, image_type)
+    patches = PatchRepository.patches_for_image(os_build, image_type, patcher_config)
     print(image_type, patches)
-    apply_patches(image_type, decrypted_image_path, patched_image_path, patches)
-
-
-@dataclass
-class IpswPatcherConfig:
-    os_build: OsBuildEnum
-    replacement_pictures: dict[ImageType, Path]
+    apply_patches(patcher_config, image_type, decrypted_image_path, patched_image_path, patches)
 
 
 def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
@@ -195,7 +192,7 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
 
         patched_image = output_dir / f"{file_name}.patched"
         patched_image.unlink(missing_ok=True)
-        patch_decrypted_image(os_build, image_type, decrypted_image, patched_image)
+        patch_decrypted_image(os_build, image_type, config, decrypted_image, patched_image)
         print(f'Wrote patched {image_type.name} to {patched_image.as_posix()}')
 
         reencrypted_image = output_dir / f"{file_name}.reencrypted"
@@ -244,7 +241,8 @@ if __name__ == '__main__':
     image_types_to_paths = regenerate_patched_images(
         IpswPatcherConfig(
             os_build=os_build,
-            replacement_pictures={}
+            replacement_pictures={},
+            boot_to_restore_ramdisk=True,
         )
     )
     generate_patched_ipsw(os_build, image_types_to_paths)

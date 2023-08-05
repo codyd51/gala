@@ -12,15 +12,7 @@ from securerom import execute_securerom_payload
 from utils import run_and_check
 
 
-def main():
-    #dump_usb_devices()
-    #return
-    patcher_config = IpswPatcherConfig(
-        OsBuildEnum.iPhone3_1_4_0_8A293,
-        replacement_pictures={
-            ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
-        }
-    )
+def boot_device(patcher_config: IpswPatcherConfig):
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
     recompile_payloads()
     image_types_to_paths = regenerate_patched_images(patcher_config)
@@ -75,25 +67,18 @@ def main():
         # Set the boot logo again
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
-        recovery_device.send_command("bgcolor 0 0 0")
+        recovery_device.send_command("bgcolor 0 128 255")
 
         # Upload the device tree, ramdisk, and kernelcache
         recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
-        # recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
         recovery_device.send_command("devicetree")
         time.sleep(2)
-        recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/018-6306-403.dmg.manual_reencrypted"))
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/test/ramdisk.dmg.reencrypted"))
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/test/ramdisk.reencrypted2.dmg"))
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/test2.encrypted.dmg"))
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6306-403.dmg"))
-        # recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/tools/image3maker/test2.img"))
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/test3.encrypted.dmg"))
-        recovery_device.send_command("ramdisk")
-        time.sleep(2)
-        #recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/kernelcache.release.n90"))
-        # PT: Should replace with below, just didn't want to ry 2 things at once
+
+        if patcher_config.boot_to_restore_ramdisk:
+            print('Sending restore ramdisk...')
+            recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
+            recovery_device.send_command("ramdisk")
+
         recovery_device.upload_file(image_types_to_paths[ImageType.KernelCache])
 
         try:
@@ -103,20 +88,19 @@ def main():
             pass
 
     time.sleep(5)
-
     # Start the restore process with the modified IPSW
-    # TODO(PT): Repack into an ipsw as below
 
-    if False:
-        run_and_check([
-            "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
-            "--restore-mode",
-            #"/Users/philliptennen/Documents/Jailbreak/patched_images/iPhone3,1_4.0_8A293/patched.ipsw",
-            "/Users/philliptennen/Documents/Jailbreak/orig_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
-        ])
-    # ./xpwntool /Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/018-6306-403.dmg decrypted_ramdisk -k 62aabe3e763eb3669b4922468be2acb787199c6b0ef8ae873c312e458d9b9be3 -iv 0ab135879934fdd0d689b3d0f8cf8374
 
-    # dump_usb_devices()
+def main():
+    patcher_config = IpswPatcherConfig(
+        OsBuildEnum.iPhone3_1_4_0_8A293,
+        replacement_pictures={
+            ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
+        },
+        boot_to_restore_ramdisk=True,
+        boot_args="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3",
+    )
+    boot_device(patcher_config)
 
 
 if __name__ == '__main__':

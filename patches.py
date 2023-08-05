@@ -12,10 +12,18 @@ from typing import Iterable
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from strongarm.macho import MachoParser, VirtualMemoryPointer, ArchitectureNotSupportedError
-from strongarm.macho.macho_binary_writer import MachoBinaryWriter
 
 from assemble import Instr, assemble
+from os_build import OsBuildEnum, ImageType
 from utils import run_and_check, run_and_capture_output_and_check
+
+
+@dataclass
+class IpswPatcherConfig:
+    os_build: OsBuildEnum
+    replacement_pictures: dict[ImageType, Path]
+    boot_to_restore_ramdisk: bool
+    boot_args: str
 
 
 @dataclass
@@ -26,7 +34,7 @@ class Function:
 
 class Patch(ABC):
     @abstractmethod
-    def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
+    def apply(self, patcher_config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
         ...
 
 
@@ -82,7 +90,7 @@ class InstructionPatch(Patch):
             expected_length=expected_length,
         )
 
-    def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, data: bytearray) -> None:
+    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, data: bytearray) -> None:
         print()
         #function = patch.function
         #print(f'Patching {function.name}:')
@@ -160,7 +168,7 @@ class BlobPatch(Patch):
     address: VirtualMemoryPointer
     new_content: bytes
 
-    def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
+    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
         print(f'Applying unstructured patch of {len(self.new_content)} bytes at {self.address}')
         # hexdump(patch.new_content)
         try:
@@ -191,10 +199,10 @@ class PatchSet(Patch):
     name: str
     patches: list[Patch]
 
-    def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
+    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
         print(f'Applying patch set {self.name}...')
         for patch in self.patches:
-            patch.apply(decrypted_image_path, image_base_address, image_data)
+            patch.apply(config, decrypted_image_path, image_base_address, image_data)
 
 
 @contextmanager
@@ -224,7 +232,7 @@ def _mount_dmg_old(path: Path) -> Iterable[Path]:
 
 @dataclass
 class RamdiskPatch:
-    def apply(self, mounted_dmg_path: Path) -> None:
+    def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
         pass
 
 
@@ -232,7 +240,7 @@ class RamdiskPatch:
 class RamdiskPatchSet(Patch):
     patches: list[RamdiskPatch]
 
-    def apply(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
+    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
             decrypted_ramdisk_with_dmg_extension = temp_dir / "ramdisk.dmg"
@@ -252,7 +260,7 @@ class RamdiskPatchSet(Patch):
                 with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
                     print(f'Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}')
                     for patch in self.patches:
-                        patch.apply(mounted_dmg_root)
+                        patch.apply(config, mounted_dmg_root)
                 image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
 
     @staticmethod
@@ -286,7 +294,7 @@ class RamdiskPatchSet(Patch):
 class RamdiskApplyTarPatch(RamdiskPatch):
     tar_path: Path
 
-    def apply(self, mounted_ramdisk_path: Path) -> None:
+    def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
         print(f'Applying tar {self.tar_path} to ramdisk...')
         run_and_check([
             'tar',
@@ -304,7 +312,7 @@ class RamdiskBinaryPatch(RamdiskPatch):
     binary_path: Path
     inner_patch: Patch
 
-    def apply(self, ramdisk_root: Path) -> None:
+    def apply(self, config: IpswPatcherConfig, ramdisk_root: Path) -> None:
         print(f'Applying ramdisk patch to binary {self.binary_path}')
         # Find the binary
         qualified_binary_path = ramdisk_root / self.binary_path
@@ -317,7 +325,7 @@ class RamdiskBinaryPatch(RamdiskPatch):
 
         # Apply the patch to the binary
         patched_binary_data = bytearray(qualified_binary_path.read_bytes())
-        self.inner_patch.apply(qualified_binary_path, virtual_base, patched_binary_data)
+        self.inner_patch.apply(config, qualified_binary_path, virtual_base, patched_binary_data)
         print(f'Writing patched binary...')
 
         qualified_binary_path.write_bytes(patched_binary_data)
