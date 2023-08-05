@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from os_build import OsBuildEnum, ImageType
+from os_build import ImageType, OsBuildEnum
 from patcher import JAILBREAK_ROOT
 
 
@@ -32,14 +32,14 @@ def main():
         for col in range(0, width):
             idx = (row * width) + col
             out += f"({row}, {col}), {idx}\n"
-            word_bytes = original_image_bytes[idx:idx + 4]
-            word = int.from_bytes(word_bytes, byteorder='big', signed=False)
+            word_bytes = original_image_bytes[idx : idx + 4]
+            word = int.from_bytes(word_bytes, byteorder="big", signed=False)
             out += f"{hex(word)[2:]} "
-            print(f"{hex(word)[2:]} ", end='')
+            print(f"{hex(word)[2:]} ", end="")
         print()
         out += "\n"
     out_path.write_text(out)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

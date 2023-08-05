@@ -2,7 +2,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from os_build import OsBuildEnum, ImageType
+from os_build import ImageType, OsBuildEnum
 from patcher import JAILBREAK_ROOT, patch_image
 from utils import run_and_check
 
@@ -27,5 +27,5 @@ def main():
     run_and_check(["irecovery", "-c bgcolor 255 255 255"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -36,20 +36,14 @@ class Instr:
 
     @classmethod
     def thumb(cls, value: str) -> Self:
-        return cls(
-            format=InstrFormat.Thumb,
-            value=value
-        )
+        return cls(format=InstrFormat.Thumb, value=value)
 
     @classmethod
     def arm(cls, value: str) -> Self:
-        return cls(
-            format=InstrFormat.Arm,
-            value=value
-        )
+        return cls(format=InstrFormat.Arm, value=value)
 
     def __repr__(self) -> str:
-        return f'{self.format.name}({self.value})'
+        return f"{self.format.name}({self.value})"
 
 
 def register_name_to_encoded_value(register_name: str) -> str:
@@ -69,10 +63,10 @@ def register_name_to_encoded_value(register_name: str) -> str:
 
 
 def immediate_literal_to_int(imm: str) -> int:
-    if imm[0] != '#':
-        raise ValueError(f'Expected a hash character')
+    if imm[0] != "#":
+        raise ValueError(f"Expected a hash character")
     # Handle base-16 and base-10
-    if imm[1:3] == '0x':
+    if imm[1:3] == "0x":
         return int(imm[3:], 16)
     else:
         return int(imm[1:], 10)
@@ -108,7 +102,7 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
         case "b":
             # 5.18 Format 18: unconditional branch
             dest_address = immediate_literal_to_int(ops[0])
-            dest_offset = (dest_address - address - 4)
+            dest_offset = dest_address - address - 4
 
             if dest_offset < 2048:
                 # Relative offset from pc
@@ -121,7 +115,7 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             dest_offset = dest_offset >> 1
             if dest_offset <= 0:
                 # Negative offsets are actually allowed, but are unhandled for now
-                raise ValueError(f'Expected a positive offset')
+                raise ValueError(f"Expected a positive offset")
             if abs(dest_offset) > 2048:
                 raise ValueError("Expected offset to be <= 2048")
             return "11100{offset11}".format(
@@ -131,7 +125,7 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             # 5.19 Format 19: long branch with link
             instr_template = "1111{is_low}{offset}"
             dest_address = immediate_literal_to_int(ops[0])
-            offset = (dest_address - address - 4)
+            offset = dest_address - address - 4
             offset = abs(twos_complement(offset, 23))
 
             # Low word comes first
@@ -163,10 +157,10 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
 
 
 def twos_complement2(val: int, bit_count: int) -> int:
-    if (val & (1 << (bit_count - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
-        print(f'sign bit is set')
-        val = val - (1 << bit_count)        # compute negative value
-    return val                         # return positive value as is
+    if (val & (1 << (bit_count - 1))) != 0:  # if sign bit is set e.g., 8bit: 128-255
+        print(f"sign bit is set")
+        val = val - (1 << bit_count)  # compute negative value
+    return val  # return positive value as is
 
 
 def twos_complement(val, nbits):
@@ -192,43 +186,43 @@ def assemble_arm(address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -
             # > The branch offset must take account of the prefetch operation,
             # > which causes the PC to be 2 words (8 bytes) ahead of the current instruction.
             dest_address = immediate_literal_to_int(ops[0])
-            if dest_address != 0x840000fc:
+            if dest_address != 0x840000FC:
                 raise NotImplementedError()
-            #return bin(0xFFF78AFA)[2:]
-            return bin(0xfa8af7ff)[2:]
+            # return bin(0xFFF78AFA)[2:]
+            return bin(0xFA8AF7FF)[2:]
 
             # Max allowed shellcode size = 0x840001fe - 0x840000fc = 0x102
 
             dest_offset = (dest_address - address - 8) >> 2
-            print(f'address {hex(address)}')
-            print(f'dest_address {hex(dest_address)}')
-            print(f'dest_offset {hex(dest_offset)}')
-            #dest_offset_str = int_to_bits_with_width(dest_offset >> 2, 24)
-            #dest_offset = int(dest_offset_str, 2)
-            #dest_offset = dest_offset(int(dest_offset, 2), len(binary_string))
-            #dest_offset = twos_complement()
-            #if dest_offset <= 0:
+            print(f"address {hex(address)}")
+            print(f"dest_address {hex(dest_address)}")
+            print(f"dest_offset {hex(dest_offset)}")
+            # dest_offset_str = int_to_bits_with_width(dest_offset >> 2, 24)
+            # dest_offset = int(dest_offset_str, 2)
+            # dest_offset = dest_offset(int(dest_offset, 2), len(binary_string))
+            # dest_offset = twos_complement()
+            # if dest_offset <= 0:
             #    # Negative offsets are actually allowed, but are unhandled for now
             #    raise ValueError(f'Expected a positive offset')
             link = "1" if mnemonic == "bl" else "0"
             return "{cond}101{link}{offset}".format(
-                cond="1111",
-                link=link,
-                offset=int_to_bits_with_width(dest_offset, 24)
+                cond="1111", link=link, offset=int_to_bits_with_width(dest_offset, 24)
             )
     raise NotImplementedError(mnemonic)
 
 
 def bitstring_to_bytes(s: str) -> bytes:
     # Ref: https://stackoverflow.com/questions/32675679/convert-binary-string-to-bytearray-in-python-3
-    return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='little')
+    return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder="little")
 
 
 def _assemble_to_bitstring(format: InstrFormat, address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -> str:
-    return TotalEnumMapping({
-        InstrFormat.Thumb: lambda: assemble_thumb(address, mnemonic, ops),
-        InstrFormat.Arm: lambda: assemble_arm(address, mnemonic, ops),
-    })[format]()
+    return TotalEnumMapping(
+        {
+            InstrFormat.Thumb: lambda: assemble_thumb(address, mnemonic, ops),
+            InstrFormat.Arm: lambda: assemble_arm(address, mnemonic, ops),
+        }
+    )[format]()
 
 
 def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
@@ -238,14 +232,15 @@ def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
     ops_str = " ".join(parts[1:])
     ops = ops_str.split(", ")
     print(f'mnemonic: "{mnemonic}", ops: {ops}')
-    ret= bitstring_to_bytes(_assemble_to_bitstring(instr.format, address, mnemonic, ops))
+    ret = bitstring_to_bytes(_assemble_to_bitstring(instr.format, address, mnemonic, ops))
     import binascii
+
     # 16F0F2F9
     # 503407fb
-    print(f'Assembled {binascii.hexlify(ret)}')
+    print(f"Assembled {binascii.hexlify(ret)}")
     return ret
 
 
-if __name__ == '__main__':
-    assert assemble(VirtualMemoryPointer(0x84015cba), Instr.thumb("b #0x84015cc0")) == bytes([0x01, 0xe0])
-    assert assemble(VirtualMemoryPointer(0x8400df5a), Instr.thumb("mov r0, r5")) == bytes([0x28, 0x46])
+if __name__ == "__main__":
+    assert assemble(VirtualMemoryPointer(0x84015CBA), Instr.thumb("b #0x84015cc0")) == bytes([0x01, 0xE0])
+    assert assemble(VirtualMemoryPointer(0x8400DF5A), Instr.thumb("mov r0, r5")) == bytes([0x28, 0x46])

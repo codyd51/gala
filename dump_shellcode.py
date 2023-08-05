@@ -1,6 +1,7 @@
-from pathlib import Path
-from strongarm.macho import MachoParser
 import argparse
+from pathlib import Path
+
+from strongarm.macho import MachoParser
 
 
 def dump_text_section(input_file: Path) -> bytes:
@@ -20,14 +21,14 @@ def main():
     parser.add_argument("object_file_path")
     parser.add_argument("output_path")
     args = parser.parse_args()
-    
+
     # object_file_path = Path(__file__).parent / "payload"
     object_file_path = Path(args.object_file_path)
     output_file_path = Path(args.output_path)
-    print(f'Object path: {object_file_path}')
-    print(f'Output path: {output_file_path}')
+    print(f"Object path: {object_file_path}")
+    print(f"Output path: {output_file_path}")
     dump_text_section_to_file(object_file_path, output_file_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

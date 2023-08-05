@@ -6,7 +6,7 @@ import sys
 from collections.abc import Collection
 from enum import Enum
 from pathlib import Path
-from typing import TypeVar, Mapping, Set, Iterator, Any
+from typing import Any, Iterator, Mapping, Set, TypeVar
 
 from more_itertools import all_equal
 
@@ -20,7 +20,7 @@ class TotalEnumMapping(Mapping[_EnumType, _MapValueType]):
     """
 
     def __init__(
-            self, enum_mapping: dict[_EnumType, _MapValueType], omitted_variants: list[_EnumType] | None = None
+        self, enum_mapping: dict[_EnumType, _MapValueType], omitted_variants: list[_EnumType] | None = None
     ) -> None:
         # Sanity check - ensure all keys in the enum are the same type
         keys = list(enum_mapping.keys())
@@ -82,19 +82,19 @@ def run_and_capture_output_and_check(cmd_list: list[str], cwd: Path = None) -> b
 
 def hexdump(src: bytes) -> None:
     length = 16
-    sep = '.'
-    filter = ''.join([(len(repr(chr(x))) == 3) and chr(x) or sep for x in range(256)])
+    sep = "."
+    filter = "".join([(len(repr(chr(x))) == 3) and chr(x) or sep for x in range(256)])
     lines = []
     for c in range(0, len(src), length):
-        chars = src[c: c + length]
-        hex_ = ''
+        chars = src[c : c + length]
+        hex_ = ""
         for word in range(0, len(chars), 4):
             for j in range(0, 4):
                 hex_ += f"{chars[word + j]:02x}"
-            hex_ += ' '
+            hex_ += " "
 
-        printable = ''.join(['{}'.format((x <= 127 and filter[x]) or sep) for x in chars])
-        lines.append(f'{c:08x}: {hex_}  {printable}')
+        printable = "".join(["{}".format((x <= 127 and filter[x]) or sep) for x in chars])
+        lines.append(f"{c:08x}: {hex_}  {printable}")
     for line in lines:
         print(line)
 
@@ -102,4 +102,4 @@ def hexdump(src: bytes) -> None:
 def chunks(lst: Collection[Any], n: int) -> Iterator[Collection[Any]]:
     """Yield successive n-sized chunks from lst"""
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]

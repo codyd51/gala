@@ -5,8 +5,9 @@ import usb
 import usb.core
 
 from device import DeviceMode, acquire_device, acquire_device_with_timeout
-from os_build import OsBuildEnum, ImageType
-from patcher import regenerate_patched_images, IpswPatcherConfig, generate_patched_ipsw
+from os_build import ImageType, OsBuildEnum
+from patcher import (IpswPatcherConfig, generate_patched_ipsw,
+                     regenerate_patched_images)
 from recompile_payloads import recompile_payloads
 from securerom import execute_securerom_payload
 from utils import run_and_check
@@ -22,7 +23,7 @@ def boot_device(patcher_config: IpswPatcherConfig):
     # Run our payload in SecureROM on a connected DFU device
     securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
     securerom_shellcode = securerom_shellcode_path.read_bytes()
-    print(f'SecureROM shellcode length: {len(securerom_shellcode)}')
+    print(f"SecureROM shellcode length: {len(securerom_shellcode)}")
 
     execute_securerom_payload(securerom_shellcode)
 
@@ -34,7 +35,7 @@ def boot_device(patcher_config: IpswPatcherConfig):
     ibss_path = image_types_to_paths[ImageType.iBSS]
     with acquire_device_with_timeout(DeviceMode.DFU, timeout=3) as dfu_device:
         # Send the iBSS
-        print(f'Sending {ibss_path.name} to DFU device...')
+        print(f"Sending {ibss_path.name} to DFU device...")
         dfu_device.upload_file(ibss_path)
 
     # Give the iBSS a moment to come up cleanly
@@ -63,19 +64,23 @@ def boot_device(patcher_config: IpswPatcherConfig):
     # Give the iBEC a moment to come up cleanly
     time.sleep(3)
     with acquire_device_with_timeout(DeviceMode.Recovery) as recovery_device:
-        print(f'Device is now running iBEC {recovery_device}')
+        print(f"Device is now running iBEC {recovery_device}")
         # Set the boot logo again
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
         recovery_device.send_command("bgcolor 0 128 255")
 
         # Upload the device tree, ramdisk, and kernelcache
-        recovery_device.upload_file(Path("/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"))
+        recovery_device.upload_file(
+            Path(
+                "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"
+            )
+        )
         recovery_device.send_command("devicetree")
         time.sleep(2)
 
         if patcher_config.boot_to_restore_ramdisk:
-            print('Sending restore ramdisk...')
+            print("Sending restore ramdisk...")
             recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
             recovery_device.send_command("ramdisk")
 
@@ -103,5 +108,5 @@ def main():
     boot_device(patcher_config)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

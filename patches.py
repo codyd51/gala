@@ -10,12 +10,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
-from strongarm.macho import MachoParser, VirtualMemoryPointer, ArchitectureNotSupportedError
+from capstone import CS_ARCH_ARM, CS_MODE_THUMB, Cs
+from strongarm.macho import (ArchitectureNotSupportedError, MachoParser,
+                             VirtualMemoryPointer)
 
 from assemble import Instr, assemble
-from os_build import OsBuildEnum, ImageType
-from utils import run_and_check, run_and_capture_output_and_check
+from os_build import ImageType, OsBuildEnum
+from utils import run_and_capture_output_and_check, run_and_check
 
 
 @dataclass
@@ -34,7 +35,13 @@ class Function:
 
 class Patch(ABC):
     @abstractmethod
-    def apply(self, patcher_config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
+    def apply(
+        self,
+        patcher_config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
+    ) -> None:
         ...
 
 
@@ -53,6 +60,7 @@ class InstructionPatch(Patch):
     by the original instructions (i.e. ensure the patch writer doesn't accidentally write out of bounds from what they
     were expecting).
     """
+
     function_name: str
     address: VirtualMemoryPointer
     orig_instructions: list[Instr]
@@ -61,43 +69,49 @@ class InstructionPatch(Patch):
 
     @classmethod
     def shellcode(cls, addr: int) -> InstructionPatch:
-        shellcode_addr = 0x8057a314
+        shellcode_addr = 0x8057A314
         branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return cls(
-            function_name='',
+            function_name="",
             address=VirtualMemoryPointer(addr),
             orig_instructions=[],
-            patched_instructions=[branch_to_shellcode]
+            patched_instructions=[branch_to_shellcode],
         )
 
     @classmethod
     def shellcode2(cls, shellcode_addr: int, addr: int) -> InstructionPatch:
         branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return cls(
-            function_name='',
+            function_name="",
             address=VirtualMemoryPointer(addr),
             orig_instructions=[],
-            patched_instructions=[branch_to_shellcode]
+            patched_instructions=[branch_to_shellcode],
         )
 
     @classmethod
     def quick(cls, addr: int, new_instr: Instr | list[Instr], expected_length: int | None = None) -> InstructionPatch:
         return cls(
-            function_name='',
+            function_name="",
             address=VirtualMemoryPointer(addr),
             orig_instructions=[],
             patched_instructions=[new_instr] if isinstance(new_instr, Instr) else new_instr,
             expected_length=expected_length,
         )
 
-    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, data: bytearray) -> None:
+    def apply(
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        data: bytearray,
+    ) -> None:
         print()
-        #function = patch.function
-        #print(f'Patching {function.name}:')
-        print(f'Applying patch at {self.address}')
-        print(f'    {self.address} {self.orig_instructions}')
-        print(f'   Patch ----> {self.patched_instructions}')
-        #if len(patch.orig_instructions) != len(patch.patched_instructions):
+        # function = patch.function
+        # print(f'Patching {function.name}:')
+        print(f"Applying patch at {self.address}")
+        print(f"    {self.address} {self.orig_instructions}")
+        print(f"   Patch ----> {self.patched_instructions}")
+        # if len(patch.orig_instructions) != len(patch.patched_instructions):
         #    raise ValueError(f'Expected to have the same number of instructions in the pre- and post-patch state')
 
         cs = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
@@ -108,25 +122,29 @@ class InstructionPatch(Patch):
         try:
             macho_parser = MachoParser(decrypted_image_path)
             if macho_parser.is_magic_supported():
-                print(f'Applying instruction patch to a Mach-O')
+                print(f"Applying instruction patch to a Mach-O")
                 binary = macho_parser.get_armv7_slice()
                 patch_file_offset = binary.file_offset_for_virtual_address(self.address)
             else:
                 raise ArchitectureNotSupportedError()
         except ArchitectureNotSupportedError:
-            print(f'Applying instruction patch to a raw binary')
+            print(f"Applying instruction patch to a raw binary")
             patch_file_offset = self.address - image_base_address
 
-        instr_bytes = data[patch_file_offset:patch_file_offset + region_size]
+        instr_bytes = data[patch_file_offset : patch_file_offset + region_size]
         actual_orig_instructions = list(cs.disasm(instr_bytes, self.address)) if len(self.orig_instructions) else []
 
         # Validate the original instructions are what we expect
         if len(actual_orig_instructions) != len(self.orig_instructions):
-            raise ValueError(f'Expected to find {len(self.orig_instructions)} instructions, but found {len(actual_orig_instructions)}: {self.orig_instructions}, {actual_orig_instructions}')
+            raise ValueError(
+                f"Expected to find {len(self.orig_instructions)} instructions, but found {len(actual_orig_instructions)}: {self.orig_instructions}, {actual_orig_instructions}"
+            )
         for actual_orig_instruction, expected_orig_instruction in zip(actual_orig_instructions, self.orig_instructions):
-            actual_orig_instruction_str = f'{actual_orig_instruction.mnemonic} {actual_orig_instruction.op_str}'
+            actual_orig_instruction_str = f"{actual_orig_instruction.mnemonic} {actual_orig_instruction.op_str}"
             if actual_orig_instruction_str != expected_orig_instruction.value:
-                raise ValueError(f"Expected to disassemble \"{expected_orig_instruction}\", but found \"{actual_orig_instruction_str}\"")
+                raise ValueError(
+                    f'Expected to disassemble "{expected_orig_instruction}", but found "{actual_orig_instruction_str}"'
+                )
 
         # Assemble the patched instructions
         patched_instr_address = self.address
@@ -146,10 +164,10 @@ class InstructionPatch(Patch):
             else:
                 assembled_instr_str = f"{disassembled_instr.mnemonic} {disassembled_instr.op_str}"
             if assembled_instr_str != patched_instr.value:
-                raise ValueError(f"Expected to assemble \"{patched_instr.value}\", but assembled \"{assembled_instr_str}\"")
+                raise ValueError(f'Expected to assemble "{patched_instr.value}", but assembled "{assembled_instr_str}"')
 
             # Apply the patch to the binary
-            data[patch_file_offset:patch_file_offset + assembled_bytes_len] = assembled_bytes
+            data[patch_file_offset : patch_file_offset + assembled_bytes_len] = assembled_bytes
 
             # Iterate to the next instruction location
             patched_instr_address += assembled_bytes_len
@@ -157,7 +175,7 @@ class InstructionPatch(Patch):
             patch_length += assembled_bytes_len
 
         if self.expected_length and patch_length != self.expected_length:
-            raise ValueError(f'Expected a patch of {self.expected_length} bytes, but patch was {patch_length} bytes!')
+            raise ValueError(f"Expected a patch of {self.expected_length} bytes, but patch was {patch_length} bytes!")
 
 
 @dataclass
@@ -165,29 +183,36 @@ class BlobPatch(Patch):
     """An 'unstructured' patch that allows the patch writer to drop raw bytes at a given location, with no validation
     on what's being overwritten or the contents of the patch.
     """
+
     address: VirtualMemoryPointer
     new_content: bytes
 
-    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
-        print(f'Applying unstructured patch of {len(self.new_content)} bytes at {self.address}')
+    def apply(
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
+    ) -> None:
+        print(f"Applying unstructured patch of {len(self.new_content)} bytes at {self.address}")
         # hexdump(patch.new_content)
         try:
             macho_parser = MachoParser(decrypted_image_path)
             if macho_parser.is_magic_supported():
-                print(f'Applying blob patch to a Mach-O')
+                print(f"Applying blob patch to a Mach-O")
                 binary = macho_parser.get_armv7_slice()
                 patch_file_offset = binary.file_offset_for_virtual_address(self.address)
             else:
                 raise ArchitectureNotSupportedError()
         except ArchitectureNotSupportedError:
-            print(f'Applying instruction patch to a raw binary')
+            print(f"Applying instruction patch to a raw binary")
             patch_file_offset = self.address - image_base_address
-        #patch_file_offset = self.address - image_base_address
+        # patch_file_offset = self.address - image_base_address
 
         if patch_file_offset < 0 or patch_file_offset >= len(image_data):
-            raise ValueError(f'Invalid offset {patch_file_offset}')
-        print(f'File offset for {self.new_content} is {hex(patch_file_offset)}')
-        image_data[patch_file_offset:patch_file_offset + len(self.new_content)] = self.new_content
+            raise ValueError(f"Invalid offset {patch_file_offset}")
+        print(f"File offset for {self.new_content} is {hex(patch_file_offset)}")
+        image_data[patch_file_offset : patch_file_offset + len(self.new_content)] = self.new_content
 
 
 @dataclass
@@ -196,38 +221,49 @@ class PatchSet(Patch):
     This has no difference in functionality to declaring top-level patches individually, and serves purely as an
     organizational tool.
     """
+
     name: str
     patches: list[Patch]
 
-    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
-        print(f'Applying patch set {self.name}...')
+    def apply(
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
+    ) -> None:
+        print(f"Applying patch set {self.name}...")
         for patch in self.patches:
             patch.apply(config, decrypted_image_path, image_base_address, image_data)
 
 
 @contextmanager
 def _mount_dmg_old(path: Path) -> Iterable[Path]:
-    print(f'Mounting {path.name}')
-    hdiutil_output_raw = run_and_capture_output_and_check([
-        "hdiutil",
-        "attach",
-        "-plist",
-        path.as_posix(),
-    ])
+    print(f"Mounting {path.name}")
+    hdiutil_output_raw = run_and_capture_output_and_check(
+        [
+            "hdiutil",
+            "attach",
+            "-plist",
+            path.as_posix(),
+        ]
+    )
     hdiutil_output = plistlib.loads(hdiutil_output_raw)
-    mounted_dmg_root = Path(hdiutil_output['system-entities'][0]['mount-point'])
-    print(f'Mounted to {mounted_dmg_root.as_posix()}')
+    mounted_dmg_root = Path(hdiutil_output["system-entities"][0]["mount-point"])
+    print(f"Mounted to {mounted_dmg_root.as_posix()}")
 
     try:
         yield mounted_dmg_root
     finally:
         # Unmount the disk
-        run_and_check([
-            "hdiutil",
-            "detach",
-            mounted_dmg_root.as_posix(),
-        ])
-        print(f'Unmounted {path.name}')
+        run_and_check(
+            [
+                "hdiutil",
+                "detach",
+                mounted_dmg_root.as_posix(),
+            ]
+        )
+        print(f"Unmounted {path.name}")
 
 
 @dataclass
@@ -240,7 +276,13 @@ class RamdiskPatch:
 class RamdiskPatchSet(Patch):
     patches: list[RamdiskPatch]
 
-    def apply(self, config: IpswPatcherConfig, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
+    def apply(
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
             decrypted_ramdisk_with_dmg_extension = temp_dir / "ramdisk.dmg"
@@ -248,17 +290,19 @@ class RamdiskPatchSet(Patch):
 
             # Resize the ramdisk so we have room to write to it
             # Ref: https://apple.stackexchange.com/questions/60613
-            run_and_check([
-                "hdiutil",
-                "resize",
-                "-size",
-                "20M",
-                decrypted_ramdisk_with_dmg_extension.as_posix(),
-            ])
+            run_and_check(
+                [
+                    "hdiutil",
+                    "resize",
+                    "-size",
+                    "20M",
+                    decrypted_ramdisk_with_dmg_extension.as_posix(),
+                ]
+            )
 
             if True:
                 with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
-                    print(f'Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}')
+                    print(f"Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}")
                     for patch in self.patches:
                         patch.apply(config, mounted_dmg_root)
                 image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
@@ -266,28 +310,32 @@ class RamdiskPatchSet(Patch):
     @staticmethod
     @contextmanager
     def _mount_dmg(path: Path) -> Iterable[Path]:
-        print(f'Mounting {path.name}')
+        print(f"Mounting {path.name}")
         with tempfile.TemporaryDirectory() as mount_dir_raw:
             mount_point = Path(mount_dir_raw) / "dmg_mount_point"
-            run_and_check([
-                "hdiutil",
-                "attach",
-                "-mountpoint",
-                f"{mount_point.as_posix()}/",
-                path.as_posix(),
-            ])
-            print(f'Mounted to {mount_point.as_posix()}')
+            run_and_check(
+                [
+                    "hdiutil",
+                    "attach",
+                    "-mountpoint",
+                    f"{mount_point.as_posix()}/",
+                    path.as_posix(),
+                ]
+            )
+            print(f"Mounted to {mount_point.as_posix()}")
 
             try:
                 yield mount_point
             finally:
                 # Unmount the disk
-                run_and_check([
-                    "hdiutil",
-                    "detach",
-                    mount_point.as_posix(),
-                ])
-                print(f'Unmounted {path.name}')
+                run_and_check(
+                    [
+                        "hdiutil",
+                        "detach",
+                        mount_point.as_posix(),
+                    ]
+                )
+                print(f"Unmounted {path.name}")
 
 
 @dataclass
@@ -295,14 +343,16 @@ class RamdiskApplyTarPatch(RamdiskPatch):
     tar_path: Path
 
     def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
-        print(f'Applying tar {self.tar_path} to ramdisk...')
-        run_and_check([
-            'tar',
-            '-xvf',
-            '/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar',
-            '-C',
-            mounted_ramdisk_path.as_posix(),
-        ])
+        print(f"Applying tar {self.tar_path} to ramdisk...")
+        run_and_check(
+            [
+                "tar",
+                "-xvf",
+                "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar",
+                "-C",
+                mounted_ramdisk_path.as_posix(),
+            ]
+        )
 
 
 @dataclass
@@ -313,7 +363,7 @@ class RamdiskBinaryPatch(RamdiskPatch):
     inner_patch: Patch
 
     def apply(self, config: IpswPatcherConfig, ramdisk_root: Path) -> None:
-        print(f'Applying ramdisk patch to binary {self.binary_path}')
+        print(f"Applying ramdisk patch to binary {self.binary_path}")
         # Find the binary
         qualified_binary_path = ramdisk_root / self.binary_path
         if not qualified_binary_path.exists():
@@ -321,27 +371,31 @@ class RamdiskBinaryPatch(RamdiskPatch):
 
         # Read the binary base address with strongarm
         virtual_base = MachoParser(qualified_binary_path).get_armv7_slice().get_virtual_base()
-        print(f'Found virtual base for {self.binary_path.name}: {virtual_base}')
+        print(f"Found virtual base for {self.binary_path.name}: {virtual_base}")
 
         # Apply the patch to the binary
         patched_binary_data = bytearray(qualified_binary_path.read_bytes())
         self.inner_patch.apply(config, qualified_binary_path, virtual_base, patched_binary_data)
-        print(f'Writing patched binary...')
+        print(f"Writing patched binary...")
 
         qualified_binary_path.write_bytes(patched_binary_data)
 
         # Run ldid
         if False:
-            run_and_check([
-                #"/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid",
-                #"/Users/philliptennen/Downloads/sbigner-ldid",
-                "/Users/philliptennen/Documents/Jailbreak/tools/proscurus-ldid/ldid",
-                "-S",
-                qualified_binary_path.as_posix(),
-            ])
+            run_and_check(
+                [
+                    # "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid",
+                    # "/Users/philliptennen/Downloads/sbigner-ldid",
+                    "/Users/philliptennen/Documents/Jailbreak/tools/proscurus-ldid/ldid",
+                    "-S",
+                    qualified_binary_path.as_posix(),
+                ]
+            )
 
-    def apply_new(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
-        print(f'Applying ramdisk patch to binary {self.binary_path}')
+    def apply_new(
+        self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray
+    ) -> None:
+        print(f"Applying ramdisk patch to binary {self.binary_path}")
         # Mount the ramdisk
         # (Note that we need to serialize the current ramdisk data to a .dmg, so we keep any previous patches we've applied
         with tempfile.TemporaryDirectory() as temp_dir_raw:
@@ -349,12 +403,14 @@ class RamdiskBinaryPatch(RamdiskPatch):
             patched_ramdisk = temp_dir / "ramdisk.patched.dmg"
             patched_ramdisk.write_bytes(image_data)
 
-            run_and_check([
-                "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                patched_ramdisk.as_posix(),
-                "grow",
-                "24002560",
-            ])
+            run_and_check(
+                [
+                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
+                    patched_ramdisk.as_posix(),
+                    "grow",
+                    "24002560",
+                ]
+            )
 
             self._apply_patch(patched_ramdisk)
 
@@ -367,18 +423,20 @@ class RamdiskBinaryPatch(RamdiskPatch):
             tempdir = Path(tempdir_raw)
             extracted_binary_path = tempdir / f"extracted_{self.binary_path.name}"
 
-            run_and_check([
-                "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                ramdisk_root.as_posix(),
-                "extract",
-                binary_path.as_posix(),
-                extracted_binary_path.as_posix(),
-            ])
-            print(f'Extracted {binary_path.as_posix()} to {extracted_binary_path.as_posix()}')
+            run_and_check(
+                [
+                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
+                    ramdisk_root.as_posix(),
+                    "extract",
+                    binary_path.as_posix(),
+                    extracted_binary_path.as_posix(),
+                ]
+            )
+            print(f"Extracted {binary_path.as_posix()} to {extracted_binary_path.as_posix()}")
 
             # Read the binary base address with strongarm
             virtual_base = MachoParser(extracted_binary_path).get_armv7_slice().get_virtual_base()
-            print(f'Found virtual base for {binary_path.name}: {virtual_base}')
+            print(f"Found virtual base for {binary_path.name}: {virtual_base}")
 
             # Apply the patch to the binary
             patched_binary_data = bytearray(extracted_binary_path.read_bytes())
@@ -387,30 +445,38 @@ class RamdiskBinaryPatch(RamdiskPatch):
             extracted_binary_path.write_bytes(patched_binary_data)
             # Run ldid
             if False:
-                run_and_check([
-                    "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid2",
-                    "-S",
+                run_and_check(
+                    [
+                        "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid2",
+                        "-S",
+                        extracted_binary_path.as_posix(),
+                    ]
+                )
+
+            print(f"Writing patched binary...")
+            run_and_check(
+                [
+                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
+                    ramdisk_root.as_posix(),
+                    "add",
                     extracted_binary_path.as_posix(),
-                ])
+                    binary_path.as_posix(),
+                ]
+            )
+            run_and_check(
+                [
+                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
+                    ramdisk_root.as_posix(),
+                    "chmod",
+                    "755",
+                    binary_path.as_posix(),
+                ]
+            )
 
-            print(f'Writing patched binary...')
-            run_and_check([
-                "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                ramdisk_root.as_posix(),
-                "add",
-                extracted_binary_path.as_posix(),
-                binary_path.as_posix(),
-            ])
-            run_and_check([
-                "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                ramdisk_root.as_posix(),
-                "chmod",
-                "755",
-                binary_path.as_posix(),
-            ])
-
-    def apply2(self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray) -> None:
-        print(f'Applying ramdisk patch to binary {self.binary_path}')
+    def apply2(
+        self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray
+    ) -> None:
+        print(f"Applying ramdisk patch to binary {self.binary_path}")
         # Mount the ramdisk
         # hdiutil (annoyingly) requires that the ramdisk end in .dmg instead of .dmg.decrypted,
         # so create a temporary copy now with the correct extension
@@ -422,13 +488,15 @@ class RamdiskBinaryPatch(RamdiskPatch):
             # Resize the ramdisk so we have room to write to it
             # Ref: https://apple.stackexchange.com/questions/60613
             # TODO(PT): Shrink the ramdisk again
-            run_and_check([
-                "hdiutil",
-                "resize",
-                "-size",
-                "20M",
-                decrypted_ramdisk_with_dmg_extension.as_posix(),
-            ])
+            run_and_check(
+                [
+                    "hdiutil",
+                    "resize",
+                    "-size",
+                    "20M",
+                    decrypted_ramdisk_with_dmg_extension.as_posix(),
+                ]
+            )
 
             with _mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
                 # Find the binary
@@ -438,12 +506,12 @@ class RamdiskBinaryPatch(RamdiskPatch):
 
                 # Read the binary base address with strongarm
                 virtual_base = MachoParser(qualified_binary_path).get_armv7_slice().get_virtual_base()
-                print(f'Found virtual base for {self.binary_path.name}: {virtual_base}')
+                print(f"Found virtual base for {self.binary_path.name}: {virtual_base}")
 
                 # Apply the patch to the binary
                 patched_binary_data = bytearray(qualified_binary_path.read_bytes())
                 self.inner_patch.apply(qualified_binary_path, virtual_base, patched_binary_data)
-                print(f'Writing patched binary...')
+                print(f"Writing patched binary...")
 
                 patched_file = temp_dir / "patched_binary"
                 patched_file.write_bytes(patched_binary_data)
@@ -452,20 +520,24 @@ class RamdiskBinaryPatch(RamdiskPatch):
 
                 # Run ldid
                 if False:
-                    run_and_check([
-                        "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid2",
-                        "-S",
-                        qualified_binary_path.as_posix(),
-                    ])
+                    run_and_check(
+                        [
+                            "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid2",
+                            "-S",
+                            qualified_binary_path.as_posix(),
+                        ]
+                    )
 
                 # Repack the ramdisk
                 ramdisk_with_edits = Path(temp_dir_raw) / "edited_ramdisk.dmg"
-                run_and_check([
-                    "hdiutil",
-                    "create",
-                    ramdisk_with_edits.as_posix(),
-                    "-srcfolder",
-                    mounted_dmg_root.as_posix(),
-                ])
-                print('abc')
+                run_and_check(
+                    [
+                        "hdiutil",
+                        "create",
+                        ramdisk_with_edits.as_posix(),
+                        "-srcfolder",
+                        mounted_dmg_root.as_posix(),
+                    ]
+                )
+                print("abc")
             image_data[:] = ramdisk_with_edits.read_bytes()

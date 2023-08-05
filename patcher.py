@@ -9,10 +9,9 @@ from typing import Mapping
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
 from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches
-from os_build import OsBuildEnum, KeyRepository, ImageType
-from patches import Function, Patch, IpswPatcherConfig
-from utils import run_and_check, TotalEnumMapping
-
+from os_build import ImageType, KeyRepository, OsBuildEnum
+from patches import Function, IpswPatcherConfig, Patch
+from utils import TotalEnumMapping, run_and_check
 
 JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
 _XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
@@ -20,21 +19,23 @@ _IMAGETOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "imagetool
 
 
 class FunctionRepository:
-    _BUILDS_TO_KNOWN_FUNCTIONS = TotalEnumMapping({
-        OsBuildEnum.iPhone3_1_4_0_8A293: [],
-        OsBuildEnum.iPhone3_1_4_1_8B117: [],
-        OsBuildEnum.iPhone3_1_5_0_9A334: [],
-        OsBuildEnum.iPhone3_1_6_1_10B144: [
-            Function(
-                name="image3_load_validate_signature",
-                address=VirtualMemoryPointer(0x8400568e),
-            ),
-            Function(
-                name="main_ibss",
-                address=VirtualMemoryPointer(0x840008c8),
-            ),
-        ],
-    })
+    _BUILDS_TO_KNOWN_FUNCTIONS = TotalEnumMapping(
+        {
+            OsBuildEnum.iPhone3_1_4_0_8A293: [],
+            OsBuildEnum.iPhone3_1_4_1_8B117: [],
+            OsBuildEnum.iPhone3_1_5_0_9A334: [],
+            OsBuildEnum.iPhone3_1_6_1_10B144: [
+                Function(
+                    name="image3_load_validate_signature",
+                    address=VirtualMemoryPointer(0x8400568E),
+                ),
+                Function(
+                    name="main_ibss",
+                    address=VirtualMemoryPointer(0x840008C8),
+                ),
+            ],
+        }
+    )
 
     @classmethod
     def function_with_name(cls, os_build: OsBuildEnum, name: str) -> Function:
@@ -45,31 +46,41 @@ class FunctionRepository:
 
 class PatchRepository:
     @classmethod
-    def builds_to_image_patches(cls, config: IpswPatcherConfig) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
+    def builds_to_image_patches(
+        cls, config: IpswPatcherConfig
+    ) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
         # PT: This needs to be a method, rather than a class variable, because otherwise it
         # captures file data **when the class is defined/interpreted**,
         # which is before we've rebuilt the shellcode image with new code! Annoying
-        return TotalEnumMapping({
-            OsBuildEnum.iPhone3_1_4_0_8A293: get_iphone_3_1_4_0_8a293_patches(config),
-            OsBuildEnum.iPhone3_1_4_1_8B117: ImageType.binary_types_mapping({
-                ImageType.iBSS: [],
-                ImageType.iBEC: [],
-                ImageType.KernelCache: [],
-                ImageType.RestoreRamdisk: [],
-            }),
-            OsBuildEnum.iPhone3_1_5_0_9A334: ImageType.binary_types_mapping({
-                ImageType.iBSS: [],
-                ImageType.iBEC: [],
-                ImageType.KernelCache: [],
-                ImageType.RestoreRamdisk: [],
-            }),
-            OsBuildEnum.iPhone3_1_6_1_10B144: ImageType.binary_types_mapping({
-                ImageType.iBSS: [],
-                ImageType.iBEC: [],
-                ImageType.KernelCache: [],
-                ImageType.RestoreRamdisk: [],
-            }),
-        })
+        return TotalEnumMapping(
+            {
+                OsBuildEnum.iPhone3_1_4_0_8A293: get_iphone_3_1_4_0_8a293_patches(config),
+                OsBuildEnum.iPhone3_1_4_1_8B117: ImageType.binary_types_mapping(
+                    {
+                        ImageType.iBSS: [],
+                        ImageType.iBEC: [],
+                        ImageType.KernelCache: [],
+                        ImageType.RestoreRamdisk: [],
+                    }
+                ),
+                OsBuildEnum.iPhone3_1_5_0_9A334: ImageType.binary_types_mapping(
+                    {
+                        ImageType.iBSS: [],
+                        ImageType.iBEC: [],
+                        ImageType.KernelCache: [],
+                        ImageType.RestoreRamdisk: [],
+                    }
+                ),
+                OsBuildEnum.iPhone3_1_6_1_10B144: ImageType.binary_types_mapping(
+                    {
+                        ImageType.iBSS: [],
+                        ImageType.iBEC: [],
+                        ImageType.KernelCache: [],
+                        ImageType.RestoreRamdisk: [],
+                    }
+                ),
+            }
+        )
 
     @classmethod
     def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType, config: IpswPatcherConfig) -> list[Patch]:
@@ -123,7 +134,7 @@ def apply_patches(
     output: Path,
     patches: list[Patch],
 ):
-    print(f'Applying {len(patches)} patches to {image_type.name}, output={output}...')
+    print(f"Applying {len(patches)} patches to {image_type.name}, output={output}...")
     # TODO(PT): The base address may need to vary based on OS version as well as image type?
     # TODO(PT): The base address should perhaps be renamed to something like `a_priori_load_address`
     # For Mach-O's, the MachO contains the load address. We just need to know it for objects like the iBSS and iBEC, which are 'raw'
@@ -136,7 +147,7 @@ def apply_patches(
         patch.apply(patcher_config, input, base_address, patched_bytes)
 
     if patched_bytes != input_bytes:
-        print(f'Bytes successfully modified?')
+        print(f"Bytes successfully modified?")
 
     output.write_bytes(patched_bytes)
 
@@ -146,7 +157,7 @@ def patch_decrypted_image(
     image_type: ImageType,
     patcher_config: IpswPatcherConfig,
     decrypted_image_path: Path,
-    patched_image_path: Path
+    patched_image_path: Path,
 ):
     patches = PatchRepository.patches_for_image(os_build, image_type, patcher_config)
     print(image_type, patches)
@@ -162,7 +173,7 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
     ipsw = JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
     encrypted_image = ipsw / image_ipsw_subpath
     if not encrypted_image.exists():
-        raise ValueError(f'Expected to find an encrypted image at {encrypted_image}')
+        raise ValueError(f"Expected to find an encrypted image at {encrypted_image}")
 
     output_dir = JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -193,20 +204,17 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
         patched_image = output_dir / f"{file_name}.patched"
         patched_image.unlink(missing_ok=True)
         patch_decrypted_image(os_build, image_type, config, decrypted_image, patched_image)
-        print(f'Wrote patched {image_type.name} to {patched_image.as_posix()}')
+        print(f"Wrote patched {image_type.name} to {patched_image.as_posix()}")
 
         reencrypted_image = output_dir / f"{file_name}.reencrypted"
         encrypt_img3(patched_image, reencrypted_image, encrypted_image, key_pair.key, key_pair.iv)
-        print(f'Wrote re-encrypted {image_type.name} to {reencrypted_image.as_posix()}')
+        print(f"Wrote re-encrypted {image_type.name} to {reencrypted_image.as_posix()}")
 
     return reencrypted_image
 
 
 def regenerate_patched_images(config: IpswPatcherConfig) -> Mapping[ImageType, Path]:
-    return TotalEnumMapping({
-        image_type: patch_image(config, image_type)
-        for image_type in ImageType
-    })
+    return TotalEnumMapping({image_type: patch_image(config, image_type) for image_type in ImageType})
 
 
 def generate_patched_ipsw(os_build: OsBuildEnum, image_types_to_paths: Mapping[ImageType, Path]) -> None:
@@ -226,17 +234,17 @@ def generate_patched_ipsw(os_build: OsBuildEnum, image_types_to_paths: Mapping[I
     for file in unzipped_patched_ipsw.rglob("**/*"):
         print(file)
         if file.name == ".DS_Store":
-            print(f'unlinking {file}')
+            print(f"unlinking {file}")
             file.unlink()
 
     # Zip it
     zipped_patched_ipsw = output_dir / "patched.ipsw.zip"
     zipped_patched_ipsw_without_extension = output_dir / "patched.ipsw"
-    shutil.make_archive(zipped_patched_ipsw_without_extension.as_posix(), 'zip', unzipped_patched_ipsw.as_posix())
+    shutil.make_archive(zipped_patched_ipsw_without_extension.as_posix(), "zip", unzipped_patched_ipsw.as_posix())
     shutil.move(zipped_patched_ipsw, zipped_patched_ipsw_without_extension)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     os_build = OsBuildEnum.iPhone3_1_4_0_8A293
     image_types_to_paths = regenerate_patched_images(
         IpswPatcherConfig(
