@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import shutil
 from copy import copy
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
+from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT
 from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches
 from os_build import ImageType, KeyRepository, OsBuildEnum
 from patches import Function, IpswPatcherConfig, Patch
 from utils import TotalEnumMapping, run_and_check
 
-JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
 _XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
 _IMAGETOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "imagetool"
 
@@ -170,12 +169,12 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
 
-    ipsw = JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
+    ipsw = JAILBREAK_ROOT / "unzipped_ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
     encrypted_image = ipsw / image_ipsw_subpath
     if not encrypted_image.exists():
         raise ValueError(f"Expected to find an encrypted image at {encrypted_image}")
 
-    output_dir = JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
+    output_dir = PATCHED_IMAGES_ROOT / os_build.unescaped_name
     output_dir.mkdir(parents=True, exist_ok=True)
     reencrypted_image = output_dir / f"{file_name}.reencrypted"
 
@@ -242,15 +241,3 @@ def generate_patched_ipsw(os_build: OsBuildEnum, image_types_to_paths: Mapping[I
     zipped_patched_ipsw_without_extension = output_dir / "patched.ipsw"
     shutil.make_archive(zipped_patched_ipsw_without_extension.as_posix(), "zip", unzipped_patched_ipsw.as_posix())
     shutil.move(zipped_patched_ipsw, zipped_patched_ipsw_without_extension)
-
-
-if __name__ == "__main__":
-    os_build = OsBuildEnum.iPhone3_1_4_0_8A293
-    image_types_to_paths = regenerate_patched_images(
-        IpswPatcherConfig(
-            os_build=os_build,
-            replacement_pictures={},
-            boot_to_restore_ramdisk=True,
-        )
-    )
-    generate_patched_ipsw(os_build, image_types_to_paths)

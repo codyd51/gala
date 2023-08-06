@@ -68,18 +68,18 @@ def boot_device(patcher_config: IpswPatcherConfig):
         # Set the boot logo again
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
-        recovery_device.send_command("bgcolor 0 128 255")
+        recovery_device.send_command("bgcolor 0 128 128")
 
         # Upload the device tree, ramdisk, and kernelcache
         recovery_device.upload_file(
             Path(
-                "/Users/philliptennen/Documents/Jailbreak/ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"
+                "/Users/philliptennen/Documents/Jailbreak/unzipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"
             )
         )
         recovery_device.send_command("devicetree")
         time.sleep(2)
 
-        if patcher_config.boot_to_restore_ramdisk:
+        if patcher_config.should_boot_to_restore_ramdisk:
             print("Sending restore ramdisk...")
             recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
             recovery_device.send_command("ramdisk")
@@ -102,8 +102,8 @@ def main():
         replacement_pictures={
             ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
         },
-        boot_to_restore_ramdisk=True,
-        boot_args="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3",
+        should_boot_to_restore_ramdisk=False,
+        boot_args="rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3",
     )
     boot_device(patcher_config)
 

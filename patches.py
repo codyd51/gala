@@ -15,6 +15,7 @@ from strongarm.macho import (ArchitectureNotSupportedError, MachoParser,
                              VirtualMemoryPointer)
 
 from assemble import Instr, assemble
+from configuration import PATCHED_IMAGES_ROOT
 from os_build import ImageType, OsBuildEnum
 from utils import run_and_capture_output_and_check, run_and_check
 
@@ -23,7 +24,7 @@ from utils import run_and_capture_output_and_check, run_and_check
 class IpswPatcherConfig:
     os_build: OsBuildEnum
     replacement_pictures: dict[ImageType, Path]
-    boot_to_restore_ramdisk: bool
+    should_boot_to_restore_ramdisk: bool
     boot_args: str
 
 
