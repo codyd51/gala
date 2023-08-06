@@ -395,6 +395,13 @@ class RamdiskBinaryPatch(RamdiskPatch):
 
         qualified_binary_path.write_bytes(patched_binary_data)
 
+        # To aid debugging, also output the patched binary to the working folder
+        # TODO(PT): This needs to be refactored somehow
+        output_dir = PATCHED_IMAGES_ROOT / config.os_build.unescaped_name
+        safe_binary_name = self.binary_path.as_posix().replace("/", "_")
+        saved_binary_path = output_dir / safe_binary_name
+        saved_binary_path.write_bytes(patched_binary_data)
+
         # Run ldid
         if False:
             run_and_check(
