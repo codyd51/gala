@@ -7,7 +7,7 @@ from assemble import Instr
 from os_build import ImageType
 from patches import (BlobPatch, InstructionPatch, IpswPatcherConfig, Patch,
                      PatchSet, RamdiskApplyTarPatch, RamdiskBinaryPatch,
-                     RamdiskPatchSet)
+                     RamdiskPatchSet, RamdiskReplaceFileContentsPatch)
 
 
 def _get_ibss_patches() -> list[Patch]:
@@ -206,7 +206,7 @@ def _get_ibec_patches(boot_args: str) -> list[Patch]:
                 # InstructionPatch.quick(0x5ff0e50a, [Instr.thumb_nop(), Instr.thumb_nop()]),
                 # BlobPatch(address=VirtualMemoryPointer(boot_args_addr), new_content="rd=disk0s1 serial=3 -v\0".encode()),
                 # BlobPatch(address=VirtualMemoryPointer(boot_args_addr), new_content="rd=disk0s1 serial=3 amfi=0xff cs_enforcement_disable=1\0".encode()),
-                # BlobPatch(address=VirtualMemoryPointer(boot_args_addr), new_content="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode()),
+                # BlobPatch(address=VirtualMemoryPointer(boot_args_addr), new_content=f"{boot_args}\0".encode()),
                 # BlobPatch(address=VirtualMemoryPointer(ibec_shellcode_addr), new_content="rd=disk0s1 serial=3 -v\0".encode()),
                 # BlobPatch(address=VirtualMemoryPointer(0x5ff0ecc0), new_content=int(boot_args_addr).to_bytes(4, byteorder="little")),
                 # BlobPatch(address=VirtualMemoryPointer(0x5ff0ecc0), new_content=int(0x5ff19d68).to_bytes(4, byteorder="little")),
@@ -277,7 +277,44 @@ def _get_kernelcache_patches() -> list[Patch]:
 
 
 def _get_restore_ramdisk_patches() -> list[Patch]:
+    restored_patches = RamdiskBinaryPatch(
+        binary_path=Path("usr/local/bin/restored_external"),
+        inner_patch=PatchSet(
+            name="",
+            patches=[
+                # Don't clear effaceable storage
+                #InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # Don't wait for server ASR
+                InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # Don't create partitions
+                #InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # No fixup /var
+                #InstructionPatch.quick(0x000052EC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # No baseband update
+                InstructionPatch.quick(0x00005338, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                #BlobPatch(
+                #    VirtualMemoryPointer(0x0007267C), new_content=int(0x00030E30).to_bytes(4, byteorder="little")
+                #),
+            ],
+        ),
+    )
+    restore_options_plist_patch = RamdiskReplaceFileContentsPatch(
+        file_path=Path("usr/local/share/restore/options.plist"),
+        new_content="""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SystemPartitionSize</key>
+	<integer>1024</integer>
+	<key>CreateFilesystemPartitions</key>
+	<false/>
+</dict>
+</plist>
+""".encode()
+    )
+
     asr_shellcode_addr = 0x1FA60
+    mediakit_shellcode_addr = 0x00032780
     patches = [
         RamdiskApplyTarPatch(
             tar_path=Path(
@@ -290,35 +327,32 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
                 name="",
                 patches=[
                     BlobPatch(
-                        address=VirtualMemoryPointer(asr_shellcode_addr),
+                        address=VirtualMemoryPointer(0x1FA60),
                         new_content=Path(
                             "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_asr/build/shellcode_in_asr_shellcode"
                         ).read_bytes(),
                     ),
+                    #InstructionPatch.quick(0x00017df2, Instr.thumb(f"bl #{hex(asr_shellcode_addr)}")),
                 ],
             ),
         ),
         RamdiskBinaryPatch(
-            binary_path=Path("usr/local/bin/restored_external"),
+            binary_path=Path("System/Library/PrivateFrameworks/MediaKit.framework/MediaKit"),
             inner_patch=PatchSet(
                 name="",
                 patches=[
-                    # Don't clear effaceable storage
-                    InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                    # Don't wait for server ASR
-                    InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                    # Don't create partitions
-                    InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                    # No fixup /var
-                    InstructionPatch.quick(0x000052EC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                    # No baseband update
-                    InstructionPatch.quick(0x00005338, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                     BlobPatch(
-                        VirtualMemoryPointer(0x0007267C), new_content=int(0x00030E30).to_bytes(4, byteorder="little")
+                        address=VirtualMemoryPointer(mediakit_shellcode_addr),
+                        new_content=Path(
+                            "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_mediakit/build/shellcode_in_mediakit_shellcode"
+                        ).read_bytes(),
                     ),
+                    #InstructionPatch.quick(0x0001b1b6, Instr.thumb(f"bl #{hex(mediakit_shellcode_addr)}")),
                 ],
             ),
         ),
+        restored_patches,
+        restore_options_plist_patch,
     ]
     return [RamdiskPatchSet(patches=patches)]
 
