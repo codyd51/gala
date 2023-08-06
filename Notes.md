@@ -231,7 +231,7 @@ copy /mnt1/private/var to /mnt2 failed: 0x
 Mount Data
 SCP rootFS
 Restore to System
-fsck System
+fsck /dev/disk0s1
 Mount /dev/disk0s1
 scp /mnt1/private/var to host
 scp back to /mnt2/
@@ -244,3 +244,114 @@ Reboot
 Restored, don't wipe, don't run asr, don't fixup var
 
 * Need to make sure /private/var still exists?
+
+Saving ramdisk binaries to patched_images/, now with an SSH ramdisk booted I can patch, scp, and rerun ASR to debug. No reboot needed, speedy cycle!
+
+Dec 31 16:21:36 localhost OSInstaller[396]: [RESTORE] erasing disk 'OS X'
+Dec 31 16:21:36 localhost OSInstaller[396]: [RESTORE] erase started
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM ->T+[DMToolBootPreference getPartitionBootability:]: inUDS=0x7fd3db424448=disk0s2=OS X
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM ..T+[DMToolBootPreference getPartitionBootability:]: PMBootable=1            (bootable right now without any further action)
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM ..T+[DMToolBootPreference getPartitionBootability:]: PMBootCapable=0         (bootable if you call MKCFPrepareBootDevice)
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM ..T+[DMToolBootPreference getPartitionBootability:]: PMBootSurgeryRequired=0 (for primitive MBR on BIOS, add boot block and loader)
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM ..T+[DMToolBootPreference getPartitionBootability:]: PMFSSurgeryRequired=0   (for primitive MBR on BIOS, add boot block and loader)
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM ..T+[DMToolBootPreference getPartitionBootability:]: PMNewfsRequired=0       (bootable with MKCFPrep but it will rudely carve)
+Dec 31 16:21:37 localhost diskmanagementd[400]: DM <-T+[DMToolBootPreference getPartitionBootability:]: MKerr=0 out=4=0x4
+Dec 31 16:21:42 localhost OSInstaller[396]: [RESTORE] erase completed
+
+When trying to create a custom `umount`:
+ld: warning: Csu support file -lcrt1.o not found, changing to target iOS 7.0 where it is not needed
+ld: library not found for -lgcc_s.1
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+But then it's present on-device / in the ramdisk, so we can copy it from there:
+Packages ) ssh -oHostKeyAlgorithms=+ssh-dss root@localhost -p 2222
+root@localhost's password:
+Use mount.sh script to mount the partitions
+Use reboot_bak to reboot
+Use 'device_infos' to dump EMF keys (when imaging user volume)
+-sh-4.0# ls /usr/lib
+dyld			     libbsm.0.dylib	    libedit.2.dylib	  libiconv.2.dylib	libncurses.5.dylib     libsqlite3.0.dylib     libutil.dylib	libz.1.dylib
+libIOAccessoryManager.dylib  libbz2.1.0.dylib	    libgcc_s.1.dylib	  libicucore.A.dylib	libobjc.A.dylib        libstdc++.6.0.9.dylib  libutil1.0.dylib	system
+libSystem.B.dylib	     libcrypto.0.9.8.dylib  libhistory.6.0.dylib  libncurses.5.4.dylib	libreadline.6.0.dylib  libstdc++.6.dylib      libz.1.2.3.dylib
+
+Still `Illegal Instruction` and LC_ENTRY_POINT, no LC_UNIXTHREAD...
+xcrun -sdk /Users/philliptennen/Documents/Jailbreak/iPhoneSDK4_0.pkg.unzipped/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.0.sdk clang -arch armv7 -fno-PIC -fno-pie -mios-version-min=2.0 umount.c -o umount3 -v -L./
+It works! LC_UNIXTHREAD is present and it runs on-device
+
+unmount works:
+-sh-4.0# ls /mnt2/
+018-6303-385.dmg  Keychains	       MobileDevice  audit  ea	   folders  log   mobile  preferences	       root  spool  var  wireless
+018-6306-403.dmg  Managed Preferences  UDZO-3.dmg    db     empty  keybags  logs  msgs	  repacked_rootfs.dmg  run   tmp    vm
+-sh-4.0# /usr/local/bin/umount /mnt2/
+Unmounting /mnt2/...
+Return code 0
+-sh-4.0# ls /mnt2/
+
+umount ) xcrun -sdk /Users/philliptennen/Documents/Jailbreak/iPhoneSDK4_0.pkg.unzipped/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.0.sdk clang -arch armv7 -fno-PIC -fno-pie -mios-version-min=2.0 umount.c -o umount -L./ -F/Volumes/ramdisk/System/Library/PrivateFrameworks/ -framework MediaKit -L/Volumes/ramdisk/System/Library/PrivateFrameworks/MediaKit.framework/
+Undefined symbols for architecture armv7:
+"_MKMakeDeviceBootable", referenced from:
+_main in umount-5ed908.o
+ld: symbol(s) not found for architecture armv7
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+
+Just copy /ramdisk/MediaKit.framework to /Users/philliptennen/Documents/Jailbreak/iPhoneSDK4_0.pkg.unzipped...
+Can't find _MKMakeBootDevice symbol? Try dlopen and dlsym()...
+But dlsym returns 0 for _MKMakeBootDevice! How about a different symbol? That works, go back to static linking?
+
+ld: illegal text-relocation to '_printf' in /Users/philliptennen/Documents/Jailbreak/iPhoneSDK4_0.pkg.unzipped/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.0.sdk/usr/lib/libSystem.dylib from '_main' in /var/folders/y0/clprvktj3b5__hkvm2p4m_yr0000gn/T/umount-6c9a27.o for architecture armv7
+Solution: remove -fno-pie / -fno-PIC (and -mlong-calls not needed)
+
+/dev/md0:
+Trying to find MKCFPrepareBootDevice...
+Found MKCFPrepareBootDevice: 0x6ce159
+MKCFPrepareBootDevice() returned 22
+
+/dev/disk0s1:
+Trying to find MKCFPrepareBootDevice...
+Found MKCFPrepareBootDevice: 0x6ce159
+MKCFPrepareBootDevice() returned 16
+
+/dev/rdisk0:
+Trying to find MKCFPrepareBootDevice...
+Found MKCFPrepareBootDevice: 0x6ce159
+MKCFPrepareBootDevice() returned 22
+
+restored_external is ran immediately thanks to /etc/rc.boot
+-sh-4.0# cat /etc/rc.boot
+#!/bin/sh
+
+# remount r/w
+
+mount /
+
+# free space
+
+rm /usr/local/standalone/firmware/*
+rm /usr/standalone/firmware/*
+mv /sbin/reboot /sbin/reboot_bak
+
+# Fix the auto-boot
+
+nvram auto-boot=1
+
+# Start SSHD
+
+/sbin/sshd
+
+# Do the stuff original rc.boot did
+
+/usr/local/bin/restored_external
+/usr/local/bin/restored_update
+/usr/local/bin/restored
+/usr/libexec/ramrod/ramrod
+
+Dead LCD Bug
+Locking a device with an unsigned bootchain (specifically the LLB) while on battery power causes iOS to disable the LCD. A restore to the latest iOS is needed to fix this.
+
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/HeadsetBatteryBG_16.png
+Something in CoreServices to set OS name, could be worth trying to change?
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/MCNext.png
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/mute.png
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/silent@2x.png
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/recalibrateBezel@2x.png
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/RotationUnlockButton@2x.png
+/Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/SBDockBG-old.png
