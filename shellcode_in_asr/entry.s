@@ -5,6 +5,8 @@
 .pool
 .set printf, 0x21ef0
 
+.extern _c_entry_point
+
 .code 16
 _start: .global _start
     push {lr}
@@ -50,6 +52,12 @@ _start: .global _start
 
     adr r0, msg1
     blx r11
+
+    @ Restore register state before calling C functions
+    pop {r0-r11}
+    push {r0-r11}
+
+    bl _c_entry_point
 
     @ Restore registers
     pop {r0-r11}
