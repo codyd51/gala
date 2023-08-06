@@ -360,6 +360,17 @@ class RamdiskApplyTarPatch(RamdiskPatch):
 
 
 @dataclass
+class RamdiskReplaceFileContentsPatch(RamdiskPatch):
+    file_path: Path
+    new_content: bytes
+
+    def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
+        print(f"Replacing file {self.file_path} in ramdisk...")
+        qualified_path = mounted_ramdisk_path / self.file_path
+        qualified_path.write_bytes(self.new_content)
+
+
+@dataclass
 class RamdiskBinaryPatch(RamdiskPatch):
     # PT: Instead of having the binary at the top level, this could just contain a PatchSet
     # Then we could apply the binary patches in the patch set, so we only mount the ramdisk once
