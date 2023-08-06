@@ -28,6 +28,7 @@ def recompile_payloads():
     build(root / "shellcode_in_asr")
     build(root / "shellcode_within_ibec")
     build(root / "kernelcache_set_debug_enabled")
+    build(root / "shellcode_in_mediakit")
 
 
 if __name__ == "__main__":
