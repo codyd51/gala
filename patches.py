@@ -271,14 +271,14 @@ def _mount_dmg_old(path: Path) -> Iterable[Path]:
 
 
 @dataclass
-class RamdiskPatch:
+class DmgPatch:
     def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
         pass
 
 
 @dataclass
-class RamdiskPatchSet(Patch):
-    patches: list[RamdiskPatch]
+class DmgPatchSet(Patch):
+    patches: list[DmgPatch]
 
     def apply(
         self,
@@ -343,7 +343,7 @@ class RamdiskPatchSet(Patch):
 
 
 @dataclass
-class RamdiskApplyTarPatch(RamdiskPatch):
+class DmgApplyTarPatch(DmgPatch):
     tar_path: Path
 
     def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
@@ -360,7 +360,7 @@ class RamdiskApplyTarPatch(RamdiskPatch):
 
 
 @dataclass
-class RamdiskReplaceFileContentsPatch(RamdiskPatch):
+class DmgReplaceFileContentsPatch(DmgPatch):
     file_path: Path
     new_content: bytes
 
@@ -371,7 +371,7 @@ class RamdiskReplaceFileContentsPatch(RamdiskPatch):
 
 
 @dataclass
-class RamdiskBinaryPatch(RamdiskPatch):
+class DmgBinaryPatch(DmgPatch):
     # PT: Instead of having the binary at the top level, this could just contain a PatchSet
     # Then we could apply the binary patches in the patch set, so we only mount the ramdisk once
     binary_path: Path

@@ -52,8 +52,7 @@ class ImageType(Enum):
         ]
 
     @classmethod
-    def ramdisk_types(cls) -> list[ImageType]:
-        # TODO(PT): Rename to .dmg_types
+    def dmg_types(cls) -> list[ImageType]:
         return [
             ImageType.RestoreRamdisk,
             ImageType.RootFilesystem,
@@ -64,8 +63,8 @@ class ImageType(Enum):
         all_types = {t for t in ImageType}
         binary_types = set(cls.binary_types())
         picture_types = set(cls.picture_types())
-        ramdisk_types = set(cls.ramdisk_types())
-        categories = [binary_types, picture_types, ramdisk_types]
+        dmg_types = set(cls.dmg_types())
+        categories = [binary_types, picture_types, dmg_types]
         all_types_by_category = set.union(*categories)
 
         # Ensure the union of the categorized image types cover all defined image types

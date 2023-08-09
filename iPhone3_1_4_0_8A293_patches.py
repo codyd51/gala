@@ -6,8 +6,8 @@ from strongarm.macho import VirtualMemoryPointer
 from assemble import Instr
 from os_build import ImageType
 from patches import (BlobPatch, InstructionPatch, IpswPatcherConfig, Patch,
-                     PatchSet, RamdiskApplyTarPatch, RamdiskBinaryPatch,
-                     RamdiskPatchSet, RamdiskReplaceFileContentsPatch)
+                     PatchSet, DmgApplyTarPatch, DmgBinaryPatch,
+                     DmgPatchSet, DmgReplaceFileContentsPatch)
 
 
 def _get_ibss_patches() -> list[Patch]:
@@ -276,8 +276,8 @@ def _get_kernelcache_patches() -> list[Patch]:
     ]
 
 
-def _get_restore_ramdisk_patches() -> list[Patch]:
-    restored_patches = RamdiskBinaryPatch(
+def _get_restore_ramdisk_patches() -> DmgPatchSet:
+    restored_patches = DmgBinaryPatch(
         binary_path=Path("usr/local/bin/restored_external"),
         inner_patch=PatchSet(
             name="",
@@ -298,7 +298,7 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
             ],
         ),
     )
-    restore_options_plist_patch = RamdiskReplaceFileContentsPatch(
+    restore_options_plist_patch = DmgReplaceFileContentsPatch(
         file_path=Path("usr/local/share/restore/options.plist"),
         new_content="""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -316,12 +316,12 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
     asr_shellcode_addr = 0x1FA60
     mediakit_shellcode_addr = 0x00032780
     patches = [
-        RamdiskApplyTarPatch(
+        DmgApplyTarPatch(
             tar_path=Path(
                 "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar"
             )
         ),
-        RamdiskBinaryPatch(
+        DmgBinaryPatch(
             binary_path=Path("usr/sbin/asr"),
             inner_patch=PatchSet(
                 name="",
@@ -336,7 +336,7 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
                 ],
             ),
         ),
-        RamdiskBinaryPatch(
+        DmgBinaryPatch(
             binary_path=Path("System/Library/PrivateFrameworks/MediaKit.framework/MediaKit"),
             inner_patch=PatchSet(
                 name="",
@@ -354,15 +354,22 @@ def _get_restore_ramdisk_patches() -> list[Patch]:
         restored_patches,
         restore_options_plist_patch,
     ]
-    return [RamdiskPatchSet(patches=patches)]
+    return DmgPatchSet(patches=patches)
+
+
+def _get_rootfs_patches() -> DmgPatchSet:
+    patches = []
+    return DmgPatchSet(patches=patches)
 
 
 def get_iphone_3_1_4_0_8a293_patches(config: IpswPatcherConfig) -> Mapping[ImageType, list[Patch]]:
+    # TODO(PT): Remove binary_types_mapping() and have dedicated Patch types for every code path
     return ImageType.binary_types_mapping(
         {
             ImageType.iBSS: _get_ibss_patches(),
             ImageType.iBEC: _get_ibec_patches(config.boot_args),
             ImageType.KernelCache: _get_kernelcache_patches(),
-            ImageType.RestoreRamdisk: _get_restore_ramdisk_patches(),
+            ImageType.RestoreRamdisk: [_get_restore_ramdisk_patches()],
+            ImageType.RootFilesystem: [_get_rootfs_patches()],
         }
     )
