@@ -19,7 +19,7 @@ Erase option required for multicast restore
 Could not validate source - Device not configured
 
 
-# First brnach in gather_image_metadata
+# First branch in gather_image_metadata
 0x00012370 5ED1                   bne        loc_12430
 
 Validating source...
