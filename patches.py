@@ -297,12 +297,19 @@ class DmgPatchSet(Patch):
 
             # Resize the ramdisk so we have room to write to it
             # Ref: https://apple.stackexchange.com/questions/60613
+            current_dmg_size = decrypted_ramdisk_with_dmg_extension.stat().st_size
+            # Add in an extra 4MB. This should be more than enough for everything we do, but if ever necessary this
+            # can be bumped.
+            extra_room = 1024 * 1024 * 4
+            increased_dmg_size = current_dmg_size + extra_room
+            total_dmg_size_in_mb = ceil(increased_dmg_size / 1024 / 1024)
+            print(f'Resizing .dmg from {current_dmg_size} bytes to {total_dmg_size_in_mb}MB')
             run_and_check(
                 [
                     "hdiutil",
                     "resize",
                     "-size",
-                    "20M",
+                    f"{total_dmg_size_in_mb}M",
                     decrypted_ramdisk_with_dmg_extension.as_posix(),
                 ]
             )
