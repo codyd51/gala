@@ -7,6 +7,8 @@ import tempfile
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum, auto
+from math import ceil
 from pathlib import Path
 from typing import Iterable
 
@@ -369,15 +371,51 @@ class DmgApplyTarPatch(DmgPatch):
         )
 
 
+class FilePermission(Enum):
+    Read = auto()
+    Write = auto()
+    Execute = auto()
+
+    @classmethod
+    def rwx(cls) -> list['FilePermission']:
+        return [
+            FilePermission.Read,
+            FilePermission.Write,
+            FilePermission.Execute,
+        ]
+
+    def apply_to_file(self, file: Path) -> None:
+        match self:
+            case FilePermission.Read:
+                chmod_flag = "r"
+            case FilePermission.Write:
+                chmod_flag = "w"
+            case FilePermission.Execute:
+                chmod_flag = "x"
+            case _:
+                raise ValueError(f'Unhandled variant {self}')
+        run_and_check([
+            'chmod',
+            f'+{chmod_flag}',
+            file.as_posix(),
+        ])
+
+
 @dataclass
 class DmgReplaceFileContentsPatch(DmgPatch):
     file_path: Path
     new_content: bytes
+    new_permissions: list[FilePermission] | None = None
 
     def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
         print(f"Replacing file {self.file_path} in ramdisk...")
         qualified_path = mounted_ramdisk_path / self.file_path
         qualified_path.write_bytes(self.new_content)
+        if perms := self.new_permissions:
+            print(f'Applying permissions to {qualified_path}...')
+            for perm in perms:
+                perm.apply_to_file(qualified_path)
+
 
 
 @dataclass

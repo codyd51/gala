@@ -7,7 +7,7 @@ from assemble import Instr
 from os_build import ImageType
 from patches import (BlobPatch, InstructionPatch, IpswPatcherConfig, Patch,
                      PatchSet, DmgApplyTarPatch, DmgBinaryPatch,
-                     DmgPatchSet, DmgReplaceFileContentsPatch)
+                     DmgPatchSet, DmgReplaceFileContentsPatch, FilePermission)
 
 
 def _get_ibss_patches() -> list[Patch]:
