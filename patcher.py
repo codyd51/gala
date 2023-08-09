@@ -14,6 +14,7 @@ from patches import Function, IpswPatcherConfig, Patch
 from utils import TotalEnumMapping, run_and_check
 
 _XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
+_XPWN_DMG = JAILBREAK_ROOT / "tools" / "xpwn" / "dmg" / "dmg"
 _IMAGETOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "imagetool"
 
 
@@ -60,6 +61,7 @@ class PatchRepository:
                         ImageType.iBEC: [],
                         ImageType.KernelCache: [],
                         ImageType.RestoreRamdisk: [],
+                        ImageType.RootFilesystem: [],
                     }
                 ),
                 OsBuildEnum.iPhone3_1_5_0_9A334: ImageType.binary_types_mapping(
@@ -68,6 +70,7 @@ class PatchRepository:
                         ImageType.iBEC: [],
                         ImageType.KernelCache: [],
                         ImageType.RestoreRamdisk: [],
+                        ImageType.RootFilesystem: [],
                     }
                 ),
                 OsBuildEnum.iPhone3_1_6_1_10B144: ImageType.binary_types_mapping(
@@ -76,6 +79,7 @@ class PatchRepository:
                         ImageType.iBEC: [],
                         ImageType.KernelCache: [],
                         ImageType.RestoreRamdisk: [],
+                        ImageType.RootFilesystem: [],
                     }
                 ),
             }
@@ -192,6 +196,44 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
                     key_pair.key,
                 ],
             )
+    elif image_type == ImageType.RootFilesystem:
+        extracted_dmg = output_dir / f"{file_name}.extracted"
+        patched_dmg = output_dir / f"{file_name}.patched"
+        repacked_dmg = output_dir / f"{file_name}.repacked"
+
+        if not config.should_rebuild_root_filesystem:
+            print(f'Skip rebuilding root filesystem...')
+            if not repacked_dmg.exists():
+                raise ValueError(f"Supposed to skip rebuilding root filesystem, but a cached version doesn't exist")
+            return repacked_dmg
+
+        extracted_dmg.unlink(missing_ok=True)
+
+        # Extract the root filesystem
+        run_and_check([
+            _XPWN_DMG.as_posix(),
+            "extract",
+            encrypted_image.as_posix(),
+            extracted_dmg.as_posix(),
+            "-k",
+            key_pair.key,
+        ])
+
+        # Apply our patches
+        patched_dmg.unlink(missing_ok=True)
+        patch_decrypted_image(os_build, image_type, config, extracted_dmg, patched_dmg)
+        print(f"Wrote patched {image_type.name} to {patched_dmg.as_posix()}")
+
+        # Rebuild the .dmg
+        repacked_dmg.unlink(missing_ok=True)
+        run_and_check([
+            _XPWN_DMG.as_posix(),
+            "build",
+            patched_dmg.as_posix(),
+            repacked_dmg.as_posix(),
+        ])
+        print(f"Wrote repacked {image_type.name} to {repacked_dmg.as_posix()}")
+
     else:
         # Decrypt the image
         # (And delete any decrypted image we already produced)
@@ -206,6 +248,7 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
         print(f"Wrote patched {image_type.name} to {patched_image.as_posix()}")
 
         reencrypted_image = output_dir / f"{file_name}.reencrypted"
+        reencrypted_image.unlink(missing_ok=True)
         encrypt_img3(patched_image, reencrypted_image, encrypted_image, key_pair.key, key_pair.iv)
         print(f"Wrote re-encrypted {image_type.name} to {reencrypted_image.as_posix()}")
 

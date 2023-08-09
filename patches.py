@@ -287,6 +287,7 @@ class DmgPatchSet(Patch):
         image_base_address: VirtualMemoryPointer,
         image_data: bytearray,
     ) -> None:
+        # TODO(PT): Replace `ramdisk` nomenclature here
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
             decrypted_ramdisk_with_dmg_extension = temp_dir / "ramdisk.dmg"

@@ -369,7 +369,7 @@ def get_iphone_3_1_4_0_8a293_patches(config: IpswPatcherConfig) -> Mapping[Image
             ImageType.iBSS: _get_ibss_patches(),
             ImageType.iBEC: _get_ibec_patches(config.boot_args),
             ImageType.KernelCache: _get_kernelcache_patches(),
-            ImageType.RestoreRamdisk: [_get_restore_ramdisk_patches()],
+            ImageType.RestoreRamdisk: [_get_restore_ramdisk_patches(config.should_create_disk_partitions)],
             ImageType.RootFilesystem: [_get_rootfs_patches()],
         }
     )

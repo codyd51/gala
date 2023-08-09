@@ -195,6 +195,7 @@ class KeyRepository:
                     ImageType.AppleLogo: KeyIvPair(key="", iv=""),
                     ImageType.KernelCache: KeyIvPair(key="", iv=""),
                     ImageType.RestoreRamdisk: KeyIvPair(key="", iv=""),
+                    ImageType.RootFilesystem: KeyIvPair(key="", iv=""),
                 }
             ),
             OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping(
@@ -210,6 +211,7 @@ class KeyRepository:
                     ImageType.AppleLogo: KeyIvPair(key="", iv=""),
                     ImageType.KernelCache: KeyIvPair(key="", iv=""),
                     ImageType.RestoreRamdisk: KeyIvPair(key="", iv=""),
+                    ImageType.RootFilesystem: KeyIvPair(key="", iv=""),
                 }
             ),
             OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping(
@@ -225,6 +227,7 @@ class KeyRepository:
                     ImageType.AppleLogo: KeyIvPair(key="", iv=""),
                     ImageType.KernelCache: KeyIvPair(key="", iv=""),
                     ImageType.RestoreRamdisk: KeyIvPair(key="", iv=""),
+                    ImageType.RootFilesystem: KeyIvPair(key="", iv=""),
                 }
             ),
         }
