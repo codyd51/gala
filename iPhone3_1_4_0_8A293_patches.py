@@ -298,20 +298,6 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
             ],
         ),
     )
-    restore_options_plist_patch = DmgReplaceFileContentsPatch(
-        file_path=Path("usr/local/share/restore/options.plist"),
-        new_content="""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>SystemPartitionSize</key>
-	<integer>1024</integer>
-	<key>CreateFilesystemPartitions</key>
-	<false/>
-</dict>
-</plist>
-""".encode()
-    )
 
     asr_shellcode_addr = 0x1FA60
     mediakit_shellcode_addr = 0x00032780
@@ -320,6 +306,15 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
             tar_path=Path(
                 "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar"
             )
+        ),
+        DmgReplaceFileContentsPatch(
+            file_path=Path("usr/local/bin/umount"),
+            new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/umount/build/umount").read_bytes(),
+            new_permissions=[
+                FilePermission.Read,
+                FilePermission.Write,
+                FilePermission.Execute,
+            ]
         ),
         DmgBinaryPatch(
             binary_path=Path("usr/sbin/asr"),
