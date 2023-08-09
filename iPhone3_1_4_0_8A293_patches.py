@@ -294,7 +294,9 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
                 InstructionPatch.quick(0x00005338, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # BlobPatch(
                 #    VirtualMemoryPointer(0x0007267C), new_content=int(0x00030E30).to_bytes(4, byteorder="little")
-                #),
+                # ),
+                # No flash LLB
+                InstructionPatch.quick(0x00007d64, Instr.thumb("b #0x7d7e")),
             ],
         ),
     )
