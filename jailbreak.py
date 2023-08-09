@@ -102,8 +102,10 @@ def main():
         replacement_pictures={
             ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
         },
-        should_boot_to_restore_ramdisk=False,
-        boot_args="rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3",
+        should_rebuild_root_filesystem=False,
+        should_boot_to_restore_ramdisk=True,
+        should_create_disk_partitions=False,
+        boot_args="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3",
     )
     boot_device(patcher_config)
 

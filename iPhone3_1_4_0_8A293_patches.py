@@ -276,23 +276,23 @@ def _get_kernelcache_patches() -> list[Patch]:
     ]
 
 
-def _get_restore_ramdisk_patches() -> DmgPatchSet:
+def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatchSet:
     restored_patches = DmgBinaryPatch(
         binary_path=Path("usr/local/bin/restored_external"),
         inner_patch=PatchSet(
             name="",
             patches=[
                 # Don't clear effaceable storage
-                #InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # Don't wait for server ASR
                 InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # Don't create partitions
-                #InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # No fixup /var
-                #InstructionPatch.quick(0x000052EC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # InstructionPatch.quick(0x000052EC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # No baseband update
                 InstructionPatch.quick(0x00005338, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                #BlobPatch(
+                # BlobPatch(
                 #    VirtualMemoryPointer(0x0007267C), new_content=int(0x00030E30).to_bytes(4, byteorder="little")
                 #),
             ],
@@ -332,7 +332,7 @@ def _get_restore_ramdisk_patches() -> DmgPatchSet:
                             "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_asr/build/shellcode_in_asr_shellcode"
                         ).read_bytes(),
                     ),
-                    #InstructionPatch.quick(0x00017df2, Instr.thumb(f"bl #{hex(asr_shellcode_addr)}")),
+                    # InstructionPatch.quick(0x00017df2, Instr.thumb(f"bl #{hex(asr_shellcode_addr)}")),
                 ],
             ),
         ),
@@ -347,13 +347,33 @@ def _get_restore_ramdisk_patches() -> DmgPatchSet:
                             "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_mediakit/build/shellcode_in_mediakit_shellcode"
                         ).read_bytes(),
                     ),
-                    #InstructionPatch.quick(0x0001b1b6, Instr.thumb(f"bl #{hex(mediakit_shellcode_addr)}")),
+                    # InstructionPatch.quick(0x0001b1b6, Instr.thumb(f"bl #{hex(mediakit_shellcode_addr)}")),
                 ],
             ),
         ),
         restored_patches,
-        restore_options_plist_patch,
     ]
+
+    if not should_create_disk_partitions:
+        patches.append(
+            DmgReplaceFileContentsPatch(
+                file_path=Path("usr/local/share/restore/options.plist"),
+                new_content=(
+                    """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SystemPartitionSize</key>
+	<integer>1024</integer>
+	<key>CreateFilesystemPartitions</key>
+	<false/>
+</dict>
+</plist>
+"""
+                ).encode()
+            )
+        )
+
     return DmgPatchSet(patches=patches)
 
 

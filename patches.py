@@ -26,6 +26,8 @@ class IpswPatcherConfig:
     replacement_pictures: dict[ImageType, Path]
     should_boot_to_restore_ramdisk: bool
     boot_args: str
+    should_rebuild_root_filesystem: bool
+    should_create_disk_partitions: bool
 
 
 @dataclass
