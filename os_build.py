@@ -20,6 +20,7 @@ class ImageType(Enum):
     AppleLogo = auto()
     KernelCache = auto()
     RestoreRamdisk = auto()
+    RootFilesystem = auto()
 
     @property
     def base_address(self) -> VirtualMemoryPointer:
@@ -34,6 +35,7 @@ class ImageType(Enum):
                 ImageType.KernelCache: VirtualMemoryPointer(0x80001000),
                 # PT: Not relevant for ramdisks?
                 ImageType.RestoreRamdisk: VirtualMemoryPointer(0x0),
+                ImageType.RootFilesystem: VirtualMemoryPointer(0x0),
             }
         )[self]
 
@@ -51,8 +53,10 @@ class ImageType(Enum):
 
     @classmethod
     def ramdisk_types(cls) -> list[ImageType]:
+        # TODO(PT): Rename to .dmg_types
         return [
             ImageType.RestoreRamdisk,
+            ImageType.RootFilesystem,
         ]
 
     @classmethod
@@ -132,7 +136,9 @@ class OsBuildEnum(Enum):
                             / "applelogo-640x960.s5l8930x.img3"
                         ),
                         ImageType.KernelCache: Path("kernelcache.release.n90"),
+                        # TODO(PT): I think these names might also vary by OS build...
                         ImageType.RestoreRamdisk: Path("018-6306-403.dmg"),
+                        ImageType.RootFilesystem: Path("018-6303-385.dmg"),
                     }
                 ),
             }
@@ -169,6 +175,11 @@ class KeyRepository:
                     ImageType.RestoreRamdisk: KeyIvPair(
                         key="62aabe3e763eb3669b4922468be2acb787199c6b0ef8ae873c312e458d9b9be3",
                         iv="0ab135879934fdd0d689b3d0f8cf8374",
+                    ),
+                    ImageType.RootFilesystem: KeyIvPair(
+                        key="8b2915719d9f90ba5521faad1eadbb3d942991bd55e5a0709f26e9db3931517e054afa50",
+                        # PT: IV isn't applicable for the root filesystem? Perhaps the `iv` needs to be optional?
+                        iv="",
                     ),
                 }
             ),
