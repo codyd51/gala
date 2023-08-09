@@ -375,7 +375,18 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
 
 
 def _get_rootfs_patches() -> DmgPatchSet:
-    patches = []
+    mount_system_partition_as_writable = DmgReplaceFileContentsPatch(
+        file_path=Path("private/etc/fstab"),
+        new_content=(
+            """
+/dev/disk0s1 / hfs ro 0 1
+/dev/disk0s2s1 /private/var hfs rw,nosuid,nodev 0 2
+"""
+        ).encode()
+    )
+    patches = [
+        mount_system_partition_as_writable,
+    ]
     return DmgPatchSet(patches=patches)
 
 
