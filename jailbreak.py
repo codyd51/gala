@@ -97,6 +97,8 @@ def boot_device(patcher_config: IpswPatcherConfig):
 
 
 def main():
+    # On the first boot, repartition the disk / flash a fresh OS image
+    print(f'Performing downgrade...')
     patcher_config = IpswPatcherConfig(
         OsBuildEnum.iPhone3_1_4_0_8A293,
         replacement_pictures={
@@ -104,10 +106,20 @@ def main():
         },
         should_rebuild_root_filesystem=False,
         should_boot_to_restore_ramdisk=True,
-        should_create_disk_partitions=False,
+        should_create_disk_partitions=True,
         boot_args="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3",
     )
     boot_device(patcher_config)
+
+    # Give restored_external a moment to come up
+    time.sleep(5)
+
+    run_and_check([
+        "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
+        "--restore-mode",
+        "-e",
+        "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
+    ])
 
 
 if __name__ == "__main__":
