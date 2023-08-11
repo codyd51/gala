@@ -48,6 +48,7 @@ def recompile_payloads():
     build(root / "kernelcache_set_debug_enabled")
     build(root / "shellcode_in_mediakit")
     build_ramdisk_program(root / "umount")
+    build_ramdisk_program(root / "asr_wrapper")
 
 
 if __name__ == "__main__":
