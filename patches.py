@@ -364,7 +364,7 @@ class DmgApplyTarPatch(DmgPatch):
             [
                 "tar",
                 "-xvf",
-                "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar",
+                self.tar_path.as_posix(),
                 "-C",
                 mounted_ramdisk_path.as_posix(),
             ]
