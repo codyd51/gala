@@ -316,17 +316,18 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
     patches = [
         DmgApplyTarPatch(
             tar_path=Path(
-                "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh.tar"
+                "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh_mod.tar",
             )
         ),
         DmgReplaceFileContentsPatch(
-            file_path=Path("usr/local/bin/umount"),
+            file_path=Path("usr/bin/umount"),
             new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/umount/build/umount").read_bytes(),
-            new_permissions=[
-                FilePermission.Read,
-                FilePermission.Write,
-                FilePermission.Execute,
-            ]
+            new_permissions=FilePermission.rwx(),
+        ),
+        DmgReplaceFileContentsPatch(
+            file_path=Path("usr/bin/asr_wrapper"),
+            new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/asr_wrapper/build/asr_wrapper").read_bytes(),
+            new_permissions=FilePermission.rwx(),
         ),
         DmgBinaryPatch(
             binary_path=Path("usr/sbin/asr"),
