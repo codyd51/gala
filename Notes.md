@@ -355,3 +355,37 @@ Something in CoreServices to set OS name, could be worth trying to change?
 /Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/recalibrateBezel@2x.png
 /Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/RotationUnlockButton@2x.png
 /Volumes/Apex8A293.N90OS/System/Library/CoreServices/SpringBoard.app/SBDockBG-old.png
+
+
+pinot_init()
+mipi_dsim_init()
+pinot_init(): read of pinot panel id failed
+pinot_init(): pinot_panel_id:      0x00000000
+pinot_init(): pinot_default_color: 0x00000000
+pinot_init(): pinot_backlight_cal: 0x00000000
+mipi_dsim_quiesce()
+
+entering set_boot_stage
+unable to get display service
+found PTP interface
+
+Need restored to create the partitions (so we can send the rootFS to /mnt2), but need to wait in the middle of restored so we can actually send it... 2 options:
+introduce a reboot after asr and rerun restored
+embed the "wait for scp"
+
+You can pass ReadOnlyRootFilesystem: true/false in the restored options plist to ask iOS to mount the root filesystem as R/W for you!
+
+Managed to mount the RW filesystem:
+Here's what it looks like when RO:
+/dev/disk0s1 on / (hfs, local, read-only, noatime)
+/dev/disk0s2s1 on /private/var (hfs, local, nodev, nosuid, journaled, noatime, protect)
+
+And R/W:
+com.apple.launchd 1     com.apple.launchd 1     *** launchd[1] has started up. ***
+Bug: launchctl.c:3599 (24106):17: ioctl(s6, SIOCAIFADDR_IN6, &ifra6) != -1
+Bug: launchctl.c:3803 (24106):2: sysctl(nbmib, 2, &nb, &nbsz, NULL, 0) == 0
+Running fsck on the boot volume...
+Executing fsck_hfs (version diskdev_cmds-488.1.7~39).
+Executing fsck_hfs (version diskdev_cmds-488.1.7~39).
+/dev/disk0s1 on / (hfs, local, noatime)
+/dev/disk0s2s1 on /private/var (hfs, local, nodev, nosuid, journaled, noatime, protect)
