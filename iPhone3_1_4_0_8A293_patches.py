@@ -285,7 +285,15 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
                 # Don't clear effaceable storage
                 # InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # Don't wait for server ASR
-                InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                #InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                BlobPatch(
+                    address=VirtualMemoryPointer(0x00031f10),
+                    new_content="/usr/bin/asr_wrapper\0".encode()
+                ),
+                BlobPatch(
+                    address=VirtualMemoryPointer(0x00031f28),
+                    new_content="\0".encode()
+                ),
                 # Don't create partitions
                 # InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # No fixup /var
