@@ -121,6 +121,20 @@ def main():
         "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
     ])
 
+    # Now that we've flashed a filesystem, boot from disk
+    print(f'Performing a tethered boot from disk...')
+    patcher_config.boot_args = "rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3"
+    patcher_config.should_rebuild_root_filesystem = False
+    while True:
+        try:
+            boot_device(patcher_config)
+            break
+        except Exception:
+            # TODO(PT): NoDfuDeviceFound
+            print('Please enter DFU mode to try again')
+
+    print(f'Done!')
+
 
 if __name__ == "__main__":
     main()
