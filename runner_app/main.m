@@ -96,6 +96,8 @@
         [self addSubview:jailbreakButton];
         [jailbreakButton setTitle: @"Jailbreak"];
         [jailbreakButton setBezelStyle:NSThickerSquareBezelStyle];
+        jailbreakButton.target = self;
+        jailbreakButton.action = @selector(jailbreakButtonClicked:);
 
         NSButton* tetheredBootButton = [[NSButton alloc] initWithFrame:NSMakeRect(
                 midX + (buttonSize.width * 0.5),
@@ -110,14 +112,37 @@
     }
     return self;
 }
-@end
 
-@interface LogsView : NSViewWithTopLeftCoordinateSystem
-@end
+- (void)jailbreakButtonClicked:(NSButton*)sender {
+    NSLog(@"Jailbreak button clicked!");
+    [self.logsView clear];
+    [self.logsView append:@"Jailbreak button clicked!\n"];
+    [self runPythonScript];
+}
 
-@implementation LogsView
-- (BOOL)isFlipped {
-    return YES;
+- (void)runPythonScript {
+    // TODO(PT): Ensure there's no ongoing task
+    self.ongoingTask = [[NSTask alloc] init];
+    self.ongoingTask.launchPath = @"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python";
+    self.ongoingTask.arguments = @[
+        // Unbuffered stdout
+        @"-u",
+        @"/Users/philliptennen/Documents/Jailbreak/gala/jailbreak.py"
+    ];
+
+    NSPipe* stdoutPipe = [NSPipe pipe];
+    [self.ongoingTask setStandardOutput:stdoutPipe];
+    [self.ongoingTask setStandardError:stdoutPipe];
+
+    stdoutPipe.fileHandleForReading.readabilityHandler = ^(NSFileHandle* handle){
+        NSData* outputBytes = handle.availableData;
+        NSString* output = [[NSString alloc] initWithBytes:outputBytes.bytes length:outputBytes.length encoding:NSUTF8StringEncoding];
+        NSLog(@"%@", output);
+        [self.bufferedData appendString:output];
+    };
+
+    [self.ongoingTask launch];
+    [self flushAvailableOutput];
 }
 
 - (void)flushAvailableOutput {
