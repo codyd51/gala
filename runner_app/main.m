@@ -1,4 +1,4 @@
-#import <Cocoa/Cocoa.h>         // include the Cocoa Frameworks
+#import <Cocoa/Cocoa.h>
 
 @interface NSViewWithTopLeftCoordinateSystem : NSView
 @end
@@ -68,7 +68,6 @@
         self.bufferedData = [NSMutableString new];
         NSString* imagePath = @"/Users/philliptennen/Documents/Jailbreak/gala/assets/boot_logo_for_gui.png";
         NSImage* image = [[NSImage alloc] initByReferencingFile:imagePath];
-        NSLog(@"image %@", image);
         NSImageView* logo = [NSImageView imageViewWithImage:image];
 
         logo.frame = NSMakeRect(
@@ -77,7 +76,6 @@
             CGRectGetWidth(frame) * 0.75,
             CGRectGetHeight(frame) * 0.5
         );
-        NSLog(@"logo %@", NSStringFromRect(logo.frame));
         [self addSubview:logo];
 
         CGSize buttonSize = CGSizeMake(
@@ -108,27 +106,34 @@
         [self addSubview:tetheredBootButton];
         [tetheredBootButton setTitle: @"Tethered boot"];
         [tetheredBootButton setBezelStyle:NSThickerSquareBezelStyle];
-
+        tetheredBootButton.target = self;
+        tetheredBootButton.action = @selector(bootButtonClicked:);
     }
     return self;
 }
 
 - (void)jailbreakButtonClicked:(NSButton*)sender {
-    NSLog(@"Jailbreak button clicked!");
+    // TODO(PT): Check if there's an ongoing task and clear all our buffers
     [self.logsView clear];
-    [self.logsView append:@"Jailbreak button clicked!\n"];
-    [self runPythonScript];
+    [self runGala:@[@"--jailbreak"]];
 }
 
-- (void)runPythonScript {
+- (void)bootButtonClicked:(NSButton*)sender {
+    [self.logsView clear];
+    [self runGala:@[@"--boot"]];
+}
+
+- (void)runGala:(NSArray<NSString*>*)args {
     // TODO(PT): Ensure there's no ongoing task
     self.ongoingTask = [[NSTask alloc] init];
     self.ongoingTask.launchPath = @"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python";
-    self.ongoingTask.arguments = @[
+    NSMutableArray* arguments = [NSMutableArray arrayWithArray:@[
         // Unbuffered stdout
         @"-u",
-        @"/Users/philliptennen/Documents/Jailbreak/gala/jailbreak.py"
-    ];
+        @"/Users/philliptennen/Documents/Jailbreak/gala/jailbreak.py",
+    ]];
+    [arguments addObjectsFromArray:args];
+    self.ongoingTask.arguments = arguments;
 
     NSPipe* stdoutPipe = [NSPipe pipe];
     [self.ongoingTask setStandardOutput:stdoutPipe];
@@ -137,7 +142,6 @@
     stdoutPipe.fileHandleForReading.readabilityHandler = ^(NSFileHandle* handle){
         NSData* outputBytes = handle.availableData;
         NSString* output = [[NSString alloc] initWithBytes:outputBytes.bytes length:outputBytes.length encoding:NSUTF8StringEncoding];
-        NSLog(@"%@", output);
         [self.bufferedData appendString:output];
     };
 
