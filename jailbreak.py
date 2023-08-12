@@ -1,3 +1,4 @@
+import argparse
 import time
 from pathlib import Path
 
@@ -96,7 +97,7 @@ def boot_device(patcher_config: IpswPatcherConfig):
     # Start the restore process with the modified IPSW
 
 
-def main():
+def main2():
     # On the first boot, repartition the disk / flash a fresh OS image
     print(f'Performing downgrade...')
     patcher_config = IpswPatcherConfig(
@@ -134,6 +135,63 @@ def main():
             print('Please enter DFU mode to try again')
 
     print(f'Done!')
+
+
+def boot_device_with_infinite_retry(patcher_config: IpswPatcherConfig):
+    while True:
+        try:
+            boot_device(patcher_config)
+            break
+        except Exception:
+            # TODO(PT): NoDfuDeviceFound
+            print('Please enter DFU mode to try again')
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--write-progress-steps-to-file", action="store")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--jailbreak', action='store_true')
+    group.add_argument('--boot', action='store_true')
+
+    args = parser.parse_args()
+
+    # If a file was specified to write our progress to, ensure it doesn't already exist
+    maybe_progress_file = args.write_progress_steps_to_file
+    if maybe_progress_file:
+        progress_file = Path(maybe_progress_file)
+        if progress_file.exists():
+            raise ValueError(f"Refusing to write progress to {progress_file} because the file already exists")
+        progress_file.touch()
+
+    if args.jailbreak:
+        print('Performing downgrade / jailbreak...')
+        print('(WARNING: This will wipe all data on the device!)')
+        # should_rebuild_root_filesystem = True
+        should_rebuild_root_filesystem = False
+        boot_args = "rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3"
+    elif args.boot:
+        print(f'Performing a tethered boot from disk...')
+        should_rebuild_root_filesystem = False
+        boot_args = "rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3"
+    else:
+        raise ValueError(f'No job specified')
+
+    # TODO(PT): Split this into a 'patcher config' vs. a 'boot config'
+    patcher_config = IpswPatcherConfig(
+        OsBuildEnum.iPhone3_1_4_0_8A293,
+        replacement_pictures={
+            ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
+        },
+        should_boot_to_restore_ramdisk=True,
+        should_create_disk_partitions=True,
+        should_rebuild_root_filesystem=should_rebuild_root_filesystem,
+        boot_args=boot_args,
+    )
+    boot_device_with_infinite_retry(patcher_config)
+
+    print('Done!')
 
 
 if __name__ == "__main__":

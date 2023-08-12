@@ -163,7 +163,6 @@ def patch_decrypted_image(
     patched_image_path: Path,
 ):
     patches = PatchRepository.patches_for_image(os_build, image_type, patcher_config)
-    print(image_type, patches)
     apply_patches(patcher_config, image_type, decrypted_image_path, patched_image_path, patches)
 
 

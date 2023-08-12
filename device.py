@@ -142,11 +142,11 @@ def acquire_device(mode: DeviceMode) -> Iterator[Device]:
 @contextmanager
 def acquire_device_with_timeout(mode: DeviceMode, timeout: int = 10) -> Iterator[Device]:
     start = time.time()
-    while time.time() < start + timeout:
+    while (now := time.time()) < start + timeout:
         with maybe_acquire_device(mode) as maybe_device:
             if maybe_device:
                 yield maybe_device
                 return
-        print(f"{int(time.time())%100}: Waiting for {mode.name} Mode device to appear...")
+        print(f"{int(now - start)}: Waiting for {mode.name} Mode device to appear...")
         time.sleep(1)
     raise RuntimeError(f"No {mode.name} Mode device appeared after {timeout} seconds")
