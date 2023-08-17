@@ -389,3 +389,195 @@ Executing fsck_hfs (version diskdev_cmds-488.1.7~39).
 Executing fsck_hfs (version diskdev_cmds-488.1.7~39).
 /dev/disk0s1 on / (hfs, local, noatime)
 /dev/disk0s2s1 on /private/var (hfs, local, nodev, nosuid, journaled, noatime, protect)
+
+iPhone:~ root# uname -a
+Darwin iPhone 10.3.1 Darwin Kernel Version 10.3.1: Wed May 26 22:28:33 PDT 2010; root:xnu-1504.50.73~2/RELEASE_ARM_S5L8930X iPhone3,1 arm N90AP Darwin
+
+launchctl unload /System/Library/LaunchDaemons/com.apple.SpringBoard.plist
+
+Compass is 44mb?!
+
+2023-08-13 14:32:03.850 MobileCydia[172:613] Setting Language: en_US
+_assert(13:file != NULL)@Sources.mm:51[CydiaWriteSources]
+/Volumes/iphne/private/var/tmp/cydia.log
+
+try create /Volumes/iphne/private/var/root/Library/Caches/com.saurik.Cydia
+
+r0 = fopen("/etc/apt/sources.list.d/cydia.list", "w");
+/Users/philliptennen/Downloads/redsn0w_mac_0.9.15b3/redsn0w.app/Contents/MacOS/Cydia/private/etc/apt/sources.list.d/saurik.list
+mismatch?
+
+https://github.com/zodttd/wolf3d
+
+iPhone:~ root# su - mobile
+iPhone:~ mobile$ /var/setuid_test
+Attempting setuid...
+returned -1
+Still sandboxed
+iPhone:~ mobile$ /Applications/C
+Calculator.app/ Compass.app/    Contacts.app/   Cydia.app/
+iPhone:~ mobile$ /Applications/Cydia.app/MobileCydia
+2023-08-13 18:59:38.701 MobileCydia[438:107] Setting Language: en_US
+_assert(13:file != NULL)@Sources.mm:51[CydiaWriteSources]
+
+Modify contents of /Volumes/Apex8A293.N90OS/System/Library/Lockdown/Services.plist?
+
+iPhone:~ root# /var/setuid_test
+Attempting setuid...
+returned 0
+Freeeeeeee
+iPhone:~ root# su - mobile
+iPhone:~ mobile$ /var/setuid_test
+Attempting setuid...
+returned -1
+Still sandboxed
+
+"Breaking out of the sandbox is toughest stage of jailbreaking." https://newosxbook.com/files/HITSB.pdf
+
+Kernel cache patches aren't applying?!
+Pulled kernelcache off the device and it doesn't have our patches! Need to modify our idevicerestore to send our patched kernelcache?
+
+maybe we can apply patches at runtime for faster turnaround? enable /dev/kmem patch
+
+can't read kmem, maybe need tfp0?
+
+two calls to chgproccnt in the xnu source for setuid
+find task_for_pid: port_name_to_task xrefs
+
+page fault when reading memory 0x0
+kernel abort type 4: fault_type=0x1, fault_addr=0x0
+r0: 0x8a0b5028  r1: 0x00000000  r2: 0x00000400  r3: 0x8a0b5028
+r4: 0xc02a5f18  r5: 0x8a0b5000  r6: 0x00000428  r7: 0xd2a83e4c
+r8: 0x00000000  r9: 0x88c3ccc0 r10: 0x8a0b5028 r11: 0x00000400
+12: 0x80000000  sp: 0xd2a83e40  lr: 0x8003a0d7  pc: 0x8006721c
+cpsr: 0x80000013 fsr: 0x00000007 far: 0x00000000
+
+-sh-4.0# /kmem_test
+task_for_pid_0 = 0
+CE FA ED FE 0C 00 00 00  09 00 00 00 02 00 00 00  |  ................
+0C 00 00 00 54 08 00 00  01 00 00 00 01 00 00 00  |  ....T...........
+D0 01 00 00 5F 5F 54 45  58 54 00 00 00 00 00 00  |  ....__TEXT......
+00 00 00 00 00 10 00 80  00 30 24 00 00 00 00 00  |  .........0$.....
+00 30 24 00 05 00 00 00  05 00 00 00 06 00 00 00  |  .0$.............
+00 00 00 00 5F 5F 74 65  78 74 00 00 00 00 00 00  |  ....__text......
+00 00 00 00 5F 5F 54 45  58 54 00 00 00 00 00 00  |  ....__TEXT......
+00 00 00 00 00 20 00 80  44 0B 1E 00 00 10 00 00  |  ..... ..D.......
+0C 00 00 00 00 00 00 00  00 00 00 00 00 04 00 80  |  ................
+00 00 00 00 00 00 00 00  5F 5F 63 73 74 72 69 6E  |  ........__cstrin
+67 00 00 00 00 00 00 00  5F 5F 54 45 58 54 00 00  |  g.......__TEXT..
+00 00 00 00 00 00 00 00  44 2B 1E 80 07 78 03 00  |  ........D+...x..
+44 1B 1E 00 02 00 00 00  00 00 00 00 00 00 00 00  |  D...............
+02 00 00 00 00 00 00 00  00 00 00 00 5F 5F 63 6F  |  ............__co
+6E 73 74 00 00 00 00 00  00 00 00 00 5F 5F 54 45  |  nst.........__TE
+58 54 00 00 00 00 00 00  00 00 00 00 4C A3 21 80  |  XT..........L.!.
+E0 4E 02 00 4C 93 21 00  02 00 00 00 00 00 00 00  |  .N..L.!.........
+00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |  ................
+69 6E 69 74 63 6F 64 65  00 00 00 00 00 00 00 00  |  initcode........
+5F 5F 54 45 58 54 00 00  00 00 00 00 00 00 00 00  |  __TEXT..........
+2C F2 23 80 FE 46 00 00  2C E2 23 00 02 00 00 00  |  ,.#..F..,.#.....
+00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |  ................
+00 00 00 00 5F 5F 63 6F  6E 73 74 72 75 63 74 6F  |  ....__constructo
+72 00 00 00 5F 5F 54 45  58 54 00 00 00 00 00 00  |  r...__TEXT......
+00 00 00 00 2C 39 24 80  04 01 00 00 2C 29 24 00  |  ....,9$.....,)$.
+02 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |  ................
+00 00 00 00 00 00 00 00  5F 5F 64 65 73 74 72 75  |  ........__destru
+63 74 6F 72 00 00 00 00  5F 5F 54 45 58 54 00 00  |  ctor....__TEXT..
+00 00 00 00 00 00 00 00  30 3A 24 80 F8 00 00 00  |  ........0:$.....
+30 2A 24 00 02 00 00 00  00 00 00 00 00 00 00 00  |  0*$.............
+00 00 00 00 00 00 00 00  00 00 00 00 01 00 00 00  |  ................
+48 01 00 00 5F 5F 44 41  54 41 00 00 00 00 00 00  |  H...__DATA......
+00 00 00 00 00 40 24 80  00 20 05 00 00 30 24 00  |  .....@$.. ...0$.
+00 C0 01 00 03 00 00 00  03 00 00 00 04 00 00 00  |  ................
+00 00 00 00 5F 5F 64 61  74 61 00 00 00 00 00 00  |  ....__data......
+00 00 00 00 5F 5F 44 41  54 41 00 00 00 00 00 00  |  ....__DATA......
+00 00 00 00 00 40 24 80  8D B2 01 00 00 30 24 00  |  .....@$......0$.
+0C 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |  ................
+00 00 00 00 00 00 00 00  5F 5F 73 79 73 63 74 6C  |  ........__sysctl
+5F 73 65 74 00 00 00 00  5F 5F 44 41 54 41 00 00  |  _set....__DATA..
+00 00 00 00 00 00 00 00  90 F2 25 80 00 08 00 00  |  ..........%.....
+90 E2 25 00 02 00 00 00  00 00 00 00 00 00 00 00  |  ..%.............
+00 00 00 00 00 00 00 00  00 00 00 00 5F 5F 63 6F  |  ............__co
+6D 6D 6F 6E 00 00 00 00  00 00 00 00 5F 5F 44 41  |  mmon........__DA
+54 41 00 00 00 00 00 00  00 00 00 00 00 00 26 80  |  TA............&.
+A4 99 01 00 00 00 00 00  0C 00 00 00 00 00 00 00  |  ................
+00 00 00 00 01 00 00 00  00 00 00 00 00 00 00 00  |  ................
+5F 5F 62 73 73 00 00 00  00 00 00 00 00 00 00 00  |  __bss...........
+5F 5F 44 41 54 41 00 00  00 00 00 00 00 00 00 00  |  __DATA..........
+00 A0 27 80 A4 B6 01 00  00 00 00 00 0C 00 00 00  |  ..'.............
+00 00 00 00 00 00 00 00  01 00 00 00 00 00 00 00  |  ................
+00 00 00 00 01 00 00 00  D0 01 00 00 5F 5F 4B 4C  |  ............__KL
+44 00 00 00 00 00 00 00  00 00 00 00 00 60 29 80  |  D............`).
+00 20 00 00 00 F0 25 00  00 20 00 00 03 00 00 00  |  . ....%.. ......
+03 00 00 00 06 00 00 00  00 00 00 00 5F 5F 74 65  |  ............__te
+78 74 00 00 00 00 00 00  00 00 00 00 5F 5F 4B 4C  |  xt..........__KL
+44 00 00 00 00 00 00 00  00 00 00 00 00 60 29 80  |  D............`).
+E0 0A 00 00 00 F0 25 00  02 00 00 00 00 00 00 00  |  ......%.........
+00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |  ................
+5F 5F 63 6F 6E 73 74 72  75 63 74 6F 72 00 00 00  |  __constructor...
+5F 5F 4B 4C 44 00 00 00  00 00 00 00 00 00 00 00  |  __KLD...........
+E0 6A 29 80 04 00 00 00  E0 FA 25 00 02 00 00 00  |  .j).......%.....
+00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |  ................
+00 00 00 00 5F 5F 64 65  73 74 72 75 63 74 6F 72  |  ....__destructor
+
+
+Mobile user can read /etc/test, but not open it as writable:
+(The first run is when I was opening the file as read-only)
+gala ) ssh -oHostKeyAlgorithms=+ssh-dss mobile@localhost -p 2222
+mobile@localhost's password:
+-sh-4.0$ /var/setuid_test
+Attempting setuid...
+returned -1
+Wed Aug 16 19:18:38 2023
+Poking /var/mobile/foo... Accessible
+Poking /etc/test... Accessible
+
+Wed Aug 16 19:18:43 2023
+Poking /var/mobile/foo... Accessible
+Poking /etc/test... Accessible
+
+^C
+# Second run, opening as "w"
+-sh-4.0$ /var/setuid_test
+Attempting setuid...
+returned -1
+Wed Aug 16 19:19:01 2023
+Poking /var/mobile/foo... Accessible
+Poking /etc/test... INACCESSIBLE
+
+Use dmesg?!
+
+AppleKeyStore:cp_key_store_action(1)
+AppleKeyStore:cp_key_store_action(0)
+The second keystore action fails, then the system wants to shut down
+AppleBCMWLAN::powerOff Ready to power off
+AppleBCMWLAN::setPowerStateGated() : Powering On
+com.apple.launchd 1     com.apple.launchd 1     System: Still alive with 3/2 (normal/anonymous) children. In Normal phase of shutdown.
+com.apple.launchd 1     com.apple.syslogd 17    (com.apple.syslogd) PID is still valid
+com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) PID is still valid
+com.apple.launchd 1     com.apple.fairplayd.N90 26      (com.apple.fairplayd.N90) PID is still valid
+com.apple.launchd 1     0x100890.anonymous.launchd 1    (0x100890.anonymous.launchd) PID is still valid
+com.apple.launchd 1     0x1006d0.anonymous.sshd 5       (0x1006d0.anonymous.sshd) PID is still valid
+com.apple.launchd 1     com.apple.launchd 1     System: Still alive with 3/2 (normal/anonymous) children. In Normal phase of shutdown.
+com.apple.launchd 1     com.apple.syslogd 17    (com.apple.syslogd) PID is still valid
+com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) PID is still valid
+com.apple.launchd 1     com.apple.fairplayd.N90 26      (com.apple.fairplayd.N90) PID is still valid
+com.apple.launchd 1     0x100890.anonymous.launchd 1    (0x100890.anonymous.launchd) PID is still valid
+com.apple.launchd 1     0x1006d0.anonymous.sshd 5       (0x1006d0.anonymous.sshd) PID is still valid
+com.apple.launchd 1     com.apple.launchd 1     System: Still alive with 3/2 (normal/anonymous) children. In Normal phase of shutdown.
+com.apple.launchd 1     com.apple.syslogd 17    (com.apple.syslogd) PID is still valid
+com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) PID is still valid
+com.apple.launchd 1     com.apple.fairplayd.N90 26      (com.apple.fairplayd.N90) PID is still valid
+com.apple.launchd 1     0x100890.anonymous.launchd 1    (0x100890.anonymous.launchd) PID is still valid
+com.apple.launchd 1     0x1006d0.anonymous.sshd 5       (0x1006d0.anonymous.sshd) PID is still valid
+com.apple.launchd 1     com.apple.launchd 1     System: Still alive with 3/2 (normal/anonymous) children. In Normal phase of shutdown.
+com.apple.launchd 1     com.apple.syslogd 17    (com.apple.syslogd) PID is still valid
+com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) PID is still valid
+com.apple.launchd 1     com.apple.fairplayd.N90 26      (com.apple.fairplayd.N90) PID is still valid
+com.apple.launchd 1     0x100890.anonymous.launchd 1    (0x100890.anonymous.launchd) PID is still valid
+com.apple.launchd 1     0x1006d0.anonymous.sshd 5       (0x1006d0.anonymous.sshd) PID is still valid
+com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) Exit timeout elapsed (20 seconds). Killing
+com.apple.launchd 1     com.apple.fairplayd.N90 26      (com.apple.fairplayd.N90) Exit timeout elapsed (20 seconds). Killing
+com.apple.launchd 1     com.apple.launchd 1     System: Stray anonymous job at shutdown: PID 5 PPID 1 PGID 5 sshd
+com.apple.launchd 1     com.apple.launchd 1     System: Sending SIGTERM to PID 5 and continuing...
+com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) Job has overstayed its welcome. Forcing removal.
+com.apple.launchd 1     com.apple.launchd 1     System: About to call: reboot(RB_AUTOBOOT).
