@@ -45,6 +45,7 @@ def recompile_payloads():
     build(root / "shellcode_within_ibss")
     build(root / "shellcode_in_asr")
     build(root / "shellcode_within_ibec")
+    build(root / "shellcode_within_kernelcache")
     build(root / "kernelcache_set_debug_enabled")
     build(root / "shellcode_in_mediakit")
     build_ramdisk_program(root / "umount")

@@ -363,7 +363,11 @@ class DmgApplyTarPatch(DmgPatch):
         run_and_check(
             [
                 "tar",
-                "-xvf",
+                "--fflags",
+                "--mac-metadata",
+                "--same-owner",
+                "--xattrs",
+                "-xvpf",
                 self.tar_path.as_posix(),
                 "-C",
                 mounted_ramdisk_path.as_posix(),
