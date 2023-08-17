@@ -42,22 +42,7 @@ void spin_until_file_appears(const char* path) {
 }
 
 int main(int argc, const char** argv) {
-    printf("*** asr_wrapper invoked ***\n");
-    printf("\targc: %d\n", argc);
-    for (int i = 0; i < argc; i++) {
-        printf("\targv[%d] = %s\n", i, argv[i]);
-    }
-
-    /*
-    printf("Unmounting /mnt1...\n");
-    const char* umount_path = "/usr/bin/umount";
-    const char* umount_argv[] = {umount_path, "/mnt1", NULL};
-    int ret = run_and_wait(umount_path, umount_argv);
-    if (ret != 0) {
-        printf("Unmounting the System partition failed\n");
-        return -1;
-    }
-    */
+    printf("*** asr_wrapper startup ***\n");
     printf("Mounting /mnt2...\n");
     const char* mount_path = "/sbin/mount_hfs";
     const char* mount_argv[] = {mount_path, "/dev/disk0s2s1", "/mnt2", NULL};
@@ -81,36 +66,15 @@ int main(int argc, const char** argv) {
     ret = run_and_wait(asr_path, asr_argv);
     printf("asr ret = %d\n", ret);
 
-    sleep(20);
-
-    for (int i = 0; i < 3; i++) {
-        printf("Unmounting /mnt2 to match what restored_external expects...\n");
-        const char* umount_path = "/usr/bin/umount";
-        const char* umount_argv[] = {umount_path, "/mnt2", NULL};
-        ret = run_and_wait(umount_path, umount_argv);
-        if (ret != 0) {
-            printf("Unmounting the Data partition failed. Sleeping...\n");
-            sleep(10);
-            //return -1;
-        }
-        else {
-            break;
-        }
-    }
-
-    /*
-    printf("Mounting /dev/disk0s2s1 to /mnt2...\n");
-    const char* mount_hfs_path = "/sbin/mount_hfs";
-    const char* mount_hfs_argv[] = {mount_hfs_path, "/dev/disk0s2s1", "/mnt2", NULL};
-    int ret = run_and_wait(mount_hfs_path, mount_hfs_argv);
+    printf("Unmounting /mnt2 to match what restored_external expects...\n");
+    const char* umount_path = "/usr/bin/umount";
+    const char* umount_argv[] = {umount_path, "/mnt2", NULL};
+    ret = run_and_wait(umount_path, umount_argv);
     if (ret != 0) {
-        printf("Mounting the Data partition failed\n");
+        printf("Unmounting the Data partition failed!\n");
         return -1;
     }
-    printf("Mounting the Data partition succeeded\n");
-    */
 
-    // spin while waiting for /mnt2/sentinel__rootfs_is_fully_uploaded
-
+    printf("asr_wrapper is done!\n");
     return 0;
 }
