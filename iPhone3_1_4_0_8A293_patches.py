@@ -510,6 +510,20 @@ def _get_rootfs_patches() -> DmgPatchSet:
 """
         ).encode()
     )
+
+    install_cydia = DmgApplyTarPatch(
+        tar_path=Path(
+            #"/Users/philliptennen/Downloads/Payload 3/h3lix.app/Cydia-9.0r4-Raw.tar",
+
+            # Causes all SSL connections to fail after Cydia remounts the filesystem?!
+            #"/Users/philliptennen/Downloads/redsn0w_mac_0.9.15b3/redsn0w.app/Contents/MacOS/Cydia.tar",
+
+            # Same
+            # Try not flashing the cydia tar and instead do it after boot again?
+            "/Users/philliptennen/Downloads/Cydia-2.tar",
+            #"/Users/philliptennen/Downloads/Cydia-4.0.1r2-Raw.txz",
+        )
+    )
     patches = [
         mount_system_partition_as_writable,
         DmgApplyTarPatch(
@@ -517,6 +531,7 @@ def _get_rootfs_patches() -> DmgPatchSet:
                 "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh_for_rootfs.tar"
            )
         ),
+        # install_cydia,
         # Delete the Compass app to make room for the Cydia patch
         DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
     ]
