@@ -390,8 +390,8 @@ def _get_rootfs_patches() -> DmgPatchSet:
         file_path=Path("private/etc/fstab"),
         new_content=(
             """
-/dev/disk0s1 / hfs rw 0 1
-/dev/disk0s2s1 /private/var hfs rw,nosuid,nodev 0 2
+/dev/disk0s1 / hfs rw,suid,dev 0 1
+/dev/disk0s2s1 /private/var hfs rw,suid,dev 0 2
 """
         ).encode()
     )
