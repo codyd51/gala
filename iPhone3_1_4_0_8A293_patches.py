@@ -353,6 +353,31 @@ def _get_kernelcache_patches() -> list[Patch]:
         ]
     )
 
+    disable_mac_enforcement = PatchSet(
+        name="Disable MAC enforcement",
+        patches=[
+            BlobPatch(VirtualMemoryPointer(addr), new_content=int(0).to_bytes(4, byteorder='little'))
+            for addr in
+            [
+                0x8025ef80,
+                #0x8025eff8,
+                #0x8025f020,
+                #0x8025f048,
+
+                # PT: This patch causes the device to fail to boot
+                ## 0x8025f070,
+
+                #0x8025f098,
+                #0x8025f0c0,
+                #0x8025f0e8,
+                ##0x8025f110,
+                #0x8025f138,
+                #0x8025f160,
+                0x8025f188,
+            ]
+        ]
+    )
+
     return [
         neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
@@ -363,6 +388,7 @@ def _get_kernelcache_patches() -> list[Patch]:
         sandbox_patch,
         enable_dev_kmem,
         enable_task_for_pid_0,
+        disable_mac_enforcement,
         sandbox_debug_mode,
     ]
 
