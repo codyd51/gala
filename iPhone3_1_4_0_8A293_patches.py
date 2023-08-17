@@ -326,12 +326,26 @@ def _get_kernelcache_patches() -> list[Patch]:
         ],
     )
 
+    enable_dev_kmem = PatchSet(
+        name="Enable /dev/kmem",
+        patches=[
+            InstructionPatch.quick(0x8009f7ac, Instr.thumb("movs r3, #1")),
+            # Set permission bits
+            #InstructionPatch.quick(0x8009f738, Instr.arm("mov.w r4, #0x1b6")),
+            BlobPatch(address=VirtualMemoryPointer(0x8009f738), new_content=bytes([0x4F, 0xF4, 0xDB, 0x74])),
+            # Need to set group too?
+        ],
+    )
+
     return [
         neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
         InstructionPatch.quick(0x8080E826, Instr.thumb("b #0x8080e85a")),
+        disable_image3_nor_signature_checks,
+        disable_more_signature_checks,
         setuid_patch,
         sandbox_patch,
+        enable_dev_kmem,
     ]
 
 
