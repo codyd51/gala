@@ -70,7 +70,8 @@ int main(int argc, const char** argv) {
     // Inform the host by creating a sentinel file
     // touch /mnt2/sentinel__device_is_ready_for_host_to_send_rootfs
     printf("Creating sentinel file to ask the host to send the root filesystem...\n");
-    fopen("/mnt2/sentinel__device_is_ready_for_host_to_send_rootfs" ,"a");
+    FILE* fp = fopen("/mnt2/sentinel__device_is_ready_for_host_to_send_rootfs" ,"a");
+    fclose(fp);
 
     spin_until_file_appears("/mnt2/sentinel__rootfs_is_fully_uploaded");
 
