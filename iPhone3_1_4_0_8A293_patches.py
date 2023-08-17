@@ -344,6 +344,15 @@ def _get_kernelcache_patches() -> list[Patch]:
         ]
     )
 
+    # http://www.it-docs.net/ddata/781.pdf
+    sandbox_debug_mode = PatchSet(
+        name="SandboxDebugMode",
+        patches=[
+            InstructionPatch.quick(0x803c4578, Instr.thumb("movs r3, #1"), expected_length=2),
+            InstructionPatch.quick(0x803c457a, Instr.thumb("movs r3, #1"), expected_length=2),
+        ]
+    )
+
     return [
         neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
@@ -354,6 +363,7 @@ def _get_kernelcache_patches() -> list[Patch]:
         sandbox_patch,
         enable_dev_kmem,
         enable_task_for_pid_0,
+        sandbox_debug_mode,
     ]
 
 
