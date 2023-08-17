@@ -375,6 +375,15 @@ class DmgApplyTarPatch(DmgPatch):
         )
 
 
+@dataclass
+class DmgRemoveTreePatch(DmgPatch):
+    tree_path: Path
+
+    def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
+        print(f'Deleting tree {self.tree_path} from .dmg ({mounted_ramdisk_path / self.tree_path}')
+        shutil.rmtree(mounted_ramdisk_path / self.tree_path)
+
+
 class FilePermission(Enum):
     Read = auto()
     Write = auto()

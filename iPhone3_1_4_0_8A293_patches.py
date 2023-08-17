@@ -7,7 +7,7 @@ from assemble import Instr
 from os_build import ImageType
 from patches import (BlobPatch, InstructionPatch, IpswPatcherConfig, Patch,
                      PatchSet, DmgApplyTarPatch, DmgBinaryPatch,
-                     DmgPatchSet, DmgReplaceFileContentsPatch, FilePermission)
+                     DmgPatchSet, DmgReplaceFileContentsPatch, FilePermission, DmgRemoveTreePatch)
 
 
 def _get_ibss_patches() -> list[Patch]:
@@ -402,6 +402,8 @@ def _get_rootfs_patches() -> DmgPatchSet:
                 "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh_for_rootfs.tar"
            )
         ),
+        # Delete the Compass app to make room for the Cydia patch
+        DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
     ]
     return DmgPatchSet(patches=patches)
 
