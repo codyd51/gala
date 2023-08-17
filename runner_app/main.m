@@ -58,6 +58,7 @@
 @property (retain) LogsView* logsView;
 @property (retain) NSTask* _Nullable ongoingTask;
 @property (atomic, retain) NSMutableString* bufferedData;
+@property (retain) NSTextView* statusLabel;
 - (instancetype)initWithFrame:(NSRect)frame logsView:(LogsView*)logsView;
 @end
 
@@ -82,7 +83,7 @@
             CGRectGetWidth(frame) * 0.15,
             CGRectGetHeight(frame) * 0.1
         );
-        CGFloat buttonsY = CGRectGetHeight(frame) * 0.8;
+        CGFloat buttonsY = CGRectGetHeight(frame) * 0.85;
         CGFloat midX = CGRectGetMidX(frame);
 
         NSButton* jailbreakButton = [[NSButton alloc] initWithFrame:NSMakeRect(
@@ -108,6 +109,18 @@
         [tetheredBootButton setBezelStyle:NSThickerSquareBezelStyle];
         tetheredBootButton.target = self;
         tetheredBootButton.action = @selector(bootButtonClicked:);
+
+        self.statusLabel = [[NSTextView alloc] initWithFrame:NSMakeRect(
+            0,
+            frame.size.height * 0.7,
+            frame.size.width,
+            frame.size.height * 0.2
+        )];
+        [self.statusLabel alignCenter:nil];
+        self.statusLabel.string = @"Awaiting DFU device...";
+        self.statusLabel.font = [NSFont monospacedSystemFontOfSize:18 weight:NSFontWeightBold];
+        self.statusLabel.backgroundColor = [NSColor clearColor];
+        [self addSubview:self.statusLabel];
     }
     return self;
 }
