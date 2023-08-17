@@ -50,7 +50,7 @@ def boot_device(patcher_config: IpswPatcherConfig):
         # Upload and set the boot logo
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
-        recovery_device.send_command("bgcolor 0 0 0")
+        recovery_device.send_command("bgcolor 255 255 127")
 
         # Upload and jump to the iBEC
         recovery_device.upload_file(image_types_to_paths[ImageType.iBEC])
@@ -69,7 +69,7 @@ def boot_device(patcher_config: IpswPatcherConfig):
         # Set the boot logo again
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
-        recovery_device.send_command("bgcolor 0 128 128")
+        recovery_device.send_command("bgcolor 255 217 239")
 
         # Upload the device tree, ramdisk, and kernelcache
         recovery_device.upload_file(
@@ -143,6 +143,7 @@ def boot_device_with_infinite_retry(patcher_config: IpswPatcherConfig):
             boot_device(patcher_config)
             break
         except Exception:
+            raise
             # TODO(PT): NoDfuDeviceFound
             print('Please enter DFU mode to try again')
 
@@ -169,7 +170,7 @@ def main():
         print('Performing downgrade / jailbreak...')
         print('(WARNING: This will wipe all data on the device!)')
         # should_rebuild_root_filesystem = True
-        should_rebuild_root_filesystem = False
+        should_rebuild_root_filesystem = True
         boot_args = "rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3"
     elif args.boot:
         print(f'Performing a tethered boot from disk...')
@@ -190,6 +191,18 @@ def main():
         boot_args=boot_args,
     )
     boot_device_with_infinite_retry(patcher_config)
+
+    if args.jailbreak:
+        print('Device booted, flashing OS image...')
+        # Give restored_external a moment to come up
+        time.sleep(5)
+
+        run_and_check([
+            "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
+            "--restore-mode",
+            "-e",
+            "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
+        ])
 
     print('Done!')
 
