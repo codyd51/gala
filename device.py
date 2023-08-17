@@ -15,6 +15,14 @@ from os_build import DeviceModel
 from utils import TotalEnumMapping, chunks
 
 
+class NoDfuDeviceFoundError(Exception):
+    """We expected to find a connected DFU device, but none was found."""
+
+
+class NoRecoveryDeviceFoundError(Exception):
+    """We expected to find a connected Recovery device, but none was found."""
+
+
 def _get_libusb_backend() -> _LibUSB:
     libusb_path = "/opt/homebrew/Cellar/libusb/1.0.26/lib/libusb-1.0.dylib"
     backend = libusb1.get_backend(find_library=lambda x: libusb_path)
@@ -135,7 +143,12 @@ def maybe_acquire_device(mode: DeviceMode) -> Iterator[Optional[Device]]:
 def acquire_device(mode: DeviceMode) -> Iterator[Device]:
     with maybe_acquire_device(mode) as maybe_device:
         if not maybe_device:
-            raise RuntimeError(f"Unable to find a {mode.name} Mode device")
+            # Use an exception class corresponding to the requested device type
+            exception_type = TotalEnumMapping({
+                DeviceMode.DFU: NoDfuDeviceFoundError,
+                DeviceMode.Recovery: NoRecoveryDeviceFoundError,
+            })[mode]
+            raise exception_type(f"Unable to find a {mode.name} Mode device")
         yield maybe_device
 
 
@@ -149,4 +162,4 @@ def acquire_device_with_timeout(mode: DeviceMode, timeout: int = 10) -> Iterator
                 return
         print(f"{int(now - start)}: Waiting for {mode.name} Mode device to appear...")
         time.sleep(1)
-    raise RuntimeError(f"No {mode.name} Mode device appeared after {timeout} seconds")
+    raise NoDfuDeviceFoundError(f"No {mode.name} Mode device appeared after {timeout} seconds")
