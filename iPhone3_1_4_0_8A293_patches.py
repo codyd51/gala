@@ -254,6 +254,23 @@ def _get_kernelcache_patches() -> list[Patch]:
         ]
     )
 
+    shellcode_patch = PatchSet(
+        name="Shellcode",
+        patches=[
+            BlobPatch(
+                address=VirtualMemoryPointer(0x8014d424),
+                new_content=Path(
+                    "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_within_kernelcache/build/shellcode_within_kernelcache_shellcode"
+                ).read_bytes(),
+            ),
+            InstructionPatch.quick(0x8014cfac, Instr.thumb(f"bl #{hex(0x8014d424)}")),
+            #BlobPatch(
+            #    address=VirtualMemoryPointer(0x8014cfac),
+            #    new_content=b'A' * 128,
+            #)
+        ]
+    )
+
     neuter_amfi = PatchSet(
         name="Neuter AMFI",
         patches=[
