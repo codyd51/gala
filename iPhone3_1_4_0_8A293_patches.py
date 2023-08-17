@@ -337,6 +337,13 @@ def _get_kernelcache_patches() -> list[Patch]:
         ],
     )
 
+    enable_task_for_pid_0 = PatchSet(
+        name="Enable task_for_pid(0)",
+        patches=[
+            InstructionPatch.quick(0x8017e552, Instr.thumb("b #0x8017e56c"), expected_length=2),
+        ]
+    )
+
     return [
         neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
@@ -346,6 +353,7 @@ def _get_kernelcache_patches() -> list[Patch]:
         setuid_patch,
         sandbox_patch,
         enable_dev_kmem,
+        enable_task_for_pid_0,
     ]
 
 
