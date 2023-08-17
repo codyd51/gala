@@ -422,8 +422,6 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
                 # ),
                 # No flash LLB
                 InstructionPatch.quick(0x00007d64, Instr.thumb("b #0x7d7e")),
-                # Only run the loop iteration once (ie. don't try to mount /dev/disk0s2s1)
-                InstructionPatch.quick(0x0000843a, Instr.thumb("nop")),
             ],
         ),
     )
