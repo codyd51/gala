@@ -208,6 +208,20 @@ def assemble_arm(address: VirtualMemoryPointer, mnemonic: str, ops: list[str]) -
             return "{cond}101{link}{offset}".format(
                 cond="1111", link=link, offset=int_to_bits_with_width(dest_offset, 24)
             )
+        case "mov.w":
+            # 4.5 Data Processing
+            # maybe 000101111000010110010111
+            val = immediate_literal_to_int(ops[1])
+            return "{cond}00{is_immediate}{opcode}{should_set_condition_codes}{rn}{rd}{shift_3b}{op2}".format(
+                cond="1111",
+                is_immediate="1",
+                opcode="1101",
+                should_set_condition_codes="0",
+                rn=register_name_to_encoded_value(ops[0]),
+                rd=register_name_to_encoded_value(ops[0]),
+                shift_3b="1",
+                op2=int_to_bits_with_width(val >> 1, 8),
+            )
     raise NotImplementedError(mnemonic)
 
 
