@@ -218,61 +218,80 @@ def _get_ibec_patches(boot_args: str) -> list[Patch]:
 
 def _get_kernelcache_patches() -> list[Patch]:
     kernelcache_shellcode_addr = 0x8057A314
+
+    sandbox_callbacks_start = 0x803c5a40
+    sandbox_callbacks_end = 0x803c5f20
+    zero_fill = b'\0' * (sandbox_callbacks_end - sandbox_callbacks_start)
+    sandbox_blob_patch = BlobPatch(address=VirtualMemoryPointer(sandbox_callbacks_start), new_content=zero_fill)
+    sandbox_patch = PatchSet(
+        name="Neuter sandbox",
+        patches=[
+            sandbox_blob_patch,
+            InstructionPatch.quick(0x803c445e, Instr.thumb_nop(), expected_length=2),
+            # Patch out the call to sandbox_mac_policy_register and make it look like it returned zero?
+            InstructionPatch.quick(0x803c100a, Instr.thumb("movs r0, #0"), expected_length=2),
+        ]
+    )
+    neuter_amfi = PatchSet(
+        name="Neuter AMFI",
+        patches=[
+            # PT: Can't patch this because it's in __common,__DATA, bss which takes up no space on disk (and takes up zero space in the file/has zero 'file data' -- Hopper 'magically' shows XRefs to this region)
+            # PE_i_can_has_debugger
+            # PT: We might need a shellcode program that sets that var to 1, but how to run it at startup?
+            BlobPatch(
+                address=VirtualMemoryPointer(0x80966080),
+                new_content=Path(
+                    "/Users/philliptennen/Documents/Jailbreak/gala/kernelcache_set_debug_enabled/build/kernelcache_set_debug_enabled_shellcode"
+                ).read_bytes(),
+            ),
+            # 0x80966080
+            # 0x8026a800
+            BlobPatch(address=VirtualMemoryPointer(0x801D5BEA), new_content=bytes([0x90, 0xF3, 0x49, 0xF2])),
+            # TODO(PT): These might be unnecessary...
+            InstructionPatch.quick(0x803AAEB2, Instr.thumb("nop")),
+            InstructionPatch.quick(0x803AAEF4, Instr.thumb("nop")),
+            InstructionPatch.quick(0x803AAF14, Instr.thumb("nop")),
+            InstructionPatch.quick(0x803AAF28, Instr.thumb("nop")),
+            InstructionPatch.quick(0x803C4540, Instr.thumb("b #0x803c454a"), expected_length=2),
+        ],
+    )
+
+    disable_image3_nor_signature_checks = PatchSet(
+        name="Image3NOR patches",
+        patches=[
+            # Patch comparison of retval for bl maybe_some_kind_of_image_validation
+            InstructionPatch.quick(0x8057C800, Instr.thumb("cmp r0, r0"), expected_length=2),
+            InstructionPatch.quick(0x8057C7E4, Instr.thumb("cmp r0, r0"), expected_length=2),
+            InstructionPatch.quick(0x8057C7F2, Instr.thumb("cmp r0, r0"), expected_length=2),
+            InstructionPatch.quick(0x8057C826, Instr.thumb("cmp r0, r0"), expected_length=2),
+            InstructionPatch.quick(0x8057C876, Instr.thumb("cmp r0, r0"), expected_length=2),
+            InstructionPatch.quick(0x8057C88A, Instr.thumb("cmp r0, r0"), expected_length=2),
+            # TODO(PT): Next we have to prevent the baseband update...
+        ],
+    )
+
+    disable_more_signature_checks = PatchSet(
+        name="abc",
+        patches=[
+            InstructionPatch.quick(0x8057D452, [Instr.thumb("movs r0, #0"), Instr.thumb("movs r0, #0")]),
+            # SHSH
+            InstructionPatch.quick(0x803AC4FE, Instr.thumb("cmp r0, r0")),
+            # CERT
+            InstructionPatch.quick(0x803AC560, Instr.thumb("cmp r0, r0")),
+            # cmp        r0, #0x0?
+            # ite        eq?
+            # moveq      r4, r3
+            # movne      r4, r2
+            InstructionPatch.quick(0x803AA8C0, [Instr.thumb("cmp r0, r0"), Instr.thumb("b #0x803aa8ce")]),
+            InstructionPatch.quick(0x803AA904, Instr.thumb("nop")),
+        ],
+    )
+
     return [
-        PatchSet(
-            name="Neuter AMFI",
-            patches=[
-                # PT: Can't patch this because it's in __common,__DATA, bss which takes up no space on disk (and takes up zero space in the file/has zero 'file data' -- Hopper 'magically' shows XRefs to this region)
-                # PE_i_can_has_debugger
-                # PT: We might need a shellcode program that sets that var to 1, but how to run it at startup?
-                BlobPatch(
-                    address=VirtualMemoryPointer(0x80966080),
-                    new_content=Path(
-                        "/Users/philliptennen/Documents/Jailbreak/gala/kernelcache_set_debug_enabled/build/kernelcache_set_debug_enabled_shellcode"
-                    ).read_bytes(),
-                ),
-                # 0x80966080
-                # 0x8026a800
-                BlobPatch(address=VirtualMemoryPointer(0x801D5BEA), new_content=bytes([0x90, 0xF3, 0x49, 0xF2])),
-                # TODO(PT): These might be unnecessary...
-                InstructionPatch.quick(0x803AAEB2, Instr.thumb("nop")),
-                InstructionPatch.quick(0x803AAEF4, Instr.thumb("nop")),
-                InstructionPatch.quick(0x803AAF14, Instr.thumb("nop")),
-                InstructionPatch.quick(0x803AAF28, Instr.thumb("nop")),
-                InstructionPatch.quick(0x803C4540, Instr.thumb("b #0x803c454a"), expected_length=2),
-            ],
-        ),
+        neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
         InstructionPatch.quick(0x8080E826, Instr.thumb("b #0x8080e85a")),
-        PatchSet(
-            name="Image3NOR patches",
-            patches=[
-                # Patch comparison of retval for bl maybe_some_kind_of_image_validation
-                InstructionPatch.quick(0x8057C800, Instr.thumb("cmp r0, r0"), expected_length=2),
-                InstructionPatch.quick(0x8057C7E4, Instr.thumb("cmp r0, r0"), expected_length=2),
-                InstructionPatch.quick(0x8057C7F2, Instr.thumb("cmp r0, r0"), expected_length=2),
-                InstructionPatch.quick(0x8057C826, Instr.thumb("cmp r0, r0"), expected_length=2),
-                InstructionPatch.quick(0x8057C876, Instr.thumb("cmp r0, r0"), expected_length=2),
-                InstructionPatch.quick(0x8057C88A, Instr.thumb("cmp r0, r0"), expected_length=2),
-                # TODO(PT): Next we have to prevent the baseband update...
-            ],
-        ),
-        PatchSet(
-            name="abc",
-            patches=[
-                InstructionPatch.quick(0x8057D452, [Instr.thumb("movs r0, #0"), Instr.thumb("movs r0, #0")]),
-                # SHSH
-                InstructionPatch.quick(0x803AC4FE, Instr.thumb("cmp r0, r0")),
-                # CERT
-                InstructionPatch.quick(0x803AC560, Instr.thumb("cmp r0, r0")),
-                # cmp        r0, #0x0?
-                # ite        eq?
-                # moveq      r4, r3
-                # movne      r4, r2
-                InstructionPatch.quick(0x803AA8C0, [Instr.thumb("cmp r0, r0"), Instr.thumb("b #0x803aa8ce")]),
-                InstructionPatch.quick(0x803AA904, Instr.thumb("nop")),
-            ],
-        ),
+        sandbox_patch,
     ]
 
 
