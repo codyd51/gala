@@ -232,6 +232,28 @@ def _get_kernelcache_patches() -> list[Patch]:
             InstructionPatch.quick(0x803c100a, Instr.thumb("movs r0, #0"), expected_length=2),
         ]
     )
+    setuid_patch = PatchSet(
+        name="Everyone is root",
+        patches=[
+            #InstructionPatch.quick(0x8014c502, Instr.thumb("movs r0, #0"), expected_length=2),
+            #InstructionPatch.quick(0x8014c696, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014cfde, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014cfe4, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014cfea, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014cff0, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014cffc, Instr.thumb("cmp r0, r0"), expected_length=2),
+            #InstructionPatch.quick(0x8014d070, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014d076, Instr.thumb("nop"), expected_length=2),
+            #InstructionPatch.quick(0x8014d07c, Instr.thumb("nop"), expected_length=2),
+            # kauth_cred_getuid always returns 0
+            # This patch causes the device to fail to boot...
+            # Logs "AppleSerialMultiplexer: mux::timeGetAdjustmentGated: Forcing time update" once every few seconds forever
+            # InstructionPatch.quick(0x8013cb70, Instr.thumb("movs r0, #0"), expected_length=2),
+            # Checking retval of `suser`. Instead of `cbnz not_root`, set retval = 0.
+            InstructionPatch.quick(0x8014c696, Instr.thumb("movs r0, #0"), expected_length=2),
+        ]
+    )
+
     neuter_amfi = PatchSet(
         name="Neuter AMFI",
         patches=[
@@ -291,6 +313,7 @@ def _get_kernelcache_patches() -> list[Patch]:
         neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
         InstructionPatch.quick(0x8080E826, Instr.thumb("b #0x8080e85a")),
+        setuid_patch,
         sandbox_patch,
     ]
 
