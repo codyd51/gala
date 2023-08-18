@@ -11,6 +11,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <dispatch/dispatch.h>
+#include <ImageIO/ImageIO.h>
 
 int unmount(const char* path, int flags);
 int printf(const char* fmt, ...);
@@ -109,261 +110,7 @@ IOReturn IOMobileFramebufferGetLayerDefaultSurface(
     IOSurfaceRef* buffer
 );
 
-void set_display_first(void) {
-    CFMutableDictionaryRef match_framebuf_dict = IOServiceMatching("IOMobileFramebuffer");
-    io_iterator_t framebuffer_iterator;
-    IOReturn io_retval = IOServiceGetMatchingServices(
-        kIOMasterPortDefault,
-        match_framebuf_dict,
-        &framebuffer_iterator
-    );
-    if (io_retval != kIOReturnSuccess) {
-        printf("Failed to get matching service\n");
-        return;
-    }
-    printf("Succeeded to get service\n");
-
-    io_service_t framebuffer_service;
-    while ((framebuffer_service = IOIteratorNext(framebuffer_iterator))) {
-        printf("Got framebuffer service 0x%08x\n", framebuffer_service);
-        io_name_t service_name;
-        io_retval = IORegistryEntryGetName(framebuffer_service, service_name);
-        if (io_retval != kIOReturnSuccess) {
-            printf("Failed to get framebuffer service name, skipping\n");
-            continue;
-        }
-        printf("Framebuffer service name: %s\n", service_name);
-
-        io_name_t class_name;
-        io_retval = IOObjectGetClass(framebuffer_service, class_name);
-        if (io_retval != kIOReturnSuccess) {
-            printf("Failed to get framebuffer service class, skipping\n");
-            continue;
-        }
-        printf("Framebuffer service class: %s\n", class_name);
-
-        if (!strstr(class_name, "CLCD")) {
-            printf("This service isn't AppleCLCD, will keep searching\n");
-            continue;
-        }
-
-        IOMobileFramebufferRef framebuffer_ref;
-        /*j
-        io_retval = IOMobileFramebufferOpen(
-            framebuffer_service,
-            mach_task_self(),
-            0,
-            &framebuffer_ref
-        );
-         */
-        IOReturn IOMobileFramebufferGetMainDisplay(IOMobileFramebufferRef*);
-        io_retval = IOMobileFramebufferGetMainDisplay(&framebuffer_ref);
-
-        if (io_retval != kIOReturnSuccess || !framebuffer_ref) {
-            printf("Failed to get framebuffer\n");
-            continue;
-        }
-
-        printf("Got framebuffer 0x%08x\n", framebuffer_ref);
-
-        CGSize display_size;
-        if (IOMobileFramebufferGetDisplaySize(framebuffer_ref, &display_size) != kIOReturnSuccess) {
-            printf("Failed to get display size\n");
-            continue;
-        }
-        printf("Display size: (%f, %f)\n", display_size.width, display_size.height);
-
-        //io_service_t service = IORegistryEntryFromPath(kIOMasterPortDefault, "IODeviceTree:/chosen");
-        int display_scale = 2;
-        int display_rotation = 0;
-
-        IOSurfaceRef surface;
-        io_retval = IOMobileFramebufferGetLayerDefaultSurface(
-            framebuffer_ref,
-            0,
-            &surface
-        );
-
-        /*
-        CFStringRef keys[3];
-        CFTypeRef values[3];
-
-        keys[0] = kIOSurfaceIsGlobal;
-        values[0] = kCFBooleanTrue;
-        keys[1] = kIOSurfaceBytesPerRow;
-        values[1] = kCFBooleanTrue;
-
-        CFDictionaryRef dict = CFDictionaryCreate(NULL, (void **)keys, (void **)values, 3, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-
-
-        if (io_retval != kIOReturnSuccess) {
-            printf("Failed to get surface\n");
-            continue;
-        }
-         */
-
-        /*
-        const CFStringRef kIOSurfaceIsGlobal;
-        const CFStringRef kIOSurfaceBytesPerRow;
-        const CFStringRef kIOSurfaceBytesPerElement;
-        const CFStringRef kIOSurfaceWidth;
-        const CFStringRef kIOSurfaceHeight;
-        const CFStringRef kIOSurfacePixelFormat;
-        const CFStringRef kIOSurfaceAllocSize;
-        const CFStringRef kIOSurfaceMemoryRegion;
-
-        int width = (int)display_size.width;
-        int height = (int)display_size.height;
-
-        int pitch = width * 4, allocSize = 4 * width * height;
-        int bPE = 4;
-        char pixelFormat[4] = {'A', 'R', 'G', 'B'};
-        CFMutableDictionaryRef dict;
-        dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
-                                         &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-        CFDictionarySetValue(dict, kIOSurfaceIsGlobal, kCFBooleanTrue);
-        //CFDictionarySetValue(dict, kIOSurfaceMemoryRegion, (CFStringRef)@"PurpleEDRAM");
-        CFDictionarySetValue(dict, kIOSurfaceMemoryRegion, );
-        CFDictionarySetValue(dict, kIOSurfaceBytesPerRow,
-                             CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pitch));
-        CFDictionarySetValue(dict, kIOSurfaceBytesPerElement,
-                             CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bPE));
-        CFDictionarySetValue(dict, kIOSurfaceWidth,
-                             CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &width));
-        CFDictionarySetValue(dict, kIOSurfaceHeight,
-                             CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &height));
-        CFDictionarySetValue(dict, kIOSurfacePixelFormat,
-                             CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, pixelFormat));
-        CFDictionarySetValue(dict, kIOSurfaceAllocSize,
-                             CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &allocSize));
-
-        IOSurfaceRef IOSurfaceCreate(CFMutableDictionaryRef dict);
-        IOSurfaceRef surface = IOSurfaceCreate(dict);
-         */
-
-        printf("Got surface %p\n", surface);
-
-        IOReturn CoreSurfaceBufferLock(IOSurfaceRef ref, int arg2);
-        io_retval = CoreSurfaceBufferLock(surface, 3);
-        printf("CoreSurfaceBufferLock = %d\n", io_retval);
-
-        CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height, size_t bitsPerComponent, size_t bytesPerRow, CGColorSpaceRef space, uint32_t bitmapInfo);
-        //CGColorSpaceRef color_space = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
-        /*
-        CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
-        CGContextRef context = CGBitmapContextCreate(
-            IOSurfaceGetBaseAddress(surface),
-            (int)display_size.width,
-            (int)display_size.height,
-            32,
-            (int)display_size.width * 4,
-            color_space,
-            kCGBitmapAlphaInfoMask |
-            kCGBitmapByteOrderDefault
-        );
-         */
-        size_t stride = IOSurfaceGetBytesPerRow(surface);
-        CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
-        void* base = IOSurfaceGetBaseAddress(surface);
-
-        //IOSurfaceLock(surface, 0, nil);
-        printf("base %p\n", base);
-        memset(base, 0xff, 640*960*3);
-
-        CGContextRef context = CGBitmapContextCreate(
-            IOSurfaceGetBaseAddress(surface),
-            (int)display_size.width,
-            (int)display_size.height,
-            8,
-            stride,
-            rgb,
-            kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host
-        );
-
-        CGContextSetLineWidth(context, 2); // set the line width
-        CGContextSetRGBStrokeColor(context, 20.0 /255, 101.0 / 255.0, 18.0 / 255.0, 1.0);
-
-        CGContextSetRGBFillColor(context, 0.5, 1, 0.8, 1);
-        CGContextFillRect(context, CGRectMake(20, 40, 400, 600));
-
-        CGPoint center = CGPointMake(display_size.width / 2, display_size.height / 2); // get the circle centre
-        CGFloat radius = 0.9 * center.x; // little scaling needed
-        CGFloat startAngle = -((float)M_PI / 2); // 90 degrees
-        CGFloat endAngle = ((2 * (float)M_PI) + startAngle);
-        CGContextAddArc(context, center.x, center.y, radius + 4, startAngle, endAngle, 0); // create an arc the +4 just adds some pixels because of the polygon line thickness
-        CGContextStrokePath(context); // draw
-
-        //IOMobileFramebufferReturn IOMobileFramebufferSwapSetLayer(IOMobileFramebufferConnection connection, int layerid, IOSurfaceRef buffer);
-        IOReturn IOMobileFramebufferSwapBegin(IOMobileFramebufferRef connection, int *token);
-        IOReturn IOMobileFramebufferSwapSetLayer(IOMobileFramebufferRef connection, int layerid, IOSurfaceRef buffer);
-        IOReturn IOMobileFramebufferSwapWait(IOMobileFramebufferRef connection, int token, int something);
-        IOReturn IOMobileFramebufferSwapEnd(IOMobileFramebufferRef connection);
-
-        IOReturn IOMobileFramebufferWaitSurface(IOMobileFramebufferRef connection, IOSurfaceRef buf);
-        /*
-        io_retval = IOMobileFramebufferWaitSurface(framebuffer_ref, surface);
-        printf("IOMobileFramebufferWaitSurface %p\n", framebuffer_ref);
-         */
-
-        int token = 123;
-        io_retval = IOMobileFramebufferSwapBegin(framebuffer_ref, 0);
-        printf("SwapBegin Got retval %d token %d\n", io_retval, token);
-
-        int IOSurfaceGetID(IOSurfaceRef);
-        int layerId = IOSurfaceGetID(surface);
-        printf("layerId %d\n", layerId);
-        io_retval = IOMobileFramebufferSwapSetLayer(framebuffer_ref, 0, surface);
-        printf("SwapSetLayer retval = %d\n", io_retval);
-        io_retval = IOMobileFramebufferSwapSetLayer(framebuffer_ref, 1, surface);
-        printf("SwapSetLayer retval = %d\n", io_retval);
-        io_retval = IOMobileFramebufferSwapSetLayer(framebuffer_ref, 2, surface);
-        //io_retval = IOMobileFramebufferSwapSetLayer(framebuffer_ref, -1, surface);
-        printf("SwapSetLayer retval = %d\n", io_retval);
-
-        //io_retval = IOMobileFramebufferSwapWait(framebuffer_ref, token, 0);
-        printf("SwapWait retval = %d\n", io_retval);
-
-        io_retval = IOMobileFramebufferSwapEnd(framebuffer_ref);
-
-        printf("retval = %d, token = %d\n", io_retval, token);
-
-        /*
-        io_retval = IOMobileFramebufferSwapSetLayer(framebuffer_ref, 0, surface);
-        printf("retval = %d\n", io_retval);
-         */
-
-        //io_retval = IOMobileFramebufferSwapSetLayer(framebuffer_ref, token, surface);
-        printf("retval = %d\n", io_retval);
-
-        int i = 0;
-        while (1) {
-        //for (int i = 0; i < 3000; i++) {
-            CGFloat radius = 20.0f + 4.0f * (i % 100);
-            CGFloat angle = i * 1.1;
-            CGPoint circleCenter = { 150 + radius * cos(angle), 100 + radius * sin(angle) };
-            CGFloat circleRadius = 20;
-            CGContextSetRGBFillColor(context, 0, (arc4random() % 40) / 40.0, 1 - (i % 2), 1);
-            CGContextFillEllipseInRect(context, CGRectMake(circleCenter.x - circleRadius, circleCenter.y - circleRadius, circleRadius * 2, circleRadius * 2));
-            i += 1;
-        }
-
-        //CGContextFlush(context);
-        //IOSurfaceUnlock(surface, 0, 0);
-
-        break;
-    }
-}
-
-CGContextRef get_display_cgcontext(void) {
-    IOMobileFramebufferRef framebuffer_ref;
-    IOReturn io_retval = IOMobileFramebufferGetMainDisplay(&framebuffer_ref);
-
-    if (io_retval != kIOReturnSuccess || !framebuffer_ref) {
-        printf("Failed to get framebuffer\n");
-        return NULL;
-    }
-    printf("Got framebuffer %p\n", (void*)framebuffer_ref);
-
+CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSurfaceRef* out_surface, CGColorSpaceRef* out_color_space) {
     CGSize display_size;
     if (IOMobileFramebufferGetDisplaySize(framebuffer_ref, &display_size) != kIOReturnSuccess) {
         printf("Failed to get display size\n");
@@ -373,24 +120,23 @@ CGContextRef get_display_cgcontext(void) {
     int screen_width = (int)display_size.width;
     int screen_height = (int)display_size.height;
 
-    IOSurfaceRef surface;
-    io_retval = IOMobileFramebufferGetLayerDefaultSurface(
+    IOReturn io_retval = IOMobileFramebufferGetLayerDefaultSurface(
             framebuffer_ref,
             0,
-            &surface
+            out_surface
     );
 
-    size_t stride = IOSurfaceGetBytesPerRow(surface);
-    CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
-    void* base = IOSurfaceGetBaseAddress(surface);
+    size_t stride = IOSurfaceGetBytesPerRow(*out_surface);
+    *out_color_space = CGColorSpaceCreateDeviceRGB();
+    void* base = IOSurfaceGetBaseAddress(*out_surface);
 
     CGContextRef context = CGBitmapContextCreate(
-        IOSurfaceGetBaseAddress(surface),
+        IOSurfaceGetBaseAddress(*out_surface),
         (int)display_size.width,
         (int)display_size.height,
         8,
         stride,
-        rgb,
+        *out_color_space,
         kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host
     );
     return context;
@@ -425,17 +171,7 @@ CGContextRef get_display_cgcontext(void) {
 }
 
 - (CGFloat)dot:(PTVector*)other {
-    PTVector* v1 = self;
-    PTVector* v2 = other;
-
-    /*
-    CGFloat m1 = [v1 magnitude];
-    CGFloat m2 = [v2 magnitude];
-     */
-
-    CGFloat dot = (v1.x * v2.x) + (v1.y * v2.y);
-    return dot;
-    //return [[PTVector vectorWithX:]
+    return (self.x * other.x) + (self.y * other.y);
 }
 
 - (instancetype)multiply:(CGFloat)scalar {
@@ -447,115 +183,224 @@ CGContextRef get_display_cgcontext(void) {
 }
 @end
 
+@interface PTEdge : NSObject
+@property CGPoint vertex1;
+@property CGPoint vertex2;
+@property (retain) PTVector* normal1;
+@property (retain) PTVector* normal2;
++ (instancetype)edgeWithVertex1:(CGPoint)vertex1 vertex2:(CGPoint)vertex2;
++ (NSArray*)edgesOfRect:(CGRect)rect;
+- (instancetype)initWithVertex1:(CGPoint)vertex1 vertex2:(CGPoint)vertex2;
+@end
+
+@implementation PTEdge
++ (instancetype)edgeWithVertex1:(CGPoint)vertex1 vertex2:(CGPoint)vertex2 {
+    return [[PTEdge alloc] initWithVertex1:vertex1 vertex2:vertex2];
+}
+
++ (NSArray*)edgesOfRect:(CGRect)rect {
+    CGFloat min_x = CGRectGetMinX(rect);
+    CGFloat min_y = CGRectGetMinY(rect);
+    CGFloat max_x = CGRectGetMaxX(rect);
+    CGFloat max_y = CGRectGetMaxY(rect);
+    return @[
+        // Top edge
+        [PTEdge edgeWithVertex1:CGPointMake(min_x, max_y) vertex2:CGPointMake(max_x, max_y)],
+        // Right edge
+        [PTEdge edgeWithVertex1:CGPointMake(max_x, max_y) vertex2:CGPointMake(max_x, min_y)],
+        // Bottom edge
+        [PTEdge edgeWithVertex1:CGPointMake(min_x, min_y) vertex2:CGPointMake(max_x, min_y)],
+        // Left edge
+        [PTEdge edgeWithVertex1:CGPointMake(min_x, max_y) vertex2:CGPointMake(min_x, min_y)],
+    ];
+}
+
+- (instancetype)initWithVertex1:(CGPoint)vertex1 vertex2:(CGPoint)vertex2 {
+    if ((self = [super init])) {
+        self.vertex1 = vertex1;
+        self.vertex2 = vertex2;
+        CGFloat dx = self.vertex2.x - self.vertex1.x;
+        CGFloat dy = self.vertex2.y - self.vertex1.y;
+
+        //PTVector* normal1 = [PTVector]
+        // Normalize the normals to the unit length
+        if (dx != 0) {
+            dx = dx / dx;
+        }
+        if (dy != 0) {
+            dy = dy / dy;
+        }
+        printf("dx %f dy %f\n", dx, dy);
+        self.normal1 = [PTVector vectorWithX:-dy Y:dx];
+        self.normal2 = [PTVector vectorWithX:dy Y:-dx];
+
+    }
+    return self;
+}
+@end
+
+@interface PTRestoreGui : NSObject
+@property CFImageRef activeImage;
+- (instancetype)init;
+@end
+
+@implementation PTRestoreGui
+- (instancetype)init {
+    if ((self = [super init])) {
+
+    }
+    return self;
+}
+@end
+
 int main(int argc, const char** argv) {
     printf("*** asr_wrapper startup ***\n");
 
     //set_display_first();
-    CGContextRef display_cgcontext = get_display_cgcontext();
+    IOMobileFramebufferRef framebuffer_ref;
+    IOReturn io_retval = IOMobileFramebufferGetMainDisplay(&framebuffer_ref);
+    if (io_retval != kIOReturnSuccess || !framebuffer_ref) {
+        printf("Failed to get framebuffer\n");
+        return 1;
+    }
+    printf("Got framebuffer %p\n", (void*)framebuffer_ref);
+
+    IOSurfaceRef surface;
+    CGColorSpaceRef color_space;
+    CGContextRef display_cgcontext = get_display_cgcontext(framebuffer_ref, &surface, &color_space);
+
     size_t display_width = CGBitmapContextGetWidth(display_cgcontext);
     size_t display_height = CGBitmapContextGetHeight(display_cgcontext);
     CGRect display_frame = CGRectMake(0, 0, display_width, display_height);
 
-    CGPoint icon_position = CGPointMake(
-        CGRectGetMidX(display_frame),
-        CGRectGetMidY(display_frame)
+    CGPoint icon_position = CGPointMake(80, 80);
+    CGRect sprite_frame = CGRectMake(
+            icon_position.x,
+            icon_position.y,
+            100,
+            100
     );
+    CGFloat sprite_width = CGRectGetWidth(sprite_frame);
+    CGFloat sprite_height = CGRectGetHeight(sprite_frame);
+
+    CFURLRef sprite_image_path_url = CFURLCreateWithFileSystemPath(NULL, CFStringCreateWithCString(NULL, "/boot_logo.png", kCFStringEncodingASCII), kCFURLPOSIXPathStyle, NO);
+    CFMutableDictionaryRef options = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CGImageSourceRef sprite_image_source = CGImageSourceCreateWithURL(sprite_image_path_url, options);
+    CGImageRef sprite_image = CGImageSourceCreateImageAtIndex(sprite_image_source, 0, options);
+
+    CFURLRef image_path_url = CFURLCreateWithFileSystemPath(NULL, CFStringCreateWithCString(NULL, "/receiving_filesystem_over_usb2.png", kCFStringEncodingASCII), kCFURLPOSIXPathStyle, NO);
+    CGImageSourceRef image_source = CGImageSourceCreateWithURL(image_path_url, options);
+    CGImageRef image = CGImageSourceCreateImageAtIndex(image_source, 0, options);
+    CGSize text_size = CGSizeMake(display_width * 0.6, display_height * 0.15);
+    CGRect text_frame = CGRectMake(
+            (display_width / 2.0) - (text_size.width / 2.0),
+            (display_height / 2.0) - (text_size.height / 2.0),
+            text_size.width,
+            text_size.height
+    );
+    printf("text_frame %f %f, %f, %f\n", text_frame.origin.x, text_frame.origin.y, text_frame.size.width, text_frame.size.height);
 
     int sign_x = 1;
     int sign_y = 1;
 
-    /*
-    CGFloat direction_x = 5;
-    CGFloat direction_y = 5;
-     */
-    PTVector* direction = [[PTVector alloc] initWithX:5 Y:5];
+    NSArray* edges_of_screen = [PTEdge edgesOfRect:display_frame];
+    NSArray* edges_of_text = [PTEdge edgesOfRect:text_frame];
+    NSMutableArray* walls = [NSMutableArray array];
+    [walls addObjectsFromArray:edges_of_screen];
+    //[walls addObjectsFromArray:edges_of_text];
+    // PT: Must be less than half the icon size...
+    PTVector* direction = [[PTVector alloc] initWithX:10 Y:10];
+
+    CGColorRef background_color = CGColorCreate(color_space, (CGFloat[]){164/255.0, 255/255.0, 125/255.0, 1});
+    CGContextSetFillColorWithColor(display_cgcontext, background_color);
+    CGContextFillRect(display_cgcontext, display_frame);
+
     while (1) {
-        CGContextClearRect(display_cgcontext, display_frame);
+        //IOSurfaceLock(surface, 0, 0);
 
-        CGContextSetRGBFillColor(
-                display_cgcontext,
-                1,
-                0.2,
-                0.2,
-                1
-        );
+        //CGColorRef background_color = CGColorCreate(color_space, (CGFloat[]){189/255.0, 255/255.0, 191/255.0, 1});
+        //CGContextClearRect(display_cgcontext, display_frame);
 
+        CGPoint previous_icon_position = icon_position;
         icon_position.x += direction.x * sign_x;
         icon_position.y += direction.y * sign_y;
 
-        // Did we hit the right edge of the screen?
-        if (icon_position.x >= CGRectGetMaxX(display_frame)) {
-            PTVector* plane_normal = [[PTVector alloc] initWithX:-1 Y:0];
-            printf("plane_normal %f %f\n", plane_normal.x, plane_normal.y);
-            CGFloat dot = [direction dot:plane_normal];
-            printf("dot %f\n", dot);
+        // Check for collision with each of our walls
+        for (PTEdge* edge in walls) {
+            CGFloat lower_y = MIN(edge.vertex1.y, edge.vertex2.y);
+            CGFloat higher_y = MAX(edge.vertex1.y, edge.vertex2.y);
 
-            PTVector* component = [plane_normal multiply:-2.0 * dot];
-            printf("component %f %f\n", component.x, component.y);
-            PTVector* resultant = [[plane_normal multiply:-2.0 * dot] add:direction];
+            CGFloat lower_x = MIN(edge.vertex1.x, edge.vertex2.x);
+            CGFloat higher_x = MAX(edge.vertex1.x, edge.vertex2.x);
 
-            direction.x = resultant.x;
-            direction.y = resultant.y;
-            printf("Got new resultant %f %f\n", resultant.x, resultant.y);
+            // Did we just cross into the wall?
+            bool detected_intersection = false;
+            // First, check whether we're dealing with a horizontal or vertical wall
+            bool is_wall_vertical = edge.vertex1.x == edge.vertex2.x;
+            if (is_wall_vertical) {
+                // Is the sprite within the vertical segment?
+                if (icon_position.y >= lower_y && icon_position.y < higher_y) {
+                    // 'Increasing' intersection
+                    if (previous_icon_position.x < edge.vertex1.x && icon_position.x + sprite_width >= edge.vertex1.x) {
+                        printf("Increasing intersection on vertical wall\n");
+                        detected_intersection = true;
+                    }
+                    // 'Decreasing' intersection
+                    else if (previous_icon_position.x > edge.vertex1.x && icon_position.x <= edge.vertex1.x) {
+                        printf("Decreasing intersection on vertical wall\n");
+                        detected_intersection = true;
+                    }
+                }
+            }
+            else {
+                // Is the sprite within the horizontal segment?
+                if (icon_position.x >= lower_x && icon_position.x < higher_x) {
+                    // 'Increasing' intersection
+                    if (previous_icon_position.y < edge.vertex1.y && icon_position.y >= edge.vertex1.y) {
+                        printf("Increasing intersection on horizontal wall\n");
+                        detected_intersection = true;
+                    }
+                    // 'Decreasing' intersection
+                    else if (previous_icon_position.y > edge.vertex1.y && icon_position.y <= edge.vertex1.y) {
+                        printf("Decreasing intersection on horizontal wall\n");
+                        detected_intersection = true;
+                    }
+                }
+            }
+
+            if (detected_intersection) {
+                PTVector* plane_normal = edge.normal2;
+                CGFloat dot = [direction dot:plane_normal];
+
+                PTVector* component = [plane_normal multiply:-2.0 * dot];
+                PTVector* resultant = [[plane_normal multiply:-2.0 * dot] add:direction];
+
+                direction.x = resultant.x;
+                direction.y = resultant.y;
+
+                printf("edge (%f, %f) - (%f, %f)\n", edge.vertex1.x, edge.vertex1.y, edge.vertex2.x, edge.vertex2.y);
+                printf("new vector (%f %f) pos (%f %f)\n", direction.x, direction.y, icon_position.x, icon_position.y);
+                break;
+            }
         }
 
-        // Did we hit the left edge of the screen?
-        if (icon_position.x < 0) {
-            printf("Hit left edge\n");
-            sign_x = 1;
-            direction.x = (arc4random() % 10) / 2;
-            printf("new direction_x = %f\n", direction.x);
-        }
+        // Failsafe, don't allow sprites to go off-screen
+        if (icon_position.x < 0) icon_position.x = 1;
+        if (icon_position.y < 0) icon_position.y = 1;
+        if (icon_position.x >= display_width) icon_position.x = display_width - 1;
+        if (icon_position.y >= display_height) icon_position.y = display_height - 1;
+        // Failsafe, don't allow velocity to go to zero
+        if (direction.x == 0) direction.x = 10;
+        if (direction.y == 0) direction.y = 10;
 
-        // Did we hit the bottom edge of the screen?
-        if (icon_position.y >= CGRectGetMaxY(display_frame)) {
-            printf("Hit bottom edge\n");
-            sign_y = -1;
-            direction.y = (arc4random() % 10) / 2;
-            printf("new direction_y = %f\n", direction.y);
-        }
+        sprite_frame.origin.x = icon_position.x;
+        sprite_frame.origin.y = icon_position.y;
+        CGContextDrawImage(display_cgcontext, sprite_frame, sprite_image);
 
-        // Did we hit the top edge of the screen?
-        if (icon_position.y < 0) {
-            printf("Hit top edge\n");
-            sign_y = 1;
-            direction.y = (arc4random() % 10) / 2;
-            printf("new direction_y = %f\n", direction.y);
-        }
+        CGContextDrawImage(display_cgcontext, text_frame, image);
 
-        CGContextFillRect(
-            display_cgcontext,
-            CGRectMake(
-                    icon_position.x,
-                    icon_position.y,
-                    30,
-                    30
-            )
-        );
+        usleep(5000);
     }
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        //  your code
-        while (true) {
-            printf("Background thread!\n");
-            sleep(1);
-        }
-    });
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        while (true) {
-            printf("Main thread!\n");
-            sleep(1);
-        }
-    });
-
-    dispatch_main();
-    
-    while (true) {
-        printf("Main thread!\n");
-        sleep(1);
-    }
-    return 0;
 
     printf("Mounting /mnt2...\n");
     const char* mount_path = "/sbin/mount_hfs";
