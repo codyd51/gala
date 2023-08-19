@@ -436,6 +436,8 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
                 # ),
                 # No flash LLB
                 InstructionPatch.quick(0x00007d64, Instr.thumb("b #0x7d7e")),
+                # Don't claim the display
+                InstructionPatch.quick(0x00009e14, [Instr.thumb("b #0xa044"), Instr.thumb_nop()], expected_length=4),
             ],
         ),
     )
