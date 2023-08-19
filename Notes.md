@@ -581,3 +581,51 @@ com.apple.launchd 1     com.apple.launchd 1     System: Stray anonymous job at s
 com.apple.launchd 1     com.apple.launchd 1     System: Sending SIGTERM to PID 5 and continuing...
 com.apple.launchd 1     com.apple.securityd 37  (com.apple.securityd) Job has overstayed its welcome. Forcing removal.
 com.apple.launchd 1     com.apple.launchd 1     System: About to call: reboot(RB_AUTOBOOT).
+
+
+-sh-4.0# asr_wrapper
+*** asr_wrapper startup ***
+Succeeded to get service
+Got framebuffer service 0x00001307
+Framebuffer service name: AppleCLCD
+Framebuffer service class: AppleCLCD
+Got framebuffer service 0x00001403
+Framebuffer service name: AppleRGBOUT
+Framebuffer service class: AppleRGBOUT
+
+The native code does substring matching for "CLCD"
+
+Looks like there can only be one 'main display holder'? I had to kill restored_external before my content would display
+
+Ended up just neutering the restored call that claims the display
+
+Patch springboard at runtime to show a UIAlertView
+
+        CGColorRef text_color = CGColorCreate(color_space, (CGFloat[]){0, 0, 0, 1});
+        CGContextSetStrokeColorWithColor(display_cgcontext, text_color);
+        CGContextSetFillColorWithColor(display_cgcontext, text_color);
+        CGContextSetLineWidth(display_cgcontext, 1.0);
+        CGContextSelectFont(display_cgcontext, "Helvetica", 40, kCGEncodingMacRoman);
+        CGContextSetTextDrawingMode(display_cgcontext, kCGTextFill);
+
+        const char* text = "Receiving filesystem over USB...";
+        CGContextShowTextAtPoint(display_cgcontext, 50, 20, text, strlen(text));
+Thu Aug 17 15:35:21 localhost asr_wrapper[86] <Error>: No available font implementation.
+
+ASR: *** __NSAutoreleaseNoPool(): Object 0xa09210 of class __NSArrayI autoreleased with no pool in place - just leaking
+ASR: *** __NSAutoreleaseNoPool(): Object 0xa08920 of class PTVector autoreleased with no pool in place - just leaking
+ASR: *** __NSAutoreleaseNoPool(): Object 0xa08920 of class PTVector autoreleased with no pool in place - just leaking
+ASR: *** __NSAutoreleaseNoPool(): Object 0xa08920 of class PTVector autoreleased with no pool in place - just leaking
+ASR: *** __NSAutoreleaseNoPool(): Object 0xa08920 of class PTVector autoreleased with no pool in place - just leaking
+ASR: *** __NSAutoreleaseNoPool(): Object 0xa09210 of class __NSArrayI autoreleased with no pool in place - just leaking
+
+but @autoreleasepool / NSReleasePool isnt' avialable beacuse foundation sint' favilablea 
+end up calling _CFAutoreleasePoolPush
+
+If I just do kill() in a loopwhile waiting for asr to complete, it always returns zero. But if I do kill() then waitpid(WNOHANG), the kill() works correctly
+int status = 0;
+int ret = waitpid(pid, &status, WNOHANG);
+printf("waitpid(%d) = %d, %d\n", pid, ret, status);
+if (kill(pid, 0) != 0) {
+pid_t
+waitpid(pid_t pid, int *stat_loc, int options);
