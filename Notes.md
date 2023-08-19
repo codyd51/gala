@@ -629,3 +629,16 @@ printf("waitpid(%d) = %d, %d\n", pid, ret, status);
 if (kill(pid, 0) != 0) {
 pid_t
 waitpid(pid_t pid, int *stat_loc, int options);
+
+Warning: Window NSWindow 0x124705850 ordered front from a non-active application and may order beneath the active application's windows.
+
+TODO before release:
+- Make new visualizations
+- Gala communicates status via status messages that the GUI displays
+- Record video?
+- Write README
+- Split blog post into multiple parts?
+- Diagnose/fix SSL error?!
+- Test CydiaSubstrate?!
+- Write up new work?
+- Upstream strongarm fix

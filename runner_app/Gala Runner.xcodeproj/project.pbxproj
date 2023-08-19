@@ -1,0 +1,367 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		F2D89E8A2A9135E2004F1E98 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D89E892A9135E2004F1E98 /* AppDelegate.m */; };
+		F2D89E8D2A9135E2004F1E98 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D89E8C2A9135E2004F1E98 /* ViewController.m */; };
+		F2D89E8F2A9135E3004F1E98 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2D89E8E2A9135E3004F1E98 /* Assets.xcassets */; };
+		F2D89E922A9135E3004F1E98 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D89E902A9135E3004F1E98 /* Main.storyboard */; };
+		F2D89E942A9135E3004F1E98 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D89E932A9135E3004F1E98 /* main.m */; };
+		F2D89E9D2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D89E9C2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.m */; };
+		F2D89EA02A9139F4004F1E98 /* LogsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D89E9F2A9139F4004F1E98 /* LogsView.m */; };
+		F2D89EA32A9139FC004F1E98 /* ContentView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D89EA22A9139FC004F1E98 /* ContentView.m */; };
+		F2D89EA52A913B32004F1E98 /* boot_logo_for_gui.png in Resources */ = {isa = PBXBuildFile; fileRef = F2D89EA42A913B32004F1E98 /* boot_logo_for_gui.png */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F2D89E852A9135E2004F1E98 /* Gala Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Gala Runner.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2D89E882A9135E2004F1E98 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		F2D89E892A9135E2004F1E98 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		F2D89E8B2A9135E2004F1E98 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
+		F2D89E8C2A9135E2004F1E98 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
+		F2D89E8E2A9135E3004F1E98 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F2D89E912A9135E3004F1E98 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		F2D89E932A9135E3004F1E98 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		F2D89E952A9135E3004F1E98 /* Gala_Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Gala_Runner.entitlements; sourceTree = "<group>"; };
+		F2D89E9B2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSViewWithTopLeftCoordinateSystem.h; sourceTree = "<group>"; };
+		F2D89E9C2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NSViewWithTopLeftCoordinateSystem.m; sourceTree = "<group>"; };
+		F2D89E9E2A9139F4004F1E98 /* LogsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LogsView.h; sourceTree = "<group>"; };
+		F2D89E9F2A9139F4004F1E98 /* LogsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LogsView.m; sourceTree = "<group>"; };
+		F2D89EA12A9139FC004F1E98 /* ContentView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ContentView.h; sourceTree = "<group>"; };
+		F2D89EA22A9139FC004F1E98 /* ContentView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ContentView.m; sourceTree = "<group>"; };
+		F2D89EA42A913B32004F1E98 /* boot_logo_for_gui.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = boot_logo_for_gui.png; path = ../../assets/boot_logo_for_gui.png; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F2D89E822A9135E2004F1E98 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		F2D89E7C2A9135E2004F1E98 = {
+			isa = PBXGroup;
+			children = (
+				F2D89E872A9135E2004F1E98 /* Gala Runner */,
+				F2D89E862A9135E2004F1E98 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F2D89E862A9135E2004F1E98 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F2D89E852A9135E2004F1E98 /* Gala Runner.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F2D89E872A9135E2004F1E98 /* Gala Runner */ = {
+			isa = PBXGroup;
+			children = (
+				F2D89EA42A913B32004F1E98 /* boot_logo_for_gui.png */,
+				F2D89E882A9135E2004F1E98 /* AppDelegate.h */,
+				F2D89E892A9135E2004F1E98 /* AppDelegate.m */,
+				F2D89E8B2A9135E2004F1E98 /* ViewController.h */,
+				F2D89E8C2A9135E2004F1E98 /* ViewController.m */,
+				F2D89E9B2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.h */,
+				F2D89E9C2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.m */,
+				F2D89E9E2A9139F4004F1E98 /* LogsView.h */,
+				F2D89E9F2A9139F4004F1E98 /* LogsView.m */,
+				F2D89EA12A9139FC004F1E98 /* ContentView.h */,
+				F2D89EA22A9139FC004F1E98 /* ContentView.m */,
+				F2D89E8E2A9135E3004F1E98 /* Assets.xcassets */,
+				F2D89E902A9135E3004F1E98 /* Main.storyboard */,
+				F2D89E932A9135E3004F1E98 /* main.m */,
+				F2D89E952A9135E3004F1E98 /* Gala_Runner.entitlements */,
+			);
+			path = "Gala Runner";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F2D89E842A9135E2004F1E98 /* Gala Runner */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F2D89E982A9135E3004F1E98 /* Build configuration list for PBXNativeTarget "Gala Runner" */;
+			buildPhases = (
+				F2D89E812A9135E2004F1E98 /* Sources */,
+				F2D89E822A9135E2004F1E98 /* Frameworks */,
+				F2D89E832A9135E2004F1E98 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Gala Runner";
+			productName = "Gala Runner";
+			productReference = F2D89E852A9135E2004F1E98 /* Gala Runner.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F2D89E7D2A9135E2004F1E98 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					F2D89E842A9135E2004F1E98 = {
+						CreatedOnToolsVersion = 14.3.1;
+					};
+				};
+			};
+			buildConfigurationList = F2D89E802A9135E2004F1E98 /* Build configuration list for PBXProject "Gala Runner" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F2D89E7C2A9135E2004F1E98;
+			productRefGroup = F2D89E862A9135E2004F1E98 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F2D89E842A9135E2004F1E98 /* Gala Runner */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F2D89E832A9135E2004F1E98 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2D89E8F2A9135E3004F1E98 /* Assets.xcassets in Resources */,
+				F2D89E922A9135E3004F1E98 /* Main.storyboard in Resources */,
+				F2D89EA52A913B32004F1E98 /* boot_logo_for_gui.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F2D89E812A9135E2004F1E98 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2D89E8D2A9135E2004F1E98 /* ViewController.m in Sources */,
+				F2D89EA02A9139F4004F1E98 /* LogsView.m in Sources */,
+				F2D89EA32A9139FC004F1E98 /* ContentView.m in Sources */,
+				F2D89E9D2A9139EB004F1E98 /* NSViewWithTopLeftCoordinateSystem.m in Sources */,
+				F2D89E942A9135E3004F1E98 /* main.m in Sources */,
+				F2D89E8A2A9135E2004F1E98 /* AppDelegate.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		F2D89E902A9135E3004F1E98 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F2D89E912A9135E3004F1E98 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		F2D89E962A9135E3004F1E98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		F2D89E972A9135E3004F1E98 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		F2D89E992A9135E3004F1E98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Gala Runner/Gala_Runner.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BPXZQ3R8TZ;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.axleos.Gala-Runner";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		F2D89E9A2A9135E3004F1E98 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Gala Runner/Gala_Runner.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BPXZQ3R8TZ;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.axleos.Gala-Runner";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F2D89E802A9135E2004F1E98 /* Build configuration list for PBXProject "Gala Runner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F2D89E962A9135E3004F1E98 /* Debug */,
+				F2D89E972A9135E3004F1E98 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F2D89E982A9135E3004F1E98 /* Build configuration list for PBXNativeTarget "Gala Runner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F2D89E992A9135E3004F1E98 /* Debug */,
+				F2D89E9A2A9135E3004F1E98 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = F2D89E7D2A9135E2004F1E98 /* Project object */;
+}
