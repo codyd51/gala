@@ -5,10 +5,9 @@ from pathlib import Path
 import usb
 import usb.core
 
-from device import DeviceMode, acquire_device, acquire_device_with_timeout
+from device import DeviceMode, acquire_device_with_timeout, NoDfuDeviceFoundError
 from os_build import ImageType, OsBuildEnum
-from patcher import (IpswPatcherConfig, generate_patched_ipsw,
-                     regenerate_patched_images)
+from patcher import (IpswPatcherConfig, regenerate_patched_images)
 from recompile_payloads import recompile_payloads
 from securerom import execute_securerom_payload
 from utils import run_and_check
@@ -18,8 +17,6 @@ def boot_device(patcher_config: IpswPatcherConfig):
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
     recompile_payloads()
     image_types_to_paths = regenerate_patched_images(patcher_config)
-    if False:
-        generate_patched_ipsw(patcher_config.os_build, image_types_to_paths)
 
     # Run our payload in SecureROM on a connected DFU device
     securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
@@ -94,47 +91,6 @@ def boot_device(patcher_config: IpswPatcherConfig):
             pass
 
     time.sleep(5)
-    # Start the restore process with the modified IPSW
-
-
-def main2():
-    # On the first boot, repartition the disk / flash a fresh OS image
-    print(f'Performing downgrade...')
-    patcher_config = IpswPatcherConfig(
-        OsBuildEnum.iPhone3_1_4_0_8A293,
-        replacement_pictures={
-            ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
-        },
-        should_rebuild_root_filesystem=False,
-        should_boot_to_restore_ramdisk=True,
-        should_create_disk_partitions=True,
-        boot_args="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3",
-    )
-    boot_device(patcher_config)
-
-    # Give restored_external a moment to come up
-    time.sleep(5)
-
-    run_and_check([
-        "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
-        "--restore-mode",
-        "-e",
-        "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
-    ])
-
-    # Now that we've flashed a filesystem, boot from disk
-    print(f'Performing a tethered boot from disk...')
-    patcher_config.boot_args = "rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3"
-    patcher_config.should_rebuild_root_filesystem = False
-    while True:
-        try:
-            boot_device(patcher_config)
-            break
-        except Exception:
-            # TODO(PT): NoDfuDeviceFound
-            print('Please enter DFU mode to try again')
-
-    print(f'Done!')
 
 
 def boot_device_with_infinite_retry(patcher_config: IpswPatcherConfig):
@@ -142,10 +98,8 @@ def boot_device_with_infinite_retry(patcher_config: IpswPatcherConfig):
         try:
             boot_device(patcher_config)
             break
-        except Exception:
-            raise
-            # TODO(PT): NoDfuDeviceFound
-            print('Please enter DFU mode to try again')
+        except NoDfuDeviceFoundError:
+            print('No DFU device found')
 
 
 def main():
@@ -169,7 +123,6 @@ def main():
     if args.jailbreak:
         print('Performing downgrade / jailbreak...')
         print('(WARNING: This will wipe all data on the device!)')
-        # should_rebuild_root_filesystem = True
         should_rebuild_root_filesystem = True
         boot_args = "rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3"
     elif args.boot:
