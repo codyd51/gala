@@ -378,6 +378,19 @@ def _get_kernelcache_patches() -> list[Patch]:
         ]
     )
 
+    allow_rwx_pages = PatchSet(
+        name="Allow RWX pages",
+        patches=[
+            # Ref: https://www.theiphonewiki.com/wiki/Vm_map_protect_Patch
+            # vm_map_protect: The original instruction clears the VM_PROT_EXECUTE bit
+            # This basic block is reached from a "tst VM_PROT_EXECUTE bit" branch
+            InstructionPatch.quick(0x8003d9fc, Instr.thumb_nop()),
+            # Same for vm_map_enter
+            InstructionPatch.quick(0x800409e8, Instr.thumb_nop()),
+            InstructionPatch.quick(0x80040976, Instr.thumb_nop()),
+        ]
+    )
+
     return [
         neuter_amfi,
         # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
@@ -390,6 +403,7 @@ def _get_kernelcache_patches() -> list[Patch]:
         enable_task_for_pid_0,
         disable_mac_enforcement,
         sandbox_debug_mode,
+        allow_rwx_pages,
     ]
 
 
