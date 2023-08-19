@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/mount.h>
 
 #include <Foundation/Foundation.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -13,10 +15,9 @@
 #include <dispatch/dispatch.h>
 #include <ImageIO/ImageIO.h>
 
-int unmount(const char* path, int flags);
-int printf(const char* fmt, ...);
+void _CFAutoreleasePoolPush();
 
-int run_and_wait(const char* path, const char** argv) {
+int spawn_in_background(const char* path, const char** argv) {
     int pid = fork();
     if (!pid) {
         char* envp[] = {NULL};
@@ -24,18 +25,26 @@ int run_and_wait(const char* path, const char** argv) {
             printf("Failed to execve\n");
             return -1;
         }
+        exit(1);
     }
+    return pid;
+}
+
+int run_and_wait(const char* path, const char** argv) {
+    int pid = spawn_in_background(path, argv);
     int status = 0;
     waitpid(pid, &status, 0);
     return status;
 }
 
+bool does_file_exist(const char* path) {
+    return access(path, F_OK) == 0;
+}
+
 void spin_until_file_appears(const char* path) {
     printf("Spinning until path appears: %s\n", path);
-    const char* remote_path_start = "root@localhost:";
-
     while (true) {
-        if (access(path, F_OK) == 0) {
+        if (does_file_exist(path)) {
             printf("File appeared! %s\n", path);
             return;
         }
@@ -155,7 +164,7 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
 
 @implementation PTVector
 + (instancetype)vectorWithX:(CGFloat)x Y:(CGFloat)y {
-    return [[PTVector alloc] initWithX:x Y:y];
+    return [[[PTVector alloc] initWithX:x Y:y] retain];
 }
 
 - (instancetype)initWithX:(CGFloat)x Y:(CGFloat)y {
@@ -195,7 +204,7 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
 
 @implementation PTEdge
 + (instancetype)edgeWithVertex1:(CGPoint)vertex1 vertex2:(CGPoint)vertex2 {
-    return [[PTEdge alloc] initWithVertex1:vertex1 vertex2:vertex2];
+    return [[[PTEdge alloc] initWithVertex1:vertex1 vertex2:vertex2] retain];
 }
 
 + (NSArray*)edgesOfRect:(CGRect)rect {
@@ -222,7 +231,6 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
         CGFloat dx = self.vertex2.x - self.vertex1.x;
         CGFloat dy = self.vertex2.y - self.vertex1.y;
 
-        //PTVector* normal1 = [PTVector]
         // Normalize the normals to the unit length
         if (dx != 0) {
             dx = dx / dx;
@@ -233,199 +241,283 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
         printf("dx %f dy %f\n", dx, dy);
         self.normal1 = [PTVector vectorWithX:-dy Y:dx];
         self.normal2 = [PTVector vectorWithX:dy Y:-dx];
-
     }
     return self;
 }
 @end
 
 @interface PTRestoreGui : NSObject
-@property CFImageRef activeImage;
+@property CGContextRef display_cgcontext;
+@property CGRect display_frame;
+@property CGImageRef sprite_image;
+@property CGImageRef active_image;
+@property CGColorSpaceRef color_space;
+
+@property (retain) NSArray* walls;
+
+@property CGRect text_frame;
+
+@property CGRect sprite_frame;
+@property CGPoint icon_position;
+@property (retain) PTVector* direction;
+@property int sign_x;
+@property int sign_y;
 - (instancetype)init;
+- (void)resetIconPosition;
+- (void)step;
+- (void)stepUntilFileAppears:(const char*)path;
 @end
 
 @implementation PTRestoreGui
 - (instancetype)init {
     if ((self = [super init])) {
+        IOMobileFramebufferRef framebuffer_ref;
+        IOReturn io_retval = IOMobileFramebufferGetMainDisplay(&framebuffer_ref);
+        if (io_retval != kIOReturnSuccess || !framebuffer_ref) {
+            printf("Failed to get framebuffer\n");
+            return nil;
+        }
+        printf("Got framebuffer %p\n", (void*)framebuffer_ref);
 
+        IOSurfaceRef surface;
+        CGColorSpaceRef color_space;
+        self.display_cgcontext = get_display_cgcontext(framebuffer_ref, &surface, &color_space);
+        self.color_space = color_space;
+        printf("got context\n");
+
+        size_t display_width = CGBitmapContextGetWidth(self.display_cgcontext);
+        size_t display_height = CGBitmapContextGetHeight(self.display_cgcontext);
+        self.display_frame = CGRectMake(0, 0, display_width, display_height);
+
+        [self resetIconPosition];
+        self.sprite_frame = CGRectMake(
+                self.icon_position.x,
+                self.icon_position.y,
+                100,
+                100
+        );
+        CGFloat sprite_width = CGRectGetWidth(self.sprite_frame);
+        CGFloat sprite_height = CGRectGetHeight(self.sprite_frame);
+
+        printf("getting images\n");
+        self.sprite_image = [self imageWithContentsOfPath:"/mnt2/gala/boot_logo.png"];
+        self.active_image = [self imageWithContentsOfPath:"/mnt2/gala/mounting_dev_disk0s2s1.png"];
+        printf("done getting images\n");
+
+        CGSize text_size = CGSizeMake(display_width * 1.0, display_height * 0.15);
+        self.text_frame = CGRectMake(
+                (display_width / 2.0) - (text_size.width / 2.0),
+                (display_height / 2.0) - (text_size.height / 2.0),
+                text_size.width,
+                text_size.height
+        );
+        //printf("text_frame %f %f, %f, %f\n", text_frame.origin.x, text_frame.origin.y, text_frame.size.width, text_frame.size.height);
+
+        // TODO(PT): Only redraw the text if the apple logo overlaps with it?
+        self.sign_x = 1;
+        self.sign_y = 1;
+
+        NSArray* edges_of_screen = [PTEdge edgesOfRect:self.display_frame];
+        NSArray* edges_of_text = [PTEdge edgesOfRect:self.text_frame];
+        NSMutableArray* walls = [NSMutableArray array];
+        [walls addObjectsFromArray:edges_of_screen];
+        self.walls = [NSArray arrayWithArray:walls];
+
+        [walls release];
+        [edges_of_text release];
+        [edges_of_screen release];
+
+        //printf("retain counts %d %d %d\n", walls.retainCount, edges_of_text.retainCount, edges_of_screen.retainCount);
+        //[walls addObjectsFromArray:edges_of_text];
+        // PT: Must be less than half the icon size...
+        self.direction = [[[PTVector alloc] initWithX:40 Y:40] retain];
     }
     return self;
 }
+
+- (void)resetIconPosition {
+    self.icon_position = CGPointMake(80, 80);
+}
+- (void)drawBackground {
+    printf("drawing background\n");
+    CGColorRef background_color = CGColorCreate(self.color_space, (CGFloat[]){164/255.0, 255/255.0, 125/255.0, 1});
+    CGContextSetFillColorWithColor(self.display_cgcontext, background_color);
+    CGContextFillRect(self.display_cgcontext, self.display_frame);
+    printf("done drawing background\n");
+}
+
+- (CGImageRef)imageWithContentsOfPath:(const char*)path {
+    CFURLRef image_path_url = CFURLCreateWithFileSystemPath(NULL, CFStringCreateWithCString(NULL, path, kCFStringEncodingASCII), kCFURLPOSIXPathStyle, NO);
+    CFShow(image_path_url);
+    CFMutableDictionaryRef options = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CGImageSourceRef image_source = CGImageSourceCreateWithURL(image_path_url, options);
+    CGImageRef image = CGImageSourceCreateImageAtIndex(image_source, 0, options);
+    return image;
+}
+
+- (void)step {
+    CGColorRef background_color = CGColorCreate(self.color_space, (CGFloat[]){189/255.0, 255/255.0, 191/255.0, 1});
+    //CGContextClearRect(display_cgcontext, display_frame);
+
+    CGPoint previous_icon_position = self.icon_position;
+    self.icon_position = CGPointMake(
+        self.icon_position.x + (self.direction.x * self.sign_x),
+        self.icon_position.y + (self.direction.y * self.sign_y)
+    );
+
+    // Check for collision with each of our walls
+    for (PTEdge* edge in self.walls) {
+        CGFloat lower_y = MIN(edge.vertex1.y, edge.vertex2.y);
+        CGFloat higher_y = MAX(edge.vertex1.y, edge.vertex2.y);
+
+        CGFloat lower_x = MIN(edge.vertex1.x, edge.vertex2.x);
+        CGFloat higher_x = MAX(edge.vertex1.x, edge.vertex2.x);
+
+        // Did we just cross into the wall?
+        bool detected_intersection = false;
+        // First, check whether we're dealing with a horizontal or vertical wall
+        bool is_wall_vertical = edge.vertex1.x == edge.vertex2.x;
+        if (is_wall_vertical) {
+            // Is the sprite within the vertical segment?
+            if (self.icon_position.y >= lower_y && self.icon_position.y < higher_y) {
+                // 'Increasing' intersection
+                if (previous_icon_position.x < edge.vertex1.x && self.icon_position.x + self.sprite_frame.size.width >= edge.vertex1.x) {
+                    printf("Increasing intersection on vertical wall\n");
+                    detected_intersection = true;
+                }
+                    // 'Decreasing' intersection
+                else if (previous_icon_position.x > edge.vertex1.x && self.icon_position.x <= edge.vertex1.x) {
+                    printf("Decreasing intersection on vertical wall\n");
+                    detected_intersection = true;
+                }
+            }
+        }
+        else {
+            // Is the sprite within the horizontal segment?
+            if (self.icon_position.x >= lower_x && self.icon_position.x < higher_x) {
+                // 'Increasing' intersection
+                if (previous_icon_position.y < edge.vertex1.y && self.icon_position.y >= edge.vertex1.y) {
+                    printf("Increasing intersection on horizontal wall\n");
+                    detected_intersection = true;
+                }
+                    // 'Decreasing' intersection
+                else if (previous_icon_position.y > edge.vertex1.y && self.icon_position.y <= edge.vertex1.y) {
+                    printf("Decreasing intersection on horizontal wall\n");
+                    detected_intersection = true;
+                }
+            }
+        }
+
+        if (detected_intersection) {
+            PTVector* plane_normal = edge.normal2;
+            CGFloat dot = [self.direction dot:plane_normal];
+
+            PTVector* comp = [plane_normal multiply:-2.0 * dot];
+            PTVector* resultant = [comp add:self.direction];
+            self.direction.x = resultant.x;
+            self.direction.y = resultant.y;
+
+            [comp release];
+            [resultant release];
+            ///printf("edge (%f, %f) - (%f, %f)\n", edge.vertex1.x, edge.vertex1.y, edge.vertex2.x, edge.vertex2.y);
+            //printf("new vector (%f %f) pos (%f %f)\n", direction.x, direction.y, icon_position.x, icon_position.y);
+            break;
+        }
+    }
+
+    // Failsafe, don't allow sprites to go off-screen
+    if (self.icon_position.x < 0) self.icon_position = CGPointMake(1, self.icon_position.y);
+    if (self.icon_position.y < 0) self.icon_position = CGPointMake(self.icon_position.x, 1);
+
+    size_t display_width = CGBitmapContextGetWidth(self.display_cgcontext);
+    size_t display_height = CGBitmapContextGetHeight(self.display_cgcontext);
+    if (self.icon_position.x >= display_width) self.icon_position = CGPointMake(display_width - 1, self.icon_position.y);
+    if (self.icon_position.y >= display_height) self.icon_position = CGPointMake(self.icon_position.x, display_height - 1);
+    // Failsafe, don't allow velocity to go to zero
+    if (self.direction.x == 0) self.direction.x = 10;
+    if (self.direction.y == 0) self.direction.y = 10;
+
+    self.sprite_frame = CGRectMake(self.icon_position.x, self.sprite_frame.origin.y, self.sprite_frame.size.width, self.sprite_frame.size.height);
+    self.sprite_frame = CGRectMake(self.sprite_frame.origin.x, self.icon_position.y, self.sprite_frame.size.width, self.sprite_frame.size.height);
+    CGContextDrawImage(self.display_cgcontext, self.sprite_frame, self.sprite_image);
+
+    CGContextDrawImage(self.display_cgcontext, self.text_frame, self.active_image);
+}
+
+- (void)stepUntilFileAppears:(const char*)path {
+    while (1) {
+        [self step];
+        usleep(100000);
+        if (does_file_exist(path)) {
+            break;
+        }
+    }
+}
+
+- (void)stepUntilProcessExits:(int)pid {
+    while (1) {
+        [self step];
+        usleep(10000);
+        int returned_pid = waitpid(pid, NULL, WNOHANG);
+        if (returned_pid == pid) {
+            // waitpid() only returns the PID of the process if the process has terminated
+            break;
+        }
+    }
+}
+
 @end
 
 int main(int argc, const char** argv) {
     printf("*** asr_wrapper startup ***\n");
 
-    //set_display_first();
-    IOMobileFramebufferRef framebuffer_ref;
-    IOReturn io_retval = IOMobileFramebufferGetMainDisplay(&framebuffer_ref);
-    if (io_retval != kIOReturnSuccess || !framebuffer_ref) {
-        printf("Failed to get framebuffer\n");
-        return 1;
-    }
-    printf("Got framebuffer %p\n", (void*)framebuffer_ref);
-
-    IOSurfaceRef surface;
-    CGColorSpaceRef color_space;
-    CGContextRef display_cgcontext = get_display_cgcontext(framebuffer_ref, &surface, &color_space);
-
-    size_t display_width = CGBitmapContextGetWidth(display_cgcontext);
-    size_t display_height = CGBitmapContextGetHeight(display_cgcontext);
-    CGRect display_frame = CGRectMake(0, 0, display_width, display_height);
-
-    CGPoint icon_position = CGPointMake(80, 80);
-    CGRect sprite_frame = CGRectMake(
-            icon_position.x,
-            icon_position.y,
-            100,
-            100
-    );
-    CGFloat sprite_width = CGRectGetWidth(sprite_frame);
-    CGFloat sprite_height = CGRectGetHeight(sprite_frame);
-
-    CFURLRef sprite_image_path_url = CFURLCreateWithFileSystemPath(NULL, CFStringCreateWithCString(NULL, "/boot_logo.png", kCFStringEncodingASCII), kCFURLPOSIXPathStyle, NO);
-    CFMutableDictionaryRef options = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    CGImageSourceRef sprite_image_source = CGImageSourceCreateWithURL(sprite_image_path_url, options);
-    CGImageRef sprite_image = CGImageSourceCreateImageAtIndex(sprite_image_source, 0, options);
-
-    CFURLRef image_path_url = CFURLCreateWithFileSystemPath(NULL, CFStringCreateWithCString(NULL, "/receiving_filesystem_over_usb2.png", kCFStringEncodingASCII), kCFURLPOSIXPathStyle, NO);
-    CGImageSourceRef image_source = CGImageSourceCreateWithURL(image_path_url, options);
-    CGImageRef image = CGImageSourceCreateImageAtIndex(image_source, 0, options);
-    CGSize text_size = CGSizeMake(display_width * 0.6, display_height * 0.15);
-    CGRect text_frame = CGRectMake(
-            (display_width / 2.0) - (text_size.width / 2.0),
-            (display_height / 2.0) - (text_size.height / 2.0),
-            text_size.width,
-            text_size.height
-    );
-    printf("text_frame %f %f, %f, %f\n", text_frame.origin.x, text_frame.origin.y, text_frame.size.width, text_frame.size.height);
-
-    int sign_x = 1;
-    int sign_y = 1;
-
-    NSArray* edges_of_screen = [PTEdge edgesOfRect:display_frame];
-    NSArray* edges_of_text = [PTEdge edgesOfRect:text_frame];
-    NSMutableArray* walls = [NSMutableArray array];
-    [walls addObjectsFromArray:edges_of_screen];
-    //[walls addObjectsFromArray:edges_of_text];
-    // PT: Must be less than half the icon size...
-    PTVector* direction = [[PTVector alloc] initWithX:10 Y:10];
-
-    CGColorRef background_color = CGColorCreate(color_space, (CGFloat[]){164/255.0, 255/255.0, 125/255.0, 1});
-    CGContextSetFillColorWithColor(display_cgcontext, background_color);
-    CGContextFillRect(display_cgcontext, display_frame);
-
-    while (1) {
-        //IOSurfaceLock(surface, 0, 0);
-
-        //CGColorRef background_color = CGColorCreate(color_space, (CGFloat[]){189/255.0, 255/255.0, 191/255.0, 1});
-        //CGContextClearRect(display_cgcontext, display_frame);
-
-        CGPoint previous_icon_position = icon_position;
-        icon_position.x += direction.x * sign_x;
-        icon_position.y += direction.y * sign_y;
-
-        // Check for collision with each of our walls
-        for (PTEdge* edge in walls) {
-            CGFloat lower_y = MIN(edge.vertex1.y, edge.vertex2.y);
-            CGFloat higher_y = MAX(edge.vertex1.y, edge.vertex2.y);
-
-            CGFloat lower_x = MIN(edge.vertex1.x, edge.vertex2.x);
-            CGFloat higher_x = MAX(edge.vertex1.x, edge.vertex2.x);
-
-            // Did we just cross into the wall?
-            bool detected_intersection = false;
-            // First, check whether we're dealing with a horizontal or vertical wall
-            bool is_wall_vertical = edge.vertex1.x == edge.vertex2.x;
-            if (is_wall_vertical) {
-                // Is the sprite within the vertical segment?
-                if (icon_position.y >= lower_y && icon_position.y < higher_y) {
-                    // 'Increasing' intersection
-                    if (previous_icon_position.x < edge.vertex1.x && icon_position.x + sprite_width >= edge.vertex1.x) {
-                        printf("Increasing intersection on vertical wall\n");
-                        detected_intersection = true;
-                    }
-                    // 'Decreasing' intersection
-                    else if (previous_icon_position.x > edge.vertex1.x && icon_position.x <= edge.vertex1.x) {
-                        printf("Decreasing intersection on vertical wall\n");
-                        detected_intersection = true;
-                    }
-                }
-            }
-            else {
-                // Is the sprite within the horizontal segment?
-                if (icon_position.x >= lower_x && icon_position.x < higher_x) {
-                    // 'Increasing' intersection
-                    if (previous_icon_position.y < edge.vertex1.y && icon_position.y >= edge.vertex1.y) {
-                        printf("Increasing intersection on horizontal wall\n");
-                        detected_intersection = true;
-                    }
-                    // 'Decreasing' intersection
-                    else if (previous_icon_position.y > edge.vertex1.y && icon_position.y <= edge.vertex1.y) {
-                        printf("Decreasing intersection on horizontal wall\n");
-                        detected_intersection = true;
-                    }
-                }
-            }
-
-            if (detected_intersection) {
-                PTVector* plane_normal = edge.normal2;
-                CGFloat dot = [direction dot:plane_normal];
-
-                PTVector* component = [plane_normal multiply:-2.0 * dot];
-                PTVector* resultant = [[plane_normal multiply:-2.0 * dot] add:direction];
-
-                direction.x = resultant.x;
-                direction.y = resultant.y;
-
-                printf("edge (%f, %f) - (%f, %f)\n", edge.vertex1.x, edge.vertex1.y, edge.vertex2.x, edge.vertex2.y);
-                printf("new vector (%f %f) pos (%f %f)\n", direction.x, direction.y, icon_position.x, icon_position.y);
-                break;
-            }
-        }
-
-        // Failsafe, don't allow sprites to go off-screen
-        if (icon_position.x < 0) icon_position.x = 1;
-        if (icon_position.y < 0) icon_position.y = 1;
-        if (icon_position.x >= display_width) icon_position.x = display_width - 1;
-        if (icon_position.y >= display_height) icon_position.y = display_height - 1;
-        // Failsafe, don't allow velocity to go to zero
-        if (direction.x == 0) direction.x = 10;
-        if (direction.y == 0) direction.y = 10;
-
-        sprite_frame.origin.x = icon_position.x;
-        sprite_frame.origin.y = icon_position.y;
-        CGContextDrawImage(display_cgcontext, sprite_frame, sprite_image);
-
-        CGContextDrawImage(display_cgcontext, text_frame, image);
-
-        usleep(5000);
-    }
+    _CFAutoreleasePoolPush();
 
     printf("Mounting /mnt2...\n");
-    const char* mount_path = "/sbin/mount_hfs";
-    const char* mount_argv[] = {mount_path, "/dev/disk0s2s1", "/mnt2", NULL};
+    const char *mount_path = "/sbin/mount_hfs";
+    const char *mount_argv[] = {mount_path, "/dev/disk0s2s1", "/mnt2", NULL};
     int ret = run_and_wait(mount_path, mount_argv);
     if (ret != 0) {
         printf("Mounting /dev/disk0s2s1 to /mnt2 failed\n");
         return -1;
     }
 
+    mkdir("/mnt2/gala", 0700);
+    FILE *fp = fopen("/mnt2/gala/sentinel__device_is_ready_for_host_to_send_image_assets", "a");
+    fclose(fp);
+    printf("Spinning until the host uploads images...\n");
+    spin_until_file_appears("/mnt2/gala/sentinel__host_has_uploaded_image_assets");
+
+    PTRestoreGui *gui = [[PTRestoreGui alloc] init];
+    [gui drawBackground];
+    [gui step];
+
     // Inform the host by creating a sentinel file
-    // touch /mnt2/sentinel__device_is_ready_for_host_to_send_rootfs
     printf("Creating sentinel file to ask the host to send the root filesystem...\n");
-    FILE* fp = fopen("/mnt2/sentinel__device_is_ready_for_host_to_send_rootfs" ,"a");
+    fp = fopen("/mnt2/gala/sentinel__device_is_ready_for_host_to_send_rootfs" ,"a");
     fclose(fp);
 
-    spin_until_file_appears("/mnt2/sentinel__rootfs_is_fully_uploaded");
+    printf("Waiting for filesystem...");
+    [gui drawBackground];
+    [gui resetIconPosition];
+    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/receiving_filesystem_over_usb2.png"];
+    [gui stepUntilFileAppears:"/mnt2/gala/sentinel__rootfs_is_fully_uploaded"];
 
-    printf("Root filesystem is uploaded!\n");
+    printf("Root filesystem is uploaded! Running asr...\n");
+    [gui drawBackground];
+    [gui resetIconPosition];
+    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/running_asr.png"];
+
     const char* asr_path = "/usr/sbin/asr";
-    const char* asr_argv[] = {asr_path, "-source", "/mnt2/root_filesystem.dmg", "-target", "/dev/disk0s1", "-erase", "-noprompt", NULL};
-    ret = run_and_wait(asr_path, asr_argv);
-    printf("asr ret = %d\n", ret);
+    const char* asr_argv[] = {asr_path, "-source", "/mnt2/gala/root_filesystem.dmg", "-target", "/dev/disk0s1", "-erase", "-noprompt", NULL};
+    int pid = spawn_in_background(asr_path, asr_argv);
+    [gui stepUntilProcessExits:pid];
 
     printf("Unmounting /mnt2 to match what restored_external expects...\n");
+    [gui drawBackground];
+    [gui resetIconPosition];
+    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/unmounting.png"];
+    [gui step];
     const char* umount_path = "/usr/bin/umount";
     const char* umount_argv[] = {umount_path, "/mnt2", NULL};
     ret = run_and_wait(umount_path, umount_argv);
@@ -433,6 +525,15 @@ int main(int argc, const char** argv) {
         printf("Unmounting the Data partition failed!\n");
         return -1;
     }
+
+    [gui drawBackground];
+    [gui resetIconPosition];
+    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/finished.png"];
+    [gui step];
+
+    // Give the user a chance to see the final message
+    printf("Sleeping to give the user a chance to see the message...\n");
+    sleep(5);
 
     printf("asr_wrapper is done!\n");
     return 0;
