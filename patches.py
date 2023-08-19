@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import plistlib
 import shutil
 import tempfile
@@ -363,11 +362,7 @@ class DmgApplyTarPatch(DmgPatch):
         run_and_check(
             [
                 "tar",
-                "--fflags",
-                "--mac-metadata",
-                "--same-owner",
-                "--xattrs",
-                "-xvpf",
+                "-xvf",
                 self.tar_path.as_posix(),
                 "-C",
                 mounted_ramdisk_path.as_posix(),
@@ -430,7 +425,6 @@ class DmgReplaceFileContentsPatch(DmgPatch):
                 perm.apply_to_file(qualified_path)
 
 
-
 @dataclass
 class DmgBinaryPatch(DmgPatch):
     # PT: Instead of having the binary at the top level, this could just contain a PatchSet
@@ -474,153 +468,3 @@ class DmgBinaryPatch(DmgPatch):
                     qualified_binary_path.as_posix(),
                 ]
             )
-
-    def apply_new(
-        self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray
-    ) -> None:
-        print(f"Applying ramdisk patch to binary {self.binary_path}")
-        # Mount the ramdisk
-        # (Note that we need to serialize the current ramdisk data to a .dmg, so we keep any previous patches we've applied
-        with tempfile.TemporaryDirectory() as temp_dir_raw:
-            temp_dir = Path(temp_dir_raw)
-            patched_ramdisk = temp_dir / "ramdisk.patched.dmg"
-            patched_ramdisk.write_bytes(image_data)
-
-            run_and_check(
-                [
-                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                    patched_ramdisk.as_posix(),
-                    "grow",
-                    "24002560",
-                ]
-            )
-
-            self._apply_patch(patched_ramdisk)
-
-            image_data[:] = patched_ramdisk.read_bytes()
-
-    def _apply_patch_new(self, ramdisk_root: Path) -> None:
-        # Extract the binary
-        binary_path = Path("/") / self.binary_path
-        with tempfile.TemporaryDirectory() as tempdir_raw:
-            tempdir = Path(tempdir_raw)
-            extracted_binary_path = tempdir / f"extracted_{self.binary_path.name}"
-
-            run_and_check(
-                [
-                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                    ramdisk_root.as_posix(),
-                    "extract",
-                    binary_path.as_posix(),
-                    extracted_binary_path.as_posix(),
-                ]
-            )
-            print(f"Extracted {binary_path.as_posix()} to {extracted_binary_path.as_posix()}")
-
-            # Read the binary base address with strongarm
-            virtual_base = MachoParser(extracted_binary_path).get_armv7_slice().get_virtual_base()
-            print(f"Found virtual base for {binary_path.name}: {virtual_base}")
-
-            # Apply the patch to the binary
-            patched_binary_data = bytearray(extracted_binary_path.read_bytes())
-            # TODO(PT): Does this modify the underlying file or do we need to write it back?
-            self.inner_patch.apply(extracted_binary_path, virtual_base, patched_binary_data)
-            extracted_binary_path.write_bytes(patched_binary_data)
-            # Run ldid
-            if False:
-                run_and_check(
-                    [
-                        "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid2",
-                        "-S",
-                        extracted_binary_path.as_posix(),
-                    ]
-                )
-
-            print(f"Writing patched binary...")
-            run_and_check(
-                [
-                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                    ramdisk_root.as_posix(),
-                    "add",
-                    extracted_binary_path.as_posix(),
-                    binary_path.as_posix(),
-                ]
-            )
-            run_and_check(
-                [
-                    "/Users/philliptennen/Documents/Jailbreak/tools/xpwn-xerub/hfs/hfsplus",
-                    ramdisk_root.as_posix(),
-                    "chmod",
-                    "755",
-                    binary_path.as_posix(),
-                ]
-            )
-
-    def apply2(
-        self, decrypted_image_path: Path, image_base_address: VirtualMemoryPointer, image_data: bytearray
-    ) -> None:
-        print(f"Applying ramdisk patch to binary {self.binary_path}")
-        # Mount the ramdisk
-        # hdiutil (annoyingly) requires that the ramdisk end in .dmg instead of .dmg.decrypted,
-        # so create a temporary copy now with the correct extension
-        with tempfile.TemporaryDirectory() as temp_dir_raw:
-            temp_dir = Path(temp_dir_raw)
-            decrypted_ramdisk_with_dmg_extension = temp_dir / "ramdisk.dmg"
-            shutil.copy(decrypted_image_path, decrypted_ramdisk_with_dmg_extension)
-
-            # Resize the ramdisk so we have room to write to it
-            # Ref: https://apple.stackexchange.com/questions/60613
-            # TODO(PT): Shrink the ramdisk again
-            run_and_check(
-                [
-                    "hdiutil",
-                    "resize",
-                    "-size",
-                    "20M",
-                    decrypted_ramdisk_with_dmg_extension.as_posix(),
-                ]
-            )
-
-            with _mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
-                # Find the binary
-                qualified_binary_path = mounted_dmg_root / self.binary_path
-                if not qualified_binary_path.exists():
-                    raise RuntimeError(f"Failed to find {qualified_binary_path}")
-
-                # Read the binary base address with strongarm
-                virtual_base = MachoParser(qualified_binary_path).get_armv7_slice().get_virtual_base()
-                print(f"Found virtual base for {self.binary_path.name}: {virtual_base}")
-
-                # Apply the patch to the binary
-                patched_binary_data = bytearray(qualified_binary_path.read_bytes())
-                self.inner_patch.apply(qualified_binary_path, virtual_base, patched_binary_data)
-                print(f"Writing patched binary...")
-
-                patched_file = temp_dir / "patched_binary"
-                patched_file.write_bytes(patched_binary_data)
-
-                qualified_binary_path.write_bytes(patched_binary_data)
-
-                # Run ldid
-                if False:
-                    run_and_check(
-                        [
-                            "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid2",
-                            "-S",
-                            qualified_binary_path.as_posix(),
-                        ]
-                    )
-
-                # Repack the ramdisk
-                ramdisk_with_edits = Path(temp_dir_raw) / "edited_ramdisk.dmg"
-                run_and_check(
-                    [
-                        "hdiutil",
-                        "create",
-                        ramdisk_with_edits.as_posix(),
-                        "-srcfolder",
-                        mounted_dmg_root.as_posix(),
-                    ]
-                )
-                print("abc")
-            image_data[:] = ramdisk_with_edits.read_bytes()
