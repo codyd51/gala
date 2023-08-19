@@ -3,3 +3,5 @@ build/
 *.bin
 *.i64
 target/
+.idea
+__pycache__/
