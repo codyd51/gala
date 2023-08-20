@@ -5,18 +5,19 @@ from pathlib import Path
 import usb
 import usb.core
 
+from configuration import DeviceBootConfig, IpswPatcherConfig, GalaConfig
 from device import DeviceMode, acquire_device_with_timeout, NoDfuDeviceFoundError
 from os_build import ImageType, OsBuildEnum
-from patcher import (IpswPatcherConfig, regenerate_patched_images)
+from patcher import (regenerate_patched_images)
 from recompile_payloads import recompile_payloads
 from securerom import execute_securerom_payload
 from utils import run_and_check
 
 
-def boot_device(patcher_config: IpswPatcherConfig):
+def boot_device(config: GalaConfig):
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
     recompile_payloads()
-    image_types_to_paths = regenerate_patched_images(patcher_config)
+    image_types_to_paths = regenerate_patched_images(config)
 
     # Run our payload in SecureROM on a connected DFU device
     securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
@@ -77,7 +78,7 @@ def boot_device(patcher_config: IpswPatcherConfig):
         recovery_device.send_command("devicetree")
         time.sleep(2)
 
-        if patcher_config.should_boot_to_restore_ramdisk:
+        if patcher_config.should_send_restore_ramdisk:
             print("Sending restore ramdisk...")
             recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
             recovery_device.send_command("ramdisk")
@@ -93,10 +94,10 @@ def boot_device(patcher_config: IpswPatcherConfig):
     time.sleep(5)
 
 
-def boot_device_with_infinite_retry(patcher_config: IpswPatcherConfig):
+def boot_device_with_infinite_retry(config: GalaConfig):
     while True:
         try:
-            boot_device(patcher_config)
+            boot_device(config)
             break
         except NoDfuDeviceFoundError:
             print('No DFU device found')
@@ -132,18 +133,19 @@ def main():
     else:
         raise ValueError(f'No job specified')
 
-    # TODO(PT): Split this into a 'patcher config' vs. a 'boot config'
-    patcher_config = IpswPatcherConfig(
-        OsBuildEnum.iPhone3_1_4_0_8A293,
-        replacement_pictures={
-            ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
-        },
-        should_boot_to_restore_ramdisk=True,
-        should_create_disk_partitions=True,
-        should_rebuild_root_filesystem=should_rebuild_root_filesystem,
-        boot_args=boot_args,
+    config = GalaConfig(
+        boot_config=DeviceBootConfig(boot_args=boot_args),
+        patcher_config=IpswPatcherConfig(
+            OsBuildEnum.iPhone3_1_4_0_8A293,
+            replacement_pictures={
+                ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
+            },
+            should_send_restore_ramdisk=True,
+            should_create_disk_partitions=True,
+            should_rebuild_root_filesystem=should_rebuild_root_filesystem,
+        )
     )
-    boot_device_with_infinite_retry(patcher_config)
+    boot_device_with_infinite_retry(config)
 
     if args.jailbreak:
         print('Device booted, flashing OS image...')

@@ -22,16 +22,6 @@ from utils import run_and_capture_output_and_check, run_and_check
 
 
 @dataclass
-class IpswPatcherConfig:
-    os_build: OsBuildEnum
-    replacement_pictures: dict[ImageType, Path]
-    should_boot_to_restore_ramdisk: bool
-    boot_args: str
-    should_rebuild_root_filesystem: bool
-    should_create_disk_partitions: bool
-
-
-@dataclass
 class Function:
     name: str
     address: VirtualMemoryPointer

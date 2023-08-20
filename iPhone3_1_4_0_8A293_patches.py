@@ -4,8 +4,9 @@ from typing import Mapping
 from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
+from configuration import GalaConfig
 from os_build import ImageType
-from patches import (BlobPatch, InstructionPatch, IpswPatcherConfig, Patch,
+from patches import (BlobPatch, InstructionPatch, Patch,
                      PatchSet, DmgApplyTarPatch, DmgBinaryPatch,
                      DmgPatchSet, DmgReplaceFileContentsPatch, FilePermission, DmgRemoveTreePatch)
 
@@ -532,11 +533,11 @@ def _get_rootfs_patches() -> DmgPatchSet:
             #"/Users/philliptennen/Downloads/Payload 3/h3lix.app/Cydia-9.0r4-Raw.tar",
 
             # Causes all SSL connections to fail after Cydia remounts the filesystem?!
-            #"/Users/philliptennen/Downloads/redsn0w_mac_0.9.15b3/redsn0w.app/Contents/MacOS/Cydia.tar",
+            "/Users/philliptennen/Downloads/redsn0w_mac_0.9.15b3/redsn0w.app/Contents/MacOS/Cydia.tar",
 
             # Same
             # Try not flashing the cydia tar and instead do it after boot again?
-            "/Users/philliptennen/Downloads/Cydia-2.tar",
+            #"/Users/philliptennen/Downloads/Cydia-2.tar",
             #"/Users/philliptennen/Downloads/Cydia-4.0.1r2-Raw.txz",
         )
     )
@@ -547,21 +548,21 @@ def _get_rootfs_patches() -> DmgPatchSet:
                 "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh_for_rootfs.tar"
            )
         ),
-        # install_cydia,
+        install_cydia,
         # Delete the Compass app to make room for the Cydia patch
         DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
     ]
     return DmgPatchSet(patches=patches)
 
 
-def get_iphone_3_1_4_0_8a293_patches(config: IpswPatcherConfig) -> Mapping[ImageType, list[Patch]]:
+def get_iphone_3_1_4_0_8a293_patches(config: GalaConfig) -> Mapping[ImageType, list[Patch]]:
     # TODO(PT): Remove binary_types_mapping() and have dedicated Patch types for every code path
     return ImageType.binary_types_mapping(
         {
             ImageType.iBSS: _get_ibss_patches(),
-            ImageType.iBEC: _get_ibec_patches(config.boot_args),
+            ImageType.iBEC: _get_ibec_patches(config.boot_config.boot_args),
             ImageType.KernelCache: _get_kernelcache_patches(),
-            ImageType.RestoreRamdisk: [_get_restore_ramdisk_patches(config.should_create_disk_partitions)],
+            ImageType.RestoreRamdisk: [_get_restore_ramdisk_patches(config.patcher_config.should_create_disk_partitions)],
             ImageType.RootFilesystem: [_get_rootfs_patches()],
         }
     )

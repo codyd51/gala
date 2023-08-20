@@ -7,10 +7,10 @@ from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT
+from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, DeviceBootConfig, IpswPatcherConfig, GalaConfig
 from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches
 from os_build import ImageType, KeyRepository, OsBuildEnum
-from patches import Function, IpswPatcherConfig, Patch
+from patches import Function, Patch
 from utils import TotalEnumMapping, run_and_check
 
 _XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
@@ -47,7 +47,7 @@ class FunctionRepository:
 class PatchRepository:
     @classmethod
     def builds_to_image_patches(
-        cls, config: IpswPatcherConfig
+        cls, config: GalaConfig,
     ) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
         # PT: This needs to be a method, rather than a class variable, because otherwise it
         # captures file data **when the class is defined/interpreted**,
@@ -86,7 +86,7 @@ class PatchRepository:
         )
 
     @classmethod
-    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType, config: IpswPatcherConfig) -> list[Patch]:
+    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType, config: GalaConfig) -> list[Patch]:
         image_patches_for_build = cls.builds_to_image_patches(config)[os_build]
         return image_patches_for_build[image]
 
@@ -158,16 +158,17 @@ def apply_patches(
 def patch_decrypted_image(
     os_build: OsBuildEnum,
     image_type: ImageType,
-    patcher_config: IpswPatcherConfig,
+    config: GalaConfig,
     decrypted_image_path: Path,
     patched_image_path: Path,
 ):
-    patches = PatchRepository.patches_for_image(os_build, image_type, patcher_config)
-    apply_patches(patcher_config, image_type, decrypted_image_path, patched_image_path, patches)
+    patches = PatchRepository.patches_for_image(os_build, image_type, config)
+    apply_patches(config.patcher_config, image_type, decrypted_image_path, patched_image_path, patches)
 
 
-def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
-    os_build = config.os_build
+def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
+    patcher_config = config.patcher_config
+    os_build = patcher_config.os_build
     key_pair = KeyRepository.key_iv_pair_for_image(os_build, image_type)
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
@@ -183,12 +184,12 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
 
     if image_type in ImageType.picture_types():
         # Check whether a replacement image has been specified
-        if image_type in config.replacement_pictures:
+        if image_type in patcher_config.replacement_pictures:
             run_and_check(
                 [
                     _IMAGETOOL.as_posix(),
                     "inject",
-                    config.replacement_pictures[image_type].as_posix(),
+                    patcher_config.replacement_pictures[image_type].as_posix(),
                     reencrypted_image.as_posix(),
                     encrypted_image.as_posix(),
                     key_pair.iv,
@@ -200,7 +201,7 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
         patched_dmg = output_dir / f"{file_name}.patched"
         repacked_dmg = output_dir / f"{file_name}.repacked"
 
-        if not config.should_rebuild_root_filesystem:
+        if not patcher_config.should_rebuild_root_filesystem:
             print(f'Skip rebuilding root filesystem...')
             if not repacked_dmg.exists():
                 raise ValueError(f"Supposed to skip rebuilding root filesystem, but a cached version doesn't exist")
@@ -254,7 +255,7 @@ def patch_image(config: IpswPatcherConfig, image_type: ImageType) -> Path:
     return reencrypted_image
 
 
-def regenerate_patched_images(config: IpswPatcherConfig) -> Mapping[ImageType, Path]:
+def regenerate_patched_images(config: GalaConfig) -> Mapping[ImageType, Path]:
     return TotalEnumMapping({image_type: patch_image(config, image_type) for image_type in ImageType})
 
 
