@@ -63,12 +63,22 @@ class ImageType(Enum):
         ]
 
     @classmethod
+    def deb_types(cls) -> list[ImageType]:
+        return [
+            ImageType.MobileSubstrate,
+        ]
+
+    @classmethod
     def validate_type_subsets(cls):
         all_types = {t for t in ImageType}
-        binary_types = set(cls.binary_types())
-        picture_types = set(cls.picture_types())
-        dmg_types = set(cls.dmg_types())
-        categories = [binary_types, picture_types, dmg_types]
+        categories = [
+            set(x) for x in [
+                cls.binary_types(),
+                cls.picture_types(),
+                cls.dmg_types(),
+                cls.deb_types(),
+            ]
+        ]
         all_types_by_category = set.union(*categories)
 
         # Ensure the union of the categorized image types cover all defined image types
@@ -88,7 +98,24 @@ class ImageType(Enum):
     def binary_types_mapping(cls, mapping: dict[ImageType, Any]):
         # TODO(PT): Perhaps instead we could have a special 'inject PNG' patch, rather than having a totally
         # separate code path for pictures
-        return TotalEnumMapping(mapping, omitted_variants=ImageType.picture_types())
+        return TotalEnumMapping(
+            mapping,
+            omitted_variants=[x for x in ImageType if x not in ImageType.binary_types()]
+        )
+
+    @classmethod
+    def deb_types_mapping(cls, mapping: dict[ImageType, Any]):
+        return TotalEnumMapping(
+            mapping,
+            omitted_variants=[x for x in ImageType if x not in ImageType.deb_types()]
+        )
+
+    @classmethod
+    def dmg_types_mapping(cls, mapping: dict[ImageType, Any]):
+        return TotalEnumMapping(
+            mapping,
+            omitted_variants=[x for x in ImageType if x not in ImageType.dmg_types()]
+        )
 
 
 # Post-class construction validation to sanity check the image type subsets
@@ -142,7 +169,9 @@ class OsBuildEnum(Enum):
                         # TODO(PT): I think these names might also vary by OS build...
                         ImageType.RestoreRamdisk: Path("018-6306-403.dmg"),
                         ImageType.RootFilesystem: Path("018-6303-385.dmg"),
-                    }
+                    },
+                    # .debs aren't stored within the IPSW
+                    omitted_variants=ImageType.deb_types(),
                 ),
             }
         )[self.model][image_type]
@@ -184,55 +213,41 @@ class KeyRepository:
                         # PT: IV isn't applicable for the root filesystem? Perhaps the `iv` needs to be optional?
                         iv="",
                     ),
-                }
+                },
+                omitted_variants=ImageType.deb_types(),
             ),
             OsBuildEnum.iPhone3_1_4_1_8B117: TotalEnumMapping(
                 {
-                    ImageType.iBSS: KeyIvPair(
-                        key="1fbc7dcafaec21a150a51eb0eb99367550e24a077b128831b28c065e61f894a0",
-                        iv="c2c5416472e5a0d6f0a25a123d5a2b1c",
-                    ),
-                    ImageType.iBEC: KeyIvPair(
-                        key="71fc41981edea73b324edfa22585a0f7cb888f370239e36262832f8df9018e85",
-                        iv="fe47eae4d54b1d02f096e694e21f2967",
-                    ),
+                    ImageType.iBSS: KeyIvPair(key="", iv=""),
+                    ImageType.iBEC: KeyIvPair(key="", iv=""),
                     ImageType.AppleLogo: KeyIvPair(key="", iv=""),
                     ImageType.KernelCache: KeyIvPair(key="", iv=""),
                     ImageType.RestoreRamdisk: KeyIvPair(key="", iv=""),
                     ImageType.RootFilesystem: KeyIvPair(key="", iv=""),
-                }
+                },
+                omitted_variants=ImageType.deb_types(),
             ),
             OsBuildEnum.iPhone3_1_5_0_9A334: TotalEnumMapping(
                 {
-                    ImageType.iBSS: KeyIvPair(
-                        key="dc5e8dcd58628a25865fb77c2fddb9d2a17f7c933aa27c53ce2d8c4173d6a8da",
-                        iv="afd80e647e22d22a26b6e58fb5846823",
-                    ),
-                    ImageType.iBEC: KeyIvPair(
-                        key="240580fa75a672a810100daec3bfc0cd189270c621e575b469e02e62029de12b",
-                        iv="d435f60732b322140217f21f1589b8b4",
-                    ),
+                    ImageType.iBSS: KeyIvPair(key="", iv=""),
+                    ImageType.iBEC: KeyIvPair(key="", iv=""),
                     ImageType.AppleLogo: KeyIvPair(key="", iv=""),
                     ImageType.KernelCache: KeyIvPair(key="", iv=""),
                     ImageType.RestoreRamdisk: KeyIvPair(key="", iv=""),
                     ImageType.RootFilesystem: KeyIvPair(key="", iv=""),
-                }
+                },
+                omitted_variants=ImageType.deb_types(),
             ),
             OsBuildEnum.iPhone3_1_6_1_10B144: TotalEnumMapping(
                 {
-                    ImageType.iBSS: KeyIvPair(
-                        key="f7f5fd61ea0792f13ea84126c3afe33944ddc543b62b552e009cbffaf7e34e28",
-                        iv="24af28537e544ebf981ce32708a7e21f",
-                    ),
-                    ImageType.iBEC: KeyIvPair(
-                        key="061695b0ba878657ae195416cff88287f222b50baabb9f72e0c2271db6b58db5",
-                        iv="1168b9ddb4c5df062892810fec574f55",
-                    ),
+                    ImageType.iBSS: KeyIvPair(key="", iv=""),
+                    ImageType.iBEC: KeyIvPair(key="", iv=""),
                     ImageType.AppleLogo: KeyIvPair(key="", iv=""),
                     ImageType.KernelCache: KeyIvPair(key="", iv=""),
                     ImageType.RestoreRamdisk: KeyIvPair(key="", iv=""),
                     ImageType.RootFilesystem: KeyIvPair(key="", iv=""),
-                }
+                },
+                omitted_variants=ImageType.deb_types(),
             ),
         }
     )
