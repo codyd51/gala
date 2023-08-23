@@ -5,6 +5,7 @@ from typing import Self
 import usb
 from strongarm.macho import VirtualMemoryPointer
 
+from configuration import GalaConfig
 from device import Device, DeviceMode, acquire_device_with_timeout
 from os_build import DeviceModel
 from utils import TotalEnumMapping
@@ -67,12 +68,14 @@ def _upload_data_to_force_timeout(device: Device, exploit_info: SecureRomLimera1
         pass
 
 
-def execute_securerom_payload(payload: bytes) -> None:
+def execute_securerom_payload(config: GalaConfig, payload: bytes) -> None:
     """Execute a payload in SecureROM using limera1n"""
     print("Awaiting DFU device...")
+    config.log_event("Awaiting DFU device...")
     with acquire_device_with_timeout(DeviceMode.DFU, timeout=100) as device:
         print(f"Got DFU device")
         print(f"Executing a payload of {len(payload)} bytes in SecureROM via limera1n...")
+        config.log_event("Exploiting SecureROM...")
         exploit_info = SecureRomLimera1nExploitInfo.info_for_model(device.model)
 
         dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xCC)

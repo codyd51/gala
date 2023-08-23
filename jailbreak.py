@@ -16,7 +16,9 @@ from utils import run_and_check
 
 def boot_device(config: GalaConfig):
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
+    config.log_event("Compiling payloads...")
     recompile_payloads()
+    config.log_event("Generating patched image tree...")
     image_types_to_paths = regenerate_patched_images(config)
 
     # Run our payload in SecureROM on a connected DFU device
@@ -24,7 +26,7 @@ def boot_device(config: GalaConfig):
     securerom_shellcode = securerom_shellcode_path.read_bytes()
     print(f"SecureROM shellcode length: {len(securerom_shellcode)}")
 
-    execute_securerom_payload(securerom_shellcode)
+    execute_securerom_payload(config, securerom_shellcode)
 
     # Give the on-device payload a chance to run
     time.sleep(3)
@@ -35,6 +37,7 @@ def boot_device(config: GalaConfig):
     with acquire_device_with_timeout(DeviceMode.DFU, timeout=3) as dfu_device:
         # Send the iBSS
         print(f"Sending {ibss_path.name} to DFU device...")
+        config.log_event("Starting iBSS...")
         dfu_device.upload_file(ibss_path)
 
     # Give the iBSS a moment to come up cleanly
@@ -48,9 +51,11 @@ def boot_device(config: GalaConfig):
         # Upload and set the boot logo
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
+        # TODO(PT): It'd be trivial, and neat, to add this to the DeviceBootConfig
         recovery_device.send_command("bgcolor 255 255 127")
 
         # Upload and jump to the iBEC
+        config.log_event("Starting iBEC...")
         recovery_device.upload_file(image_types_to_paths[ImageType.iBEC])
 
         try:
@@ -70,6 +75,7 @@ def boot_device(config: GalaConfig):
         recovery_device.send_command("bgcolor 255 217 239")
 
         # Upload the device tree, ramdisk, and kernelcache
+        config.log_event("Starting kernel...")
         recovery_device.upload_file(
             Path(
                 "/Users/philliptennen/Documents/Jailbreak/unzipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"
@@ -78,7 +84,7 @@ def boot_device(config: GalaConfig):
         recovery_device.send_command("devicetree")
         time.sleep(2)
 
-        if patcher_config.should_send_restore_ramdisk:
+        if config.boot_config.should_send_restore_ramdisk:
             print("Sending restore ramdisk...")
             recovery_device.upload_file(image_types_to_paths[ImageType.RestoreRamdisk])
             recovery_device.send_command("ramdisk")
@@ -105,7 +111,7 @@ def boot_device_with_infinite_retry(config: GalaConfig):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--write-progress-steps-to-file", action="store")
+    parser.add_argument("--log_high_level_events_to_file", action="store", default=None)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--jailbreak', action='store_true')
@@ -114,12 +120,10 @@ def main():
     args = parser.parse_args()
 
     # If a file was specified to write our progress to, ensure it doesn't already exist
-    maybe_progress_file = args.write_progress_steps_to_file
-    if maybe_progress_file:
-        progress_file = Path(maybe_progress_file)
-        if progress_file.exists():
-            raise ValueError(f"Refusing to write progress to {progress_file} because the file already exists")
-        progress_file.touch()
+    maybe_progress_file_path = args.log_high_level_events_to_file
+    maybe_progress_file = None
+    if maybe_progress_file_path:
+        maybe_progress_file = Path(maybe_progress_file_path)
 
     if args.jailbreak:
         print('Performing downgrade / jailbreak...')
@@ -134,30 +138,43 @@ def main():
         raise ValueError(f'No job specified')
 
     config = GalaConfig(
-        boot_config=DeviceBootConfig(boot_args=boot_args),
+        boot_config=DeviceBootConfig(
+            boot_args=boot_args,
+            should_send_restore_ramdisk=True,
+        ),
         patcher_config=IpswPatcherConfig(
             OsBuildEnum.iPhone3_1_4_0_8A293,
             replacement_pictures={
                 ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
             },
-            should_send_restore_ramdisk=True,
             should_create_disk_partitions=True,
             should_rebuild_root_filesystem=should_rebuild_root_filesystem,
-        )
+        ),
+        log_high_level_events_to_file=maybe_progress_file,
     )
     boot_device_with_infinite_retry(config)
 
     if args.jailbreak:
         print('Device booted, flashing OS image...')
+        config.log_event("Flashing OS image...")
         # Give restored_external a moment to come up
         time.sleep(5)
 
-        run_and_check([
-            "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
-            "--restore-mode",
-            "-e",
-            "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
-        ])
+        try:
+            run_and_check([
+                "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
+                "--restore-mode",
+                "-e",
+                "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
+            ])
+        except RuntimeError:
+            config.log_event("Error: Restore failed.")
+            raise
+        config.log_event("Device flashed, all done!")
+    elif args.boot:
+        config.log_event("Device booted, all done!")
+    else:
+        raise ValueError("Unknown job")
 
     print('Done!')
 

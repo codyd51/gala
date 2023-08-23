@@ -10,7 +10,6 @@ PATCHED_IMAGES_ROOT = JAILBREAK_ROOT / "patched_images"
 class IpswPatcherConfig:
     os_build: OsBuildEnum
     replacement_pictures: dict[ImageType, Path]
-    should_send_restore_ramdisk: bool
     should_rebuild_root_filesystem: bool
     should_create_disk_partitions: bool
 
@@ -18,6 +17,7 @@ class IpswPatcherConfig:
 @dataclass
 class DeviceBootConfig:
     boot_args: str
+    should_send_restore_ramdisk: bool
 
 
 @dataclass
@@ -31,3 +31,15 @@ class GalaConfig:
     patcher_config: IpswPatcherConfig
     # Useful for providing user-facing 'status updates' to the GUI
     log_high_level_events_to_file: Path | None = None
+
+    def log_event(self, event: str) -> None:
+        """Although conceptually a bit odd, outputting logging directly from the Config is quite convenient,
+        as it means that the logging is 'available' pretty much everywhere without extra scaffolding.
+        """
+        if not self.log_high_level_events_to_file:
+            print(f'Will not log event to file, because no file has been specified: "{event}"')
+            return
+
+        print(f'Logging event to {self.log_high_level_events_to_file}: "{event}"')
+        with open(self.log_high_level_events_to_file.as_posix(), "a") as f:
+            f.write(f"{event}\n")
