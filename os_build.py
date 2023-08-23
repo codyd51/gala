@@ -15,12 +15,15 @@ class DeviceModel(Enum):
 
 
 class ImageType(Enum):
+    # Images within the IPSW
     iBSS = auto()
     iBEC = auto()
     AppleLogo = auto()
     KernelCache = auto()
     RestoreRamdisk = auto()
     RootFilesystem = auto()
+    # Images that we provide as part of the bootstrap
+    MobileSubstrate = auto()
 
     @property
     def base_address(self) -> VirtualMemoryPointer:
@@ -36,6 +39,7 @@ class ImageType(Enum):
                 # PT: Not relevant for ramdisks?
                 ImageType.RestoreRamdisk: VirtualMemoryPointer(0x0),
                 ImageType.RootFilesystem: VirtualMemoryPointer(0x0),
+                ImageType.MobileSubstrate: VirtualMemoryPointer(0x0),
             }
         )[self]
 
