@@ -55,3 +55,10 @@ DmgPatchSet([
     ),
 ])
 ```
+
+# Requirements
+
+PT: Perhaps clone sshpass and dpkg as tools/?
+
+* sshpass
+* 

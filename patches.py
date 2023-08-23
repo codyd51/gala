@@ -234,35 +234,6 @@ class PatchSet(Patch):
             patch.apply(config, decrypted_image_path, image_base_address, image_data)
 
 
-@contextmanager
-def _mount_dmg_old(path: Path) -> Iterable[Path]:
-    print(f"Mounting {path.name}")
-    hdiutil_output_raw = run_and_capture_output_and_check(
-        [
-            "hdiutil",
-            "attach",
-            "-plist",
-            path.as_posix(),
-        ]
-    )
-    hdiutil_output = plistlib.loads(hdiutil_output_raw)
-    mounted_dmg_root = Path(hdiutil_output["system-entities"][0]["mount-point"])
-    print(f"Mounted to {mounted_dmg_root.as_posix()}")
-
-    try:
-        yield mounted_dmg_root
-    finally:
-        # Unmount the disk
-        run_and_check(
-            [
-                "hdiutil",
-                "detach",
-                mounted_dmg_root.as_posix(),
-            ]
-        )
-        print(f"Unmounted {path.name}")
-
-
 @dataclass
 class DmgPatch:
     def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
@@ -305,12 +276,11 @@ class DmgPatchSet(Patch):
                 ]
             )
 
-            if True:
-                with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
-                    print(f"Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}")
-                    for patch in self.patches:
-                        patch.apply(config, mounted_dmg_root)
-                image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
+            with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
+                print(f"Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}")
+                for patch in self.patches:
+                    patch.apply(config, mounted_dmg_root)
+            image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
 
     @staticmethod
     @contextmanager
@@ -447,14 +417,3 @@ class DmgBinaryPatch(DmgPatch):
         saved_binary_path = output_dir / safe_binary_name
         saved_binary_path.write_bytes(patched_binary_data)
 
-        # Run ldid
-        if False:
-            run_and_check(
-                [
-                    # "/Users/philliptennen/Documents/Jailbreak/tools/ldid/ldid",
-                    # "/Users/philliptennen/Downloads/sbigner-ldid",
-                    "/Users/philliptennen/Documents/Jailbreak/tools/proscurus-ldid/ldid",
-                    "-S",
-                    qualified_binary_path.as_posix(),
-                ]
-            )
