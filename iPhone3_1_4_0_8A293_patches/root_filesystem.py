@@ -1,10 +1,14 @@
 from pathlib import Path
 
 from configuration import GalaConfig, ASSETS_ROOT, PATCHED_IMAGES_ROOT
+from os_build import ImageType
 from patches import DmgPatchSet, DmgReplaceFileContentsPatch, DmgApplyTarPatch
 
 
 def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
+    # TODO(PT): To truly reflect that this has a serial dependency on the Cydia Substrate patched image,
+    # the (image type -> already-generated patched image path) mapping should be provided here.
+
     mount_system_partition_as_writable = DmgReplaceFileContentsPatch(
         file_path=Path("private/etc/fstab"),
         new_content=(
@@ -24,10 +28,12 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
     )
 
     # Also provide our patched MobileSubstrate build
+    patcher_config = config.patcher_config
+    patched_mobile_substrate_name = f"{patcher_config.os_build.asset_path_for_image_type(ImageType.MobileSubstrate).stem}.patched"
     provide_patched_mobile_substrate = DmgReplaceFileContentsPatch(
         file_path=Path("private/var/gala/mobilesubstrate_0.9.6301_iphoneos-arm.deb"),
         # TODO(PT): Perhaps the IpswPatcherConfig can provide the patched images dir?
-        new_content=(PATCHED_IMAGES_ROOT / config.patcher_config.os_build.unescaped_name / "mobile_substrate.patched").read_bytes(),
+        new_content=(patcher_config.patched_images_root() / patched_mobile_substrate_name).read_bytes(),
     )
 
     patches = [

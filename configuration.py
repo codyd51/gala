@@ -15,6 +15,9 @@ class IpswPatcherConfig:
     should_rebuild_root_filesystem: bool
     should_create_disk_partitions: bool
 
+    def patched_images_root(self) -> Path:
+        return PATCHED_IMAGES_ROOT / self.os_build.unescaped_name
+
 
 @dataclass
 class Color:
