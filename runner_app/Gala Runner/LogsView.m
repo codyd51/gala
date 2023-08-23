@@ -13,13 +13,22 @@
     if (!text.length) {
         return;
     }
+    
+    // Only auto-scroll to display the new text if the user hasn't manually scrolled to view earlier output
+    // (Needs to be computed before we add more text just below)
+    BOOL shouldAutoScrollToNewContent = CGRectGetMaxY(self.textView.visibleRect) == CGRectGetMaxY(self.textView.frame);
+    
     NSDictionary *attrs = @{
             NSForegroundColorAttributeName: [NSColor colorWithRed:0.4 green:1.0 blue:0.4 alpha:1.0],
             NSFontAttributeName: [NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightMedium]
     };
     NSAttributedString* attr = [[NSAttributedString alloc] initWithString:text attributes:attrs];
     [[self.textView textStorage] appendAttributedString:attr];
-    [self.textView scrollRangeToVisible:NSMakeRange(self.textView.string.length, 0)];
+    
+    if (shouldAutoScrollToNewContent) {
+        [self.textView scrollRangeToVisible:NSMakeRange(self.textView.attributedString.length, 0)];
+    }
+    
     [self.textView setNeedsDisplay:YES];
 }
 
