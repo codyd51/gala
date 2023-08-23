@@ -642,3 +642,57 @@ TODO before release:
 - Test CydiaSubstrate?!
 - Write up new work?
 - Upstream strongarm fix
+
+localhost:~ root# /System/Library/CoreServices/SpringBoard.app/SpringBoard
+2023-08-21 23:33:08.710 SpringBoard[723:4303] Migration complete. (Elapsed time: 1.22 seconds)
+2023-08-21 23:33:08.948 SpringBoard[723:107] lockdown says the device is: [WildcardActivated], state is 3
+2023-08-21 23:33:08.955 SpringBoard[723:107] lockdown says we've previously registered: [0], state is 0
+2023-08-21 23:33:09.007 SpringBoard[723:107] Unable to set Jetsam priority on job with label com.apple.SpringBoard. Error: Operation not permitted
+2023-08-21 23:33:10.447 SpringBoard[723:107] WiFi: Joined network XXCombinator (2.4Ghz). WiFi bars visible: NO
+2023-08-21 23:33:10.486 SpringBoard[723:107] BTM: attaching to BTServer
+2023-08-21 23:33:12.551 SpringBoard[723:107] Received notification that wireless modem state changed. Tethering is now OFF.
+2023-08-21 23:33:12.659 SpringBoard[723:107] BTM: posting notification BluetoothAvailabilityChangedNotification
+2023-08-21 23:33:13.236 SpringBoard[723:107] Unable to set Jetsam priority on job with label UIKitApplication:com.apple.mobilephone[0x5de5]. Error: Operation not permitted
+2023-08-21 23:33:13.262 SpringBoard[723:107] Unable to set Jetsam priority on job with label UIKitApplication:com.apple.mobilemail[0xc0d]. Error: Operation not permitted
+2023-08-21 23:33:20.327 SpringBoard[723:107] Unable to set Jetsam priority on job with label UIKitApplication:com.apple.Preferences[0xf05e]. Error: Operation not permitted
+2023-08-21 23:33:30.647 SpringBoard[723:d20b] Unable to set Jetsam priority on job with label UIKitApplication:com.apple.Preferences[0xf05e]. Error: Operation not permitted
+2023-08-21 23:33:31.913 SpringBoard[723:d20b] Unable to set Jetsam priority on job with label UIKitApplication:com.apple.Preferences[0xf05e]. Error: Operation not permitted
+
+manaegd to get a version of cycript that works, or just had to reboot?
+
+https://global-root-g2.chain-demos.digicert.com won't load / not trusted
+
+When done, jump to 0x345244c6
+0x34524388 009A                   ldr        r2, [sp, #0x2c + var_2C]           ; CODE XREF=_SecTrustEvaluate+266
+0x3452438a 0723                   movs       r3, #0x7
+0x3452438c 4FF0000B               mov.w      fp, #0x0
+0x34524390 1360                   str        r3, [r2]
+
+0x34524278 F0B5                   push       {r4, r5, r6, r7, lr}
+
+
+push {r4, lr}
+mov r4, #1
+str r4, r1
+mov r0, #0
+pop {r4, pc}
+0x10, 0xb5, 0x04, 0x24, 0x0c, 0x60, 0x00, 0x20, 0x10, 0xbd
+
+launchctl: Dubious ownership on file (skipping): /System/Library/LaunchDaemons/com.saurik.Cydia.Startup.plist
+
+default	15:36:05.006223+0100	AMPDevicesAgent	_create_ssl_context (thread 0x16be9b000): ios version is older than 9.0. Disabling tls version 1.2.
+default	15:36:05.006458+0100	AMPDevicesAgent	USBMuxConnectByPort:584 Connecting to port 32498 (f2, 7e)
+default	15:36:05.021723+0100	AMPDeviceDiscoveryAgent	USBMuxConnectByPort:584 Connecting to port 32498 (f2, 7e)
+default	15:36:05.028964+0100	remotepairingd	AMDeviceStartSession (thread 0x1df725fc0): Could not start session with device 8e8366ad7bf1222351522c423aea5fecc9e62793: kAMDInvalidResponseError
+default	15:36:05.029078+0100	remotepairingd	_WatchCompanionCapabilitySupported (thread 0x1df725fc0): AMDeviceStartSession failed: 0xe8000013 (kAMDInvalidResponseError)
+default	15:36:05.029391+0100	remotepairingd	USBMuxHandleDictionary:1437 Adding event 0x600001eac020 to changelist.
+default	15:36:05.029460+0100	remotepairingd	USBMuxHandleDictionary:1437 Adding event 0x600001eac1c0 to changelist.
+default	15:36:05.029532+0100	remotepairingd	USBMuxHandleDictionary:1437 Adding event 0x600001eac160 to changelist.
+default	15:36:05.029561+0100	remotepairingd	USBMuxHandleDictionary:1437 Adding event 0x600001eac2c0 to changelist.
+default	15:36:05.031717+0100	Console	copy_string_value_from_device (thread 0x16bd9b000): AMDeviceCopyValueWithError: 0xe8000016
+default	15:36:05.031785+0100	Console	_create_ssl_context (thread 0x16bd9b000): ios version is older than 4.0. Disabling tls version 1.1.
+default	15:36:05.031949+0100	Console	lockssl_handshake (thread 0x16bd9b000): SSL handshake fatal lower level error -1: SSL_ERROR_SYSCALL errno (Broken pipe)
+default	15:36:05.032469+0100	Console	send_session_start (thread 0x16bd9b000): lockconn_enable_ssl failed and device 1526 (8e8366ad7bf1222351522c423aea5fecc9e62793) is valid...disconnect and reconnect
+default	15:36:05.032547+0100	Console	USBMuxConnectByPort:584 Connecting to port 32498 (f2, 7e)
+
+need to make /private/var/gala 777 to make it accessible to MobileSafari
