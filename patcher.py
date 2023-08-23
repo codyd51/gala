@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import shutil
+import tempfile
 from copy import copy
 from pathlib import Path
 from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, DeviceBootConfig, IpswPatcherConfig, GalaConfig
-from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches
+from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, IpswPatcherConfig, GalaConfig, \
+    ASSETS_ROOT
+from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches, \
+    MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, \
+    MapOfBinaryTypesToPatchGenerators
 from os_build import ImageType, KeyRepository, OsBuildEnum
 from patches import Function, Patch
 from utils import TotalEnumMapping, run_and_check
@@ -46,49 +50,29 @@ class FunctionRepository:
 
 class PatchRepository:
     @classmethod
-    def builds_to_image_patches(
-        cls, config: GalaConfig,
-    ) -> Mapping[OsBuildEnum, Mapping[ImageType, list[Patch]]]:
-        # PT: This needs to be a method, rather than a class variable, because otherwise it
-        # captures file data **when the class is defined/interpreted**,
-        # which is before we've rebuilt the shellcode image with new code! Annoying
+    def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, (MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, MapOfBinaryTypesToPatchGenerators)]:
+        empty_patch_sets = (
+            ImageType.deb_types_mapping({
+                ImageType.MobileSubstrate: [],
+            }),
+            ImageType.dmg_types_mapping({
+                ImageType.RestoreRamdisk: [],
+                ImageType.RootFilesystem: [],
+            }),
+            ImageType.binary_types_mapping({
+                ImageType.iBSS: [],
+                ImageType.iBEC: [],
+                ImageType.KernelCache: [],
+            }),
+        )
         return TotalEnumMapping(
             {
-                OsBuildEnum.iPhone3_1_4_0_8A293: get_iphone_3_1_4_0_8a293_patches(config),
-                OsBuildEnum.iPhone3_1_4_1_8B117: ImageType.binary_types_mapping(
-                    {
-                        ImageType.iBSS: [],
-                        ImageType.iBEC: [],
-                        ImageType.KernelCache: [],
-                        ImageType.RestoreRamdisk: [],
-                        ImageType.RootFilesystem: [],
-                    }
-                ),
-                OsBuildEnum.iPhone3_1_5_0_9A334: ImageType.binary_types_mapping(
-                    {
-                        ImageType.iBSS: [],
-                        ImageType.iBEC: [],
-                        ImageType.KernelCache: [],
-                        ImageType.RestoreRamdisk: [],
-                        ImageType.RootFilesystem: [],
-                    }
-                ),
-                OsBuildEnum.iPhone3_1_6_1_10B144: ImageType.binary_types_mapping(
-                    {
-                        ImageType.iBSS: [],
-                        ImageType.iBEC: [],
-                        ImageType.KernelCache: [],
-                        ImageType.RestoreRamdisk: [],
-                        ImageType.RootFilesystem: [],
-                    }
-                ),
+                OsBuildEnum.iPhone3_1_4_0_8A293: get_iphone_3_1_4_0_8a293_patches(),
+                OsBuildEnum.iPhone3_1_4_1_8B117: empty_patch_sets,
+                OsBuildEnum.iPhone3_1_5_0_9A334: empty_patch_sets,
+                OsBuildEnum.iPhone3_1_6_1_10B144: empty_patch_sets,
             }
         )
-
-    @classmethod
-    def patches_for_image(cls, os_build: OsBuildEnum, image: ImageType, config: GalaConfig) -> list[Patch]:
-        image_patches_for_build = cls.builds_to_image_patches(config)[os_build]
-        return image_patches_for_build[image]
 
 
 def dump_text_section(input_file: Path) -> bytes:
@@ -153,17 +137,6 @@ def apply_patches(
         print(f"Bytes successfully modified?")
 
     output.write_bytes(patched_bytes)
-
-
-def patch_decrypted_image(
-    os_build: OsBuildEnum,
-    image_type: ImageType,
-    config: GalaConfig,
-    decrypted_image_path: Path,
-    patched_image_path: Path,
-):
-    patches = PatchRepository.patches_for_image(os_build, image_type, config)
-    apply_patches(config.patcher_config, image_type, decrypted_image_path, patched_image_path, patches)
 
 
 def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
@@ -256,7 +229,16 @@ def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
 
 
 def regenerate_patched_images(config: GalaConfig) -> Mapping[ImageType, Path]:
-    return TotalEnumMapping({image_type: patch_image(config, image_type) for image_type in ImageType})
+    # PT: These patches have serial dependencies, so execute them in-order
+    grouping_type_to_patch_generators = PatchRepository.builds_to_image_patches()[config.patcher_config.os_build]
+    image_type_to_patched_images = {}
+    for image_type_grouping in grouping_type_to_patch_generators:
+        for image_type, patch_generator in image_type_grouping.items():
+            patches = patch_generator(config)
+            image_type_to_patched_images[image_type] = patch_image(config, image_type, patches)
+
+    # Wrap it in a TEM as a final check that we've regenerated everything
+    return TotalEnumMapping(image_type_to_patched_images)
 
 
 def generate_patched_ipsw(os_build: OsBuildEnum, image_types_to_paths: Mapping[ImageType, Path]) -> None:

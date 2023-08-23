@@ -16,7 +16,7 @@ from strongarm.macho import (ArchitectureNotSupportedError, MachoParser,
                              VirtualMemoryPointer)
 
 from assemble import Instr, assemble
-from configuration import PATCHED_IMAGES_ROOT
+from configuration import PATCHED_IMAGES_ROOT, IpswPatcherConfig
 from os_build import ImageType, OsBuildEnum
 from utils import run_and_capture_output_and_check, run_and_check
 
