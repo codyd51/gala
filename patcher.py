@@ -139,9 +139,28 @@ def apply_patches(
     output.write_bytes(patched_bytes)
 
 
-def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
+def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch]) -> Path:
     patcher_config = config.patcher_config
     os_build = patcher_config.os_build
+    output_dir = PATCHED_IMAGES_ROOT / os_build.unescaped_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if image_type == ImageType.MobileSubstrate:
+        mobile_substrate_deb_path = ASSETS_ROOT / "mobilesubstrate_0.9.6301_iphoneos-arm.deb"
+
+        file_name = "mobile_substrate"
+        orig_deb = output_dir / f"{file_name}.orig"
+        patched_deb = output_dir / f"{file_name}.patched"
+
+        orig_deb.unlink(missing_ok=True)
+        patched_deb.unlink(missing_ok=True)
+
+        shutil.copy(mobile_substrate_deb_path.as_posix(), orig_deb.as_posix())
+        apply_patches(config.patcher_config, image_type, orig_deb, patched_deb, patches)
+
+        print(f"Wrote repacked {image_type.name} to {patched_deb.as_posix()}")
+        return patched_deb
+
     key_pair = KeyRepository.key_iv_pair_for_image(os_build, image_type)
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
@@ -151,8 +170,6 @@ def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
     if not encrypted_image.exists():
         raise ValueError(f"Expected to find an encrypted image at {encrypted_image}")
 
-    output_dir = PATCHED_IMAGES_ROOT / os_build.unescaped_name
-    output_dir.mkdir(parents=True, exist_ok=True)
     reencrypted_image = output_dir / f"{file_name}.reencrypted"
 
     if image_type in ImageType.picture_types():
@@ -169,6 +186,7 @@ def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
                     key_pair.key,
                 ],
             )
+
     elif image_type == ImageType.RootFilesystem:
         extracted_dmg = output_dir / f"{file_name}.extracted"
         patched_dmg = output_dir / f"{file_name}.patched"
@@ -194,7 +212,7 @@ def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
 
         # Apply our patches
         patched_dmg.unlink(missing_ok=True)
-        patch_decrypted_image(os_build, image_type, config, extracted_dmg, patched_dmg)
+        apply_patches(config.patcher_config, image_type, extracted_dmg, patched_dmg, patches)
         print(f"Wrote patched {image_type.name} to {patched_dmg.as_posix()}")
 
         # Rebuild the .dmg
@@ -206,6 +224,7 @@ def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
             repacked_dmg.as_posix(),
         ])
         print(f"Wrote repacked {image_type.name} to {repacked_dmg.as_posix()}")
+        # TODO(PT): Early return with repacked_dmg here?
 
     else:
         # Decrypt the image
@@ -217,7 +236,7 @@ def patch_image(config: GalaConfig, image_type: ImageType) -> Path:
 
         patched_image = output_dir / f"{file_name}.patched"
         patched_image.unlink(missing_ok=True)
-        patch_decrypted_image(os_build, image_type, config, decrypted_image, patched_image)
+        apply_patches(config.patcher_config, image_type, decrypted_image, patched_image, patches)
         print(f"Wrote patched {image_type.name} to {patched_image.as_posix()}")
 
         reencrypted_image = output_dir / f"{file_name}.reencrypted"
