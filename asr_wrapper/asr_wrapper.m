@@ -300,11 +300,11 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
         CGFloat sprite_height = CGRectGetHeight(self.sprite_frame);
 
         printf("getting images\n");
-        self.sprite_image = [self imageWithContentsOfPath:"/mnt2/gala/boot_logo.png"];
-        self.active_image = [self imageWithContentsOfPath:"/mnt2/gala/mounting_dev_disk0s2s1.png"];
+        [self setSpriteImageToImageAtPath:"/mnt2/gala/boot_logo.png"];
+        [self setActiveImageToImageAtPath:"/mnt2/gala/mounting_dev_disk0s2s1.png"];
         printf("done getting images\n");
 
-        CGSize text_size = CGSizeMake(display_width * 1.0, display_height * 0.15);
+        CGSize text_size = CGSizeMake(display_width * 1.0, display_height * 0.1);
         self.text_frame = CGRectMake(
                 (display_width / 2.0) - (text_size.width / 2.0),
                 (display_height / 2.0) - (text_size.height / 2.0),
@@ -343,16 +343,29 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
     CGColorRef background_color = CGColorCreate(self.color_space, (CGFloat[]){164/255.0, 255/255.0, 125/255.0, 1});
     CGContextSetFillColorWithColor(self.display_cgcontext, background_color);
     CGContextFillRect(self.display_cgcontext, self.display_frame);
+
+    CFRelease(background_color);
     printf("done drawing background\n");
 }
 
 - (CGImageRef)imageWithContentsOfPath:(const char*)path {
+    if (!does_file_exist(path)) {
+        printf("Expected image at %s, but the path doesn't exist!\n", path);
+        exit(1);
+    }
     CFURLRef image_path_url = CFURLCreateWithFileSystemPath(NULL, CFStringCreateWithCString(NULL, path, kCFStringEncodingASCII), kCFURLPOSIXPathStyle, NO);
-    CFShow(image_path_url);
+
     CFMutableDictionaryRef options = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryAddValue(options, kCGImageSourceShouldCache, kCFBooleanTrue);
     CGImageSourceRef image_source = CGImageSourceCreateWithURL(image_path_url, options);
     CGImageRef image = CGImageSourceCreateImageAtIndex(image_source, 0, options);
-    return image;
+    CGImageRef copiedImage = CGImageCreateCopy(image);
+
+    CFRelease(image);
+    CFRelease(image_source);
+    CFRelease(options);
+    CFRelease(image_path_url);
+    return copiedImage;
 }
 
 - (void)step {
@@ -382,12 +395,12 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
             if (self.icon_position.y >= lower_y && self.icon_position.y < higher_y) {
                 // 'Increasing' intersection
                 if (previous_icon_position.x < edge.vertex1.x && self.icon_position.x + self.sprite_frame.size.width >= edge.vertex1.x) {
-                    printf("Increasing intersection on vertical wall\n");
+                    //printf("Increasing intersection on vertical wall\n");
                     detected_intersection = true;
                 }
                     // 'Decreasing' intersection
                 else if (previous_icon_position.x > edge.vertex1.x && self.icon_position.x <= edge.vertex1.x) {
-                    printf("Decreasing intersection on vertical wall\n");
+                    //printf("Decreasing intersection on vertical wall\n");
                     detected_intersection = true;
                 }
             }
@@ -397,12 +410,12 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
             if (self.icon_position.x >= lower_x && self.icon_position.x < higher_x) {
                 // 'Increasing' intersection
                 if (previous_icon_position.y < edge.vertex1.y && self.icon_position.y >= edge.vertex1.y) {
-                    printf("Increasing intersection on horizontal wall\n");
+                    //printf("Increasing intersection on horizontal wall\n");
                     detected_intersection = true;
                 }
                     // 'Decreasing' intersection
                 else if (previous_icon_position.y > edge.vertex1.y && self.icon_position.y <= edge.vertex1.y) {
-                    printf("Decreasing intersection on horizontal wall\n");
+                    //printf("Decreasing intersection on horizontal wall\n");
                     detected_intersection = true;
                 }
             }
@@ -466,6 +479,24 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
     }
 }
 
+- (void)setActiveImageToImageAtPath:(const char*)path {
+    // Important: if the previous image isn't released, then a file descriptor is retained, and we won't be able to
+    // unmount /mnt2
+    if (self.active_image) {
+        CFRelease(self.active_image);
+    }
+    self.active_image = [self imageWithContentsOfPath:path];
+}
+
+- (void)setSpriteImageToImageAtPath:(const char*)path {
+    // Important: if the previous image isn't released, then a file descriptor is retained, and we won't be able to
+    // unmount /mnt2
+    if (self.sprite_image) {
+        CFRelease(self.sprite_image);
+    }
+    self.sprite_image = [self imageWithContentsOfPath:path];
+}
+
 @end
 
 int main(int argc, const char** argv) {
@@ -473,10 +504,11 @@ int main(int argc, const char** argv) {
 
     _CFAutoreleasePoolPush();
 
+    int ret = 0;
     printf("Mounting /mnt2...\n");
     const char *mount_path = "/sbin/mount_hfs";
     const char *mount_argv[] = {mount_path, "/dev/disk0s2s1", "/mnt2", NULL};
-    int ret = run_and_wait(mount_path, mount_argv);
+    ret = run_and_wait(mount_path, mount_argv);
     if (ret != 0) {
         printf("Mounting /dev/disk0s2s1 to /mnt2 failed\n");
         return -1;
@@ -500,13 +532,13 @@ int main(int argc, const char** argv) {
     printf("Waiting for filesystem...");
     [gui drawBackground];
     [gui resetIconPosition];
-    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/receiving_filesystem_over_usb2.png"];
+    [gui setActiveImageToImageAtPath:"/mnt2/gala/receiving_filesystem_over_usb2.png"];
     [gui stepUntilFileAppears:"/mnt2/gala/sentinel__rootfs_is_fully_uploaded"];
 
     printf("Root filesystem is uploaded! Running asr...\n");
     [gui drawBackground];
     [gui resetIconPosition];
-    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/running_asr.png"];
+    [gui setActiveImageToImageAtPath:"/mnt2/gala/running_asr.png"];
 
     const char* asr_path = "/usr/sbin/asr";
     const char* asr_argv[] = {asr_path, "-source", "/mnt2/gala/root_filesystem.dmg", "-target", "/dev/disk0s1", "-erase", "-noprompt", NULL};
@@ -516,8 +548,13 @@ int main(int argc, const char** argv) {
     printf("Unmounting /mnt2 to match what restored_external expects...\n");
     [gui drawBackground];
     [gui resetIconPosition];
-    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/unmounting.png"];
+    [gui setActiveImageToImageAtPath:"/mnt2/gala/unmounting.png"];
     [gui step];
+
+    // Free the images, so we can free up the extant file descriptors and unmount the Data partition
+    CFRelease(gui.active_image);
+    CFRelease(gui.sprite_image);
+
     const char* umount_path = "/usr/bin/umount";
     const char* umount_argv[] = {umount_path, "/mnt2", NULL};
     ret = run_and_wait(umount_path, umount_argv);
@@ -525,15 +562,6 @@ int main(int argc, const char** argv) {
         printf("Unmounting the Data partition failed!\n");
         return -1;
     }
-
-    [gui drawBackground];
-    [gui resetIconPosition];
-    gui.active_image = [gui imageWithContentsOfPath:"/mnt2/gala/finished.png"];
-    [gui step];
-
-    // Give the user a chance to see the final message
-    printf("Sleeping to give the user a chance to see the message...\n");
-    sleep(5);
 
     printf("asr_wrapper is done!\n");
     return 0;
