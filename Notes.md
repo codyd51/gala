@@ -642,6 +642,8 @@ TODO before release:
 - Test CydiaSubstrate?!
 - Write up new work?
 - Upstream strongarm fix
+- Minimize patches
+- Explain each patch
 
 localhost:~ root# /System/Library/CoreServices/SpringBoard.app/SpringBoard
 2023-08-21 23:33:08.710 SpringBoard[723:4303] Migration complete. (Elapsed time: 1.22 seconds)

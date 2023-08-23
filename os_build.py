@@ -178,6 +178,17 @@ class OsBuildEnum(Enum):
             }
         )[self.model][image_type]
 
+    def asset_path_for_image_type(self, image_type: ImageType) -> Path:
+        from configuration import ASSETS_ROOT
+        # This only applies to .debs, which are stored in assets/ instead of in an IPSW
+        return TotalEnumMapping(
+            {
+                DeviceModel.iPhone3_1: ImageType.deb_types_mapping({
+                    ImageType.MobileSubstrate: ASSETS_ROOT / "mobilesubstrate_0.9.6301_iphoneos-arm.deb",
+                }),
+            }
+        )[self.model][image_type]
+
 
 @dataclass
 class KeyIvPair:

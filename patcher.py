@@ -149,18 +149,17 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # TODO(PT): Replace this to cover all .deb patches, and store the .deb path in the patch
-    if image_type == ImageType.MobileSubstrate:
-        mobile_substrate_deb_path = ASSETS_ROOT / "mobilesubstrate_0.9.6301_iphoneos-arm.deb"
-
-        file_name = "mobile_substrate"
-        orig_deb = output_dir / f"{file_name}.orig"
+    if image_type in ImageType.deb_types():
+        orig_deb_path = os_build.asset_path_for_image_type(image_type)
+        file_name = orig_deb_path.stem
+        copied_orig_deb = output_dir / f"{file_name}.orig"
         patched_deb = output_dir / f"{file_name}.patched"
 
-        orig_deb.unlink(missing_ok=True)
+        copied_orig_deb.unlink(missing_ok=True)
         patched_deb.unlink(missing_ok=True)
 
-        shutil.copy(mobile_substrate_deb_path.as_posix(), orig_deb.as_posix())
-        apply_patches(config.patcher_config, image_type, orig_deb, patched_deb, patches)
+        shutil.copy(orig_deb_path.as_posix(), copied_orig_deb.as_posix())
+        apply_patches(config.patcher_config, image_type, copied_orig_deb, patched_deb, patches)
 
         print(f"Wrote repacked {image_type.name} to {patched_deb.as_posix()}")
         return patched_deb
