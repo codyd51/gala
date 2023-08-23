@@ -17,9 +17,18 @@ class IpswPatcherConfig:
 
 
 @dataclass
+class Color:
+    r: int
+    g: int
+    b: int
+
+
+@dataclass
 class DeviceBootConfig:
     boot_args: str
     should_send_restore_ramdisk: bool
+    ibss_background_color: Color
+    ibec_background_color: Color
 
 
 @dataclass

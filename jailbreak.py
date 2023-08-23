@@ -5,7 +5,7 @@ from pathlib import Path
 import usb
 import usb.core
 
-from configuration import DeviceBootConfig, IpswPatcherConfig, GalaConfig
+from configuration import DeviceBootConfig, IpswPatcherConfig, GalaConfig, ASSETS_ROOT, Color
 from device import DeviceMode, acquire_device_with_timeout, NoDfuDeviceFoundError
 from os_build import ImageType, OsBuildEnum
 from patcher import (regenerate_patched_images)
@@ -51,8 +51,8 @@ def boot_device(config: GalaConfig):
         # Upload and set the boot logo
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
-        # TODO(PT): It'd be trivial, and neat, to add this to the DeviceBootConfig
-        recovery_device.send_command("bgcolor 255 255 127")
+        ibss_bg = config.boot_config.ibss_background_color
+        recovery_device.send_command(f"bgcolor {ibss_bg.r} {ibss_bg.g} {ibss_bg.b}")
 
         # Upload and jump to the iBEC
         config.log_event("Starting iBEC...")
@@ -72,7 +72,8 @@ def boot_device(config: GalaConfig):
         # Set the boot logo again
         recovery_device.upload_file(image_types_to_paths[ImageType.AppleLogo])
         recovery_device.send_command("setpicture")
-        recovery_device.send_command("bgcolor 255 217 239")
+        ibec_bg = config.boot_config.ibec_background_color
+        recovery_device.send_command(f"bgcolor {ibec_bg.r} {ibec_bg.g} {ibec_bg.b}")
 
         # Upload the device tree, ramdisk, and kernelcache
         config.log_event("Starting kernel...")
@@ -141,11 +142,13 @@ def main():
         boot_config=DeviceBootConfig(
             boot_args=boot_args,
             should_send_restore_ramdisk=True,
+            ibss_background_color=Color(r=255, g=255, b=127),
+            ibec_background_color=Color(r=185, g=240, b=193),
         ),
         patcher_config=IpswPatcherConfig(
             OsBuildEnum.iPhone3_1_4_0_8A293,
             replacement_pictures={
-                ImageType.AppleLogo: Path(__file__).parent / "assets" / "boot_logo.png",
+                ImageType.AppleLogo: ASSETS_ROOT / "boot_logo.png",
             },
             should_create_disk_partitions=True,
             should_rebuild_root_filesystem=should_rebuild_root_filesystem,
