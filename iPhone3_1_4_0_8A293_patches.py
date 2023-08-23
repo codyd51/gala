@@ -539,6 +539,11 @@ def _get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         new_content=(ASSETS_ROOT / "GlobalSign_Root_R3.crt").read_bytes(),
     )
 
+    # Also provide our patched MobileSubstrate build
+    provide_patched_mobile_substrate = DmgReplaceFileContentsPatch(
+        file_path=Path("private/var/gala/mobilesubstrate_0.9.6301_iphoneos-arm.deb"),
+        # TODO(PT): Perhaps the IpswPatcherConfig can provide the patched images dir?
+        new_content=(PATCHED_IMAGES_ROOT / config.patcher_config.os_build.unescaped_name / "mobile_substrate.patched").read_bytes(),
     )
 
     patches = [
@@ -552,6 +557,7 @@ def _get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         # Delete the Compass app to make room for the Cydia patch
         #DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
         provide_globalsign_root_r3_cert,
+        provide_patched_mobile_substrate,
     ]
     return [DmgPatchSet(patches=patches)]
 
