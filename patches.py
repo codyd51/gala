@@ -378,6 +378,7 @@ class DmgReplaceFileContentsPatch(DmgPatch):
     def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
         print(f"Replacing file {self.file_path} in ramdisk...")
         qualified_path = mounted_ramdisk_path / self.file_path
+        qualified_path.parent.mkdir(parents=True, exist_ok=True)
         qualified_path.write_bytes(self.new_content)
         if perms := self.new_permissions:
             print(f'Applying permissions to {qualified_path}...')

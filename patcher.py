@@ -12,7 +12,7 @@ from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, IpswPatcherConfig
     ASSETS_ROOT
 from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches, \
     MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, \
-    MapOfBinaryTypesToPatchGenerators
+    MapOfBinaryTypesToPatchGenerators, MapOfPictureTypesToPatchGenerators
 from os_build import ImageType, KeyRepository, OsBuildEnum
 from patches import Function, Patch
 from utils import TotalEnumMapping, run_and_check
@@ -50,8 +50,11 @@ class FunctionRepository:
 
 class PatchRepository:
     @classmethod
-    def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, (MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, MapOfBinaryTypesToPatchGenerators)]:
+    def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, (MapOfPictureTypesToPatchGenerators, MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, MapOfBinaryTypesToPatchGenerators)]:
         empty_patch_sets = (
+            ImageType.picture_types_mapping({
+                ImageType.AppleLogo: [],
+            }),
             ImageType.deb_types_mapping({
                 ImageType.MobileSubstrate: [],
             }),
@@ -145,6 +148,7 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
     output_dir = PATCHED_IMAGES_ROOT / os_build.unescaped_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # TODO(PT): Replace this to cover all .deb patches, and store the .deb path in the patch
     if image_type == ImageType.MobileSubstrate:
         mobile_substrate_deb_path = ASSETS_ROOT / "mobilesubstrate_0.9.6301_iphoneos-arm.deb"
 

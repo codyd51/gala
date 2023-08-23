@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from strongarm.macho import VirtualMemoryPointer
 
@@ -95,27 +95,29 @@ class ImageType(Enum):
                     raise ValueError("All image categories must be disjoint with each other")
 
     @classmethod
+    def _mapping_total_over_subkeys(cls, mapping: dict[ImageType, Any], subkeys: list[ImageType]) -> Mapping[ImageType, Any]:
+        return TotalEnumMapping(
+            mapping,
+            omitted_variants=[x for x in ImageType if x not in subkeys]
+        )
+
+    @classmethod
     def binary_types_mapping(cls, mapping: dict[ImageType, Any]):
         # TODO(PT): Perhaps instead we could have a special 'inject PNG' patch, rather than having a totally
         # separate code path for pictures
-        return TotalEnumMapping(
-            mapping,
-            omitted_variants=[x for x in ImageType if x not in ImageType.binary_types()]
-        )
+        return cls._mapping_total_over_subkeys(mapping, ImageType.binary_types())
 
     @classmethod
     def deb_types_mapping(cls, mapping: dict[ImageType, Any]):
-        return TotalEnumMapping(
-            mapping,
-            omitted_variants=[x for x in ImageType if x not in ImageType.deb_types()]
-        )
+        return cls._mapping_total_over_subkeys(mapping, ImageType.deb_types())
 
     @classmethod
     def dmg_types_mapping(cls, mapping: dict[ImageType, Any]):
-        return TotalEnumMapping(
-            mapping,
-            omitted_variants=[x for x in ImageType if x not in ImageType.dmg_types()]
-        )
+        return cls._mapping_total_over_subkeys(mapping, ImageType.dmg_types())
+
+    @classmethod
+    def picture_types_mapping(cls, mapping: dict[ImageType, Any]):
+        return cls._mapping_total_over_subkeys(mapping, ImageType.picture_types())
 
 
 # Post-class construction validation to sanity check the image type subsets
