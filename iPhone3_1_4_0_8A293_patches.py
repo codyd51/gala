@@ -533,6 +533,11 @@ def _get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
 
     install_cydia = DmgApplyTarPatch(tar_path=ASSETS_ROOT / "Cydia.tar")
 
+    # Provide the GlobalSign Root G3 certificate, which the user will need to install to be able to connect to Cydia servers
+    provide_globalsign_root_r3_cert = DmgReplaceFileContentsPatch(
+        file_path=Path("private/var/gala/GlobalSign_Root_R3.crt"),
+        new_content=(ASSETS_ROOT / "GlobalSign_Root_R3.crt").read_bytes(),
+    )
 
     )
 
@@ -546,6 +551,7 @@ def _get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         install_cydia,
         # Delete the Compass app to make room for the Cydia patch
         #DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
+        provide_globalsign_root_r3_cert,
     ]
     return [DmgPatchSet(patches=patches)]
 
