@@ -32,15 +32,15 @@ class DmgPatchSet(Patch):
             image_base_address: VirtualMemoryPointer,
             image_data: bytearray,
     ) -> None:
-        # TODO(PT): Replace `ramdisk` nomenclature here
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
-            decrypted_ramdisk_with_dmg_extension = temp_dir / "ramdisk.dmg"
-            decrypted_ramdisk_with_dmg_extension.write_bytes(image_data)
+            # hdiutil requires that the file end in .dmg
+            decrypted_dmg_with_dmg_extension = temp_dir / "disk.dmg"
+            decrypted_dmg_with_dmg_extension.write_bytes(image_data)
 
-            # Resize the ramdisk so we have room to write to it
+            # Resize the disk image, so we have room to write to it
             # Ref: https://apple.stackexchange.com/questions/60613
-            current_dmg_size = decrypted_ramdisk_with_dmg_extension.stat().st_size
+            current_dmg_size = decrypted_dmg_with_dmg_extension.stat().st_size
             # Add in an extra 4MB. This should be more than enough for everything we do, but if ever necessary this
             # can be bumped.
             extra_room = 1024 * 1024 * 4
@@ -53,15 +53,15 @@ class DmgPatchSet(Patch):
                     "resize",
                     "-size",
                     f"{total_dmg_size_in_mb}M",
-                    decrypted_ramdisk_with_dmg_extension.as_posix(),
+                    decrypted_dmg_with_dmg_extension.as_posix(),
                 ]
             )
 
-            with self._mount_dmg(decrypted_ramdisk_with_dmg_extension) as mounted_dmg_root:
+            with self._mount_dmg(decrypted_dmg_with_dmg_extension) as mounted_dmg_root:
                 print(f"Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}")
                 for patch in self.patches:
                     patch.apply(config, mounted_dmg_root)
-            image_data[:] = decrypted_ramdisk_with_dmg_extension.read_bytes()
+            image_data[:] = decrypted_dmg_with_dmg_extension.read_bytes()
 
     @staticmethod
     @contextmanager
@@ -98,15 +98,15 @@ class DmgPatchSet(Patch):
 class DmgApplyTarPatch(DmgPatch):
     tar_path: Path
 
-    def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
-        print(f"Applying tar {self.tar_path} to ramdisk...")
+    def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
+        print(f"Applying tar {self.tar_path} to dmg...")
         run_and_check(
             [
                 "tar",
                 "-xvf",
                 self.tar_path.as_posix(),
                 "-C",
-                mounted_ramdisk_path.as_posix(),
+                mounted_dmg_path.as_posix(),
             ]
         )
 
@@ -115,9 +115,9 @@ class DmgApplyTarPatch(DmgPatch):
 class DmgRemoveTreePatch(DmgPatch):
     tree_path: Path
 
-    def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
-        print(f'Deleting tree {self.tree_path} from .dmg ({mounted_ramdisk_path / self.tree_path}')
-        shutil.rmtree(mounted_ramdisk_path / self.tree_path)
+    def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
+        print(f'Deleting tree {self.tree_path} from .dmg ({mounted_dmg_path / self.tree_path}')
+        shutil.rmtree(mounted_dmg_path / self.tree_path)
 
 
 class FilePermission(Enum):
@@ -156,9 +156,9 @@ class DmgReplaceFileContentsPatch(DmgPatch):
     new_content: bytes
     new_permissions: list[FilePermission] | None = None
 
-    def apply(self, config: IpswPatcherConfig, mounted_ramdisk_path: Path) -> None:
-        print(f"Replacing file {self.file_path} in ramdisk...")
-        qualified_path = mounted_ramdisk_path / self.file_path
+    def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
+        print(f"Replacing file {self.file_path} in dmg...")
+        qualified_path = mounted_dmg_path / self.file_path
         qualified_path.parent.mkdir(parents=True, exist_ok=True)
         qualified_path.write_bytes(self.new_content)
         if perms := self.new_permissions:
@@ -169,15 +169,13 @@ class DmgReplaceFileContentsPatch(DmgPatch):
 
 @dataclass
 class DmgBinaryPatch(DmgPatch):
-    # PT: Instead of having the binary at the top level, this could just contain a PatchSet
-    # Then we could apply the binary patches in the patch set, so we only mount the ramdisk once
     binary_path: Path
     inner_patch: Patch
 
-    def apply(self, config: IpswPatcherConfig, ramdisk_root: Path) -> None:
-        print(f"Applying ramdisk patch to binary {self.binary_path}")
+    def apply(self, config: IpswPatcherConfig, dmg_root: Path) -> None:
+        print(f"Applying dmg patch to binary {self.binary_path}")
         # Find the binary
-        qualified_binary_path = ramdisk_root / self.binary_path
+        qualified_binary_path = dmg_root / self.binary_path
         if not qualified_binary_path.exists():
             raise RuntimeError(f"Failed to find {qualified_binary_path}")
 
@@ -193,8 +191,7 @@ class DmgBinaryPatch(DmgPatch):
         qualified_binary_path.write_bytes(patched_binary_data)
 
         # To aid debugging, also output the patched binary to the working folder
-        # TODO(PT): This needs to be refactored somehow
-        output_dir = PATCHED_IMAGES_ROOT / config.os_build.unescaped_name
+        output_dir = config.patched_images_root()
         safe_binary_name = self.binary_path.as_posix().replace("/", "_")
         saved_binary_path = output_dir / safe_binary_name
         saved_binary_path.write_bytes(patched_binary_data)
