@@ -5,6 +5,8 @@ from os_build import OsBuildEnum, ImageType
 
 JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
 PATCHED_IMAGES_ROOT = JAILBREAK_ROOT / "patched_images"
+ASSETS_ROOT = JAILBREAK_ROOT / "gala" / "assets"
+
 
 @dataclass
 class IpswPatcherConfig:
