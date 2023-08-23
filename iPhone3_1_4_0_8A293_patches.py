@@ -1,17 +1,18 @@
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Callable
 
 from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
-from configuration import GalaConfig
+from configuration import GalaConfig, ASSETS_ROOT, PATCHED_IMAGES_ROOT
 from os_build import ImageType
 from patches import (BlobPatch, InstructionPatch, Patch,
                      PatchSet, DmgApplyTarPatch, DmgBinaryPatch,
-                     DmgPatchSet, DmgReplaceFileContentsPatch, FilePermission, DmgRemoveTreePatch)
+                     DmgPatchSet, DmgReplaceFileContentsPatch, FilePermission, DmgRemoveTreePatch, DebPatchSet,
+                     DebPatch)
 
 
-def _get_ibss_patches() -> list[Patch]:
+def _get_ibss_patches(_config: GalaConfig) -> list[Patch]:
     return [
         PatchSet(
             name="Enable UART debug logs",
@@ -84,7 +85,8 @@ def _get_ibss_patches() -> list[Patch]:
     ]
 
 
-def _get_ibec_patches(boot_args: str) -> list[Patch]:
+def _get_ibec_patches(config: GalaConfig) -> list[Patch]:
+    boot_args = config.boot_config.boot_args
     ibec_shellcode_addr = 0x5FF000FC
     boot_args_addr = 0x5FF0028E
     jump_to_comms = Instr.thumb(f"bl #{hex(ibec_shellcode_addr)}")
@@ -217,7 +219,7 @@ def _get_ibec_patches(boot_args: str) -> list[Patch]:
     ]
 
 
-def _get_kernelcache_patches() -> list[Patch]:
+def _get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     kernelcache_shellcode_addr = 0x8057A314
 
     sandbox_callbacks_start = 0x803c5a40
@@ -408,7 +410,8 @@ def _get_kernelcache_patches() -> list[Patch]:
     ]
 
 
-def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatchSet:
+def _get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
+    should_create_disk_partitions = config.patcher_config.should_create_disk_partitions
     restored_patches = DmgBinaryPatch(
         binary_path=Path("usr/local/bin/restored_external"),
         inner_patch=PatchSet(
@@ -514,10 +517,10 @@ def _get_restore_ramdisk_patches(should_create_disk_partitions: bool) -> DmgPatc
             )
         )
 
-    return DmgPatchSet(patches=patches)
+    return [DmgPatchSet(patches=patches)]
 
 
-def _get_rootfs_patches() -> DmgPatchSet:
+def _get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
     mount_system_partition_as_writable = DmgReplaceFileContentsPatch(
         file_path=Path("private/etc/fstab"),
         new_content=(
@@ -528,19 +531,11 @@ def _get_rootfs_patches() -> DmgPatchSet:
         ).encode()
     )
 
-    install_cydia = DmgApplyTarPatch(
-        tar_path=Path(
-            #"/Users/philliptennen/Downloads/Payload 3/h3lix.app/Cydia-9.0r4-Raw.tar",
+    install_cydia = DmgApplyTarPatch(tar_path=ASSETS_ROOT / "Cydia.tar")
 
-            # Causes all SSL connections to fail after Cydia remounts the filesystem?!
-            "/Users/philliptennen/Downloads/redsn0w_mac_0.9.15b3/redsn0w.app/Contents/MacOS/Cydia.tar",
 
-            # Same
-            # Try not flashing the cydia tar and instead do it after boot again?
-            #"/Users/philliptennen/Downloads/Cydia-2.tar",
-            #"/Users/philliptennen/Downloads/Cydia-4.0.1r2-Raw.txz",
-        )
     )
+
     patches = [
         mount_system_partition_as_writable,
         DmgApplyTarPatch(
@@ -550,19 +545,58 @@ def _get_rootfs_patches() -> DmgPatchSet:
         ),
         install_cydia,
         # Delete the Compass app to make room for the Cydia patch
-        DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
+        #DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
     ]
-    return DmgPatchSet(patches=patches)
+    return [DmgPatchSet(patches=patches)]
 
 
-def get_iphone_3_1_4_0_8a293_patches(config: GalaConfig) -> Mapping[ImageType, list[Patch]]:
+def _get_mobilesubstrate_patches(_config: GalaConfig) -> list[DebPatchSet]:
+    patches = [
+        DebPatch()
+    ]
+    return [DebPatchSet(patches=patches)]
+
+
+def _get_apple_logo_patches(_config: GalaConfig) -> list[Patch]:
+    return []
+
+
+# PT: Some patches have serial dependencies (i.e. the root filesystem needs a .deb that's produced by a previous step),
+# so we can't generate the patched images in one pool. Instead, we need to execute them as an ordered series.
+_PatchGenerator = Callable[[GalaConfig], list[Patch]]
+_MapOfImageTypeToPatchGenerator = Mapping[ImageType, _PatchGenerator]
+
+MapOfPictureTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
+MapOfDebTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
+MapOfDmgTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
+MapOfBinaryTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
+
+
+def get_iphone_3_1_4_0_8a293_patches() -> (MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, MapOfBinaryTypesToPatchGenerators):
     # TODO(PT): Remove binary_types_mapping() and have dedicated Patch types for every code path
-    return ImageType.binary_types_mapping(
-        {
-            ImageType.iBSS: _get_ibss_patches(),
-            ImageType.iBEC: _get_ibec_patches(config.boot_config.boot_args),
-            ImageType.KernelCache: _get_kernelcache_patches(),
-            ImageType.RestoreRamdisk: [_get_restore_ramdisk_patches(config.patcher_config.should_create_disk_partitions)],
-            ImageType.RootFilesystem: [_get_rootfs_patches()],
-        }
+    return (
+        ImageType.picture_types_mapping(
+            {
+                # TODO(PT): Implement this and replace the current logo patcher
+                ImageType.AppleLogo: _get_apple_logo_patches,
+            }
+        ),
+        # .deb patches must be applied first, as IPSW patches depend on the output
+        # (Patched .debs need to be embedded in the patched filesystem)
+        ImageType.deb_types_mapping(
+            {
+                ImageType.MobileSubstrate: _get_mobilesubstrate_patches,
+            }
+        ),
+        ImageType.dmg_types_mapping({
+            ImageType.RestoreRamdisk: _get_restore_ramdisk_patches,
+            ImageType.RootFilesystem: _get_rootfs_patches,
+        }),
+        ImageType.binary_types_mapping(
+            {
+                ImageType.iBSS: _get_ibss_patches,
+                ImageType.iBEC: _get_ibec_patches,
+                ImageType.KernelCache: _get_kernelcache_patches,
+            }
+        )
     )
