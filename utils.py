@@ -59,19 +59,6 @@ def run_and_check(cmd_list: list[str], cwd: Path = None, env_additions: dict[str
         raise RuntimeError(f'Running "{" ".join(cmd_list)}" failed with exit code {status.returncode}')
 
 
-def run_and_capture_output_and_check(cmd_list: list[str], cwd: Path = None) -> bytes:
-    process = subprocess.Popen(
-        cmd_list,
-        cwd=cwd.as_posix() if cwd else None,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    if return_code := process.wait() != 0:
-        raise RuntimeError(f'Running "{" ".join(cmd_list)}" failed with exit code {return_code}')
-
-    return process.stdout.read()
-
-
 def hexdump(src: bytes) -> None:
     length = 16
     sep = "."
