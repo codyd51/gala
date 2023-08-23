@@ -62,11 +62,11 @@
             0,
             frame.size.height * 0.7,
             frame.size.width,
-            frame.size.height * 0.2
+            frame.size.height * 0.1
         )];
         self.statusLabel.editable = NO;
-        [self.statusLabel alignCenter:nil];
-        self.statusLabel.string = @"Awaiting DFU device...";
+        self.statusLabel.string = @"Ready!";
+        self.statusLabel.alignment = NSTextAlignmentCenter;
         self.statusLabel.font = [NSFont monospacedSystemFontOfSize:18 weight:NSFontWeightBold];
         self.statusLabel.backgroundColor = [NSColor clearColor];
         [self addSubview:self.statusLabel];
@@ -91,12 +91,35 @@
     //self.ongoingTask.executableURL = [NSURL fileURLWithPath:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python"].absoluteURL;
     // Invoke bash instead of Python directly so that the Python script spawned by gala pick up the PATH
     self.ongoingTask.executableURL = [NSURL fileURLWithPath:@"/bin/bash"];
-    NSString* argsAsStr = [args componentsJoinedByString:@" "];
+    
+    char c_event_log_file[] = "/tmp/gala-event-log-XXXXXX";
+    int event_log_fd = mkstemp(c_event_log_file);
+    if (event_log_fd == -1) {
+        NSLog(@"Failed to make event log file?!");
+        exit(1);
+    }
+    // TODO(PT): Delete the event log file once gala exits
+    NSString* eventLogFilePath = [NSString stringWithUTF8String:c_event_log_file];
+    //NSFileHandle* eventLogHandle = [NSFileHandle fileHandleForReadingAtPath:eventLogFilePath];
+    self.eventLogHandle = [[NSFileHandle alloc] initWithFileDescriptor:event_log_fd];
+    // Update the status label when new data becomes available on the event log
+    __weak typeof(self) weakSelf = self;
+    self.eventLogHandle.readabilityHandler = ^(NSFileHandle* handle){
+        NSData* eventBytes = handle.availableData;
+        NSString* event = [[NSString alloc] initWithBytes:eventBytes.bytes length:eventBytes.length encoding:NSUTF8StringEncoding];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.statusLabel.string = event;
+        });
+    };
+
+    NSArray* extendedGalaArgs = [args arrayByAddingObject:[NSString stringWithFormat:@"--log_high_level_events_to_file %@", eventLogFilePath]];
+    NSString* galaArgsAsStr = [extendedGalaArgs componentsJoinedByString:@" "];
+    
     NSMutableArray* arguments = [NSMutableArray arrayWithArray:@[
         @"-l",
         @"-c",
         // -u for unbuffered stdout
-        [NSString stringWithFormat:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python -u /Users/philliptennen/Documents/Jailbreak/gala/jailbreak.py %@", argsAsStr],
+        [NSString stringWithFormat:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python -u /Users/philliptennen/Documents/Jailbreak/gala/jailbreak.py %@", galaArgsAsStr],
     ]];
     self.ongoingTask.arguments = arguments;
 
@@ -109,7 +132,7 @@
         NSString* output = [[NSString alloc] initWithBytes:outputBytes.bytes length:outputBytes.length encoding:NSUTF8StringEncoding];
         [self.bufferedData appendString:output];
     };
-
+    
     [self.ongoingTask launch];
     [self flushAvailableOutput];
 }

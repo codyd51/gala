@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ContentView : NSViewWithTopLeftCoordinateSystem
 @property (retain) LogsView* logsView;
 @property (retain) NSTask* _Nullable ongoingTask;
+@property (retain) NSFileHandle* eventLogHandle;
 @property (atomic, retain) NSMutableString* bufferedData;
 @property (retain) NSTextView* statusLabel;
 - (instancetype)initWithFrame:(NSRect)frame logsView:(LogsView*)logsView;
