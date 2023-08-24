@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from configuration import GalaConfig, ASSETS_ROOT, PATCHED_IMAGES_ROOT
+from configuration import GalaConfig, ASSETS_ROOT
 from os_build import ImageType
 from patches import DmgPatchSet, DmgReplaceFileContentsPatch, DmgApplyTarPatch
 
@@ -36,6 +36,15 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         new_content=(patcher_config.patched_images_root() / patched_mobile_substrate_name).read_bytes(),
     )
 
+    provide_deb_for_access_local_files_in_safari = DmgReplaceFileContentsPatch(
+        file_path=Path("private/var/gala/com.bigboss.patchsafari2_2.1.3248-1_iphoneos-arm.deb"),
+        new_content=(ASSETS_ROOT / "com.bigboss.patchsafari2_2.1.3248-1_iphoneos-arm.deb").read_bytes(),
+    )
+    provide_deb_for_substrate_safe_mode = DmgReplaceFileContentsPatch(
+        file_path=Path("private/var/gala/com.saurik.substrate.safemode_0.9.5000_iphoneos-arm.deb"),
+        new_content=(ASSETS_ROOT / "com.saurik.substrate.safemode_0.9.5000_iphoneos-arm.deb").read_bytes(),
+    )
+
     patches = [
         mount_system_partition_as_writable,
         DmgApplyTarPatch(
@@ -48,6 +57,8 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         #DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
         provide_globalsign_root_r3_cert,
         provide_patched_mobile_substrate,
+        provide_deb_for_substrate_safe_mode,
+        provide_deb_for_access_local_files_in_safari,
     ]
     return [DmgPatchSet(patches=patches)]
 
