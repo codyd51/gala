@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from strongarm.macho import VirtualMemoryPointer
+from strongarm.macho import VirtualMemoryPointer, MachoParser
 
 from configuration import IpswPatcherConfig
 from patches.base import Patch
@@ -65,3 +65,33 @@ class DebPatchSet(Patch):
                     path.as_posix(),
                 ])
                 print(f"Unmounted {path.name}")
+
+
+@dataclass
+class DebBinaryPatch(DebPatch):
+    binary_path: Path
+    inner_patch: Patch
+
+    def apply(self, config: IpswPatcherConfig, deb_root: Path) -> None:
+        print(f"Applying deb patch to binary {self.binary_path}")
+        # Find the binary
+        qualified_binary_path = deb_root / self.binary_path
+        if not qualified_binary_path.exists():
+            raise RuntimeError(f"Failed to find {qualified_binary_path}")
+
+        # Read the binary base address with strongarm
+        virtual_base = MachoParser(qualified_binary_path).get_armv7_slice().get_virtual_base()
+        print(f"Found virtual base for {self.binary_path.name}: {virtual_base}")
+
+        # Apply the patch to the binary
+        patched_binary_data = bytearray(qualified_binary_path.read_bytes())
+        self.inner_patch.apply(config, qualified_binary_path, virtual_base, patched_binary_data)
+        print(f"Writing patched binary...")
+
+        qualified_binary_path.write_bytes(patched_binary_data)
+
+        # To aid debugging, also output the patched binary to the working folder
+        output_dir = config.patched_images_root()
+        safe_binary_name = self.binary_path.as_posix().replace("/", "_")
+        saved_binary_path = output_dir / safe_binary_name
+        saved_binary_path.write_bytes(patched_binary_data)
