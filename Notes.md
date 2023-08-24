@@ -698,3 +698,6 @@ default	15:36:05.032469+0100	Console	send_session_start (thread 0x16bd9b000): lo
 default	15:36:05.032547+0100	Console	USBMuxConnectByPort:584 Connecting to port 32498 (f2, 7e)
 
 need to make /private/var/gala 777 to make it accessible to MobileSafari
+
+the IOSurface has a Z-order, so any time you kill SpringBoard you see the Gala boot logo again -- this is why you normally see the apple logo!
+and it looks like there's normally a spinner there just as a 'hack' to make sure in the worst case the user always sees a spinner?
