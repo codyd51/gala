@@ -45,13 +45,11 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         new_content=(ASSETS_ROOT / "com.saurik.substrate.safemode_0.9.5000_iphoneos-arm.deb").read_bytes(),
     )
 
+    install_dropbear = DmgApplyTarPatch(tar_path=ASSETS_ROOT / "ssh_for_rootfs.tar")
+
     patches = [
         mount_system_partition_as_writable,
-        DmgApplyTarPatch(
-            tar_path=Path(
-                "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh_for_rootfs.tar"
-            )
-        ),
+        install_dropbear,
         install_cydia,
         # Delete the Compass app to make room for the Cydia patch
         #DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),

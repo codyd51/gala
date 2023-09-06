@@ -701,3 +701,5 @@ need to make /private/var/gala 777 to make it accessible to MobileSafari
 
 the IOSurface has a Z-order, so any time you kill SpringBoard you see the Gala boot logo again -- this is why you normally see the apple logo!
 and it looks like there's normally a spinner there just as a 'hack' to make sure in the worst case the user always sees a spinner?
+
+The 'smoking kills' iBSS screen is actually when the iBSS crashes

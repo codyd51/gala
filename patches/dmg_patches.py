@@ -26,11 +26,11 @@ class DmgPatchSet(Patch):
     patches: list[DmgPatch]
 
     def apply(
-            self,
-            config: IpswPatcherConfig,
-            decrypted_image_path: Path,
-            image_base_address: VirtualMemoryPointer,
-            image_data: bytearray,
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
