@@ -439,8 +439,10 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
     }
 
     // Failsafe, don't allow sprites to go off-screen
-    if (self.icon_position.x < 0) self.icon_position = CGPointMake(1, self.icon_position.y);
-    if (self.icon_position.y < 0) self.icon_position = CGPointMake(self.icon_position.x, 1);
+    if (self.icon_position.x <= 0) self.icon_position = CGPointMake(1, self.icon_position.y);
+    if (self.icon_position.x >= CGRectGetMaxX(self.display_frame)) self.icon_position = CGPointMake(CGRectGetMaxX(self.display_frame) - 1, self.icon_position.y);
+    if (self.icon_position.y <= 0) self.icon_position = CGPointMake(self.icon_position.x, 1);
+    if (self.icon_position.y >= CGRectGetMaxY(self.display_frame)) self.icon_position = CGPointMake(self.icon_position.x, CGRectGetMaxY(self.display_frame) - 1);
 
     size_t display_width = CGBitmapContextGetWidth(self.display_cgcontext);
     size_t display_height = CGBitmapContextGetHeight(self.display_cgcontext);
@@ -449,6 +451,15 @@ CGContextRef get_display_cgcontext(IOMobileFramebufferRef framebuffer_ref, IOSur
     // Failsafe, don't allow velocity to go to zero
     if (self.direction.x == 0) self.direction.x = 10;
     if (self.direction.y == 0) self.direction.y = 10;
+
+    // Hotfix: stuck in the bottom left corner
+    //printf("Direction %f, %f Pos %f, %f\n", self.direction.x, self.direction.y, self.icon_position.x, self.icon_position.y);
+    if ((self.direction.x == -40.0 && self.direction.y == -40.0 && self.icon_position.x == 1.0 && self.icon_position.y == 1.0)
+        || (self.direction.x == -40.0 && self.direction.y == 40.0 && self.icon_position.x == 1.0 && self.icon_position.y == 959.0)) {
+        //self.direction.x = 40;
+        //self.direction.y = 40;
+        [self resetIconPosition];
+    }
 
     self.sprite_frame = CGRectMake(self.icon_position.x, self.sprite_frame.origin.y, self.sprite_frame.size.width, self.sprite_frame.size.height);
     self.sprite_frame = CGRectMake(self.sprite_frame.origin.x, self.icon_position.y, self.sprite_frame.size.width, self.sprite_frame.size.height);
