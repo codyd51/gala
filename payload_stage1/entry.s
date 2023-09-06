@@ -30,8 +30,7 @@
 
 _start:
 .code 16
-    b   relocate_shellcode                      @ goto relocate_shellcode
-
+    b   relocate_shellcode
     nop
     nop
     nop
@@ -43,11 +42,10 @@ _start:
     nop
 
 relocate_shellcode:
+    @ Are we already running from the relocated shellcode?
     mov r1, pc
     sub r1, r1, #4
-    @ Are we already running from the relocated shellcode?
     ldr r0, =relocated_payload_addr
-
     cmp r0, r1
     beq continue_relocated
 
@@ -72,30 +70,28 @@ continue_relocated:
 
 .global _continue_loop
 _continue_loop:
+    @ r0 = _get_image()
     bl _get_image
 
-    LDR R0, =LOAD_ADDRESS
-    @ r1 = retval of getDFUImage()
-    MOV R1, R0
-    MOV R2, #0
-    LDR R3, =memz_create
-    BLX R3                                      @ R0 = memz_create(LOAD_ADDRESS, R4, 0)
+    @ r0 = memz_create(LOAD_ADDRESS, r0, 0)
+    ldr r0, =LOAD_ADDRESS
+    mov r1, r0
+    mov r2, #0
+    ldr r3, =memz_create
+    blx r3
 
-    CMP R0, #0
-    BEQ _continue_loop                          @ if (R0 == 0) goto pwned_dfu_loop /* out of memory :-| */
+    @ sp[0] = LOAD_ADDRESS
+    ldr r3, =LOAD_ADDRESS
+    str r3, [sp]
+    @ sp[1] = r4
+    str r4, [sp, #4]
 
-    LDR R3, =LOAD_ADDRESS
-    STR R3, [SP]                                @ SP[0] = LOAD_ADDRESS
+    mov r4, r0
 
-    STR R4, [SP, #4]                            @ SP[1] = R4
-
-    MOV R4, R0                                  @ R4 = R0
-
-    MOV R1, SP
-    ADD R2, SP, #4
-    BL image3_load_no_signature_check           @ R0 = image3_load_no_signature_check(R0, &SP[0], &SP[1])
-
-    CBNZ R0, load_failed                        @ if (R0 != 0) goto load_failed
+    @ r0 = image3_load_no_signature_check(r0, &sp[0], &sp[1])
+    mov r1, sp
+    add r2, sp, #4
+    bl image3_load_no_signature_check
 
     LDR R1, =LOAD_ADDRESS
     MOV R2, #0
@@ -103,13 +99,6 @@ _continue_loop:
     BLX R3                                      @ jump_to(0, LOAD_ADDRESS, 0)
 
     /* jump_to should never return */
-
-load_failed:
-    MOV R0, R4
-    LDR R3, =memz_destroy
-    BLX R3                                      @ memz_destroy(R4)
-
-    B _continue_loop                            @ goto pwned_dfu_loop
 
 image3_load_no_signature_check:
     PUSH {R4-R7, LR}                            @ push_registers(R4, R5, R6, R7, LR)
@@ -147,9 +136,6 @@ image3_load_no_signature_check:
     MOV R8, R1                                  @ R8 = MAX_SIZE
 
     LDR R2, [R0, #4]
-    CMP R2, R1
-    BGT img3_fail                               @ if (R0[1] > MAX_SIZE) goto img3_fail
-
     MOV R8, R2                                  @ R8 = R0[1]
 
     MOV R0, R4
@@ -158,14 +144,6 @@ image3_load_no_signature_check:
     BLX R4
     MOV R4, R0                                  @ R4 = image3_create_struct(SP + IMAGE3_LOAD_STRUCT_OFFSET, R6, R8, 0)
 
-    LDR R3, =image3_load_continue               @ R3 = image3_load_continue
-
-    CBZ R4, img3_branch_R3                      @ if (R4 == 0) goto img3_branch_R3
-
-img3_fail:
-    MOV R4, #1                                  @ R4 = 1
-
-    LDR R3, =image3_load_fail                   @ R3 = image3_load_fail
-
-img3_branch_R3:
-    BX R3                                       @ goto R3
+    @ image3_load_continue()
+    ldr r3, =image3_load_continue
+    bx r3
