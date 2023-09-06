@@ -14,7 +14,13 @@ def build(payload_folder: Path):
         print(f"Deleting build output {f.relative_to(payload_folder.parent)}")
         os.remove(f.as_posix())
 
-    subprocess.run("./compile.sh", shell=True, cwd=payload_folder)
+    # Use a Makefile if possible
+    makefile_path = payload_folder / "Makefile"
+    if makefile_path.exists():
+        subprocess.run("make", shell=True, cwd=payload_folder)
+    else:
+        subprocess.run("./compile.sh", shell=True, cwd=payload_folder)
+
     payload_shellcode = build_folder / f"{payload_name}_shellcode"
     assert payload_shellcode.exists()
     print(f"Produced output shellcode {payload_shellcode.relative_to(payload_folder.parent)}")
