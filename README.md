@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/readme/spread.png">
+  <img src="assets/readme/spread.png" width="60%">
 </div>
 
 *gala* is a jailbreak/tethered downgrade tool that currently supports iOS 4. *gala* relies on [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) for gaining code execution in SecureROM, then gradually boots and compromises the system under its own steam from there.
@@ -18,15 +18,17 @@
 
 A typical tethered jailbreak/restore will go through a process similar to the following:
 
-<table>
-    <tr>
-        <td><img src="assets/readme/runner.png"/></td>
-        <td><img src="assets/readme/ibss_background.png"></td>
-    </tr> 
-    <tr>
-        <td><img src="assets/readme/flashing_filesystem.png"/></td>
-        <td><img src="assets/readme/jailbroken_with_gala_alert.png"></td>
-    </tr>
+<table align="center"> 
+  <tr>
+    <td>
+        <img src="assets/readme/runner.png" width="500px"/>
+    </td>
+  </tr>
+  <tr>
+      <td><img src="assets/readme/ibss_background.png" width="200px"/></td>
+      <td><img src="assets/readme/flashing_filesystem.png" width="200px"/></td>
+      <td><img src="assets/readme/jailbroken_with_gala_alert.png" width="200px"/></td>
+  </tr>
 </table>
 
 *gala* is also a generic patching framework that emphasises maintainable and understandable patch sets. For example, here's how patching a specific instruction sequence looks:
