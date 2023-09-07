@@ -16,19 +16,17 @@
 * Disable FreeBSD MAC enforcement
 * Allow RWX pages
 
-A typical tethered jailbreak/restore will go through a process similar to the following:
-
 <table align="center"> 
-  <tr>
-    <td>
-        <img src="assets/readme/runner.png" width="500px"/>
-    </td>
-  </tr>
-  <tr>
-      <td><img src="assets/readme/ibss_background.png" width="200px"/></td>
-      <td><img src="assets/readme/flashing_filesystem.png" width="200px"/></td>
-      <td><img src="assets/readme/jailbroken_with_gala_alert.png" width="200px"/></td>
-  </tr>
+    <tr>
+        <td><img src="assets/readme/runner.png" width="500px"/></td>
+    </tr>
+</table>
+<table align="center"> 
+    <tr>
+        <td><img src="assets/readme/ibss_background.png" width="200px"/></td>
+        <td><img src="assets/readme/flashing_filesystem.png" width="200px"/></td>
+        <td><img src="assets/readme/jailbroken_with_gala_alert.png" width="200px"/></td>
+    </tr>
 </table>
 
 *gala* is also a generic patching framework that emphasises maintainable and understandable patch sets. For example, here's how patching a specific instruction sequence looks:
