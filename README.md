@@ -2,7 +2,7 @@
   <img src="assets/readme/spread.png" width="60%">
 </div>
 
-*gala* is a jailbreak/tethered downgrade tool that currently supports iOS 4. *gala* relies on [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) for gaining code execution in SecureROM, then gradually boots and compromises the system under its own steam from there.
+*gala* is a jailbreak/tethered downgrade tool that currently supports iOS 4. *gala* relies on [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) for gaining code execution in SecureROM, then gradually boots and compromises the system from there.
 
 *gala* provides the following user-facing features:
 
@@ -29,7 +29,7 @@
     </tr>
 </table>
 
-*gala* is also a generic patching framework that emphasises maintainable and understandable patch sets. For example, here's how patching a specific instruction sequence looks:
+*gala* is also a generic patching framework that emphasises maintainable and understandable patch sets. 
 
 ```python
     InstructionPatch(
@@ -46,15 +46,15 @@
 
 As a glance, the reader of this patch can clearly see exactly what's being replaced, and why.
 
-The instructions are assembled with an in-house ad-hoc assembler. `InstructionPatch` performs extensive validations to ensure the patch does exactly what's described in the metadata. For example, `InstructionPatch` will validate:
+`InstructionPatch` performs extensive validations to ensure the patch does exactly what's described in the metadata. For example, `InstructionPatch` will validate:
 
 * That the replaced instructions exactly match what's expected in the patch.
 * That disassembling the assembled patch instructions exactly matches what's written in the patch (in other words, that Capstone confirms that the in-house assembler produces the correct opcodes).
 * That the exact correct number of bytes are patched based on the input and output instructions
 
-Disassembly is performed via [Capstone](https://www.capstone-engine.org).
+Disassembly is performed via [Capstone](https://www.capstone-engine.org). New instructions are assembled with an in-house ad-hoc assembler.
 
-Here's what injecting a shellcode program looks like:
+_Example: Injecting a shellcode program_
 
 ```python
 shellcode_addr = VirtualMemoryPointer(0x840000fc)
@@ -64,9 +64,9 @@ BlobPatch(
 ),
 ```
 
-_gala_ uses [strongarm](https://github.com/datatheorem/strongarm) for Mach-O parsing (in particular, finding the correct file offset for a given virtual address).
+*gala* uses [strongarm](https://github.com/datatheorem/strongarm) for Mach-O parsing during patching. *gala* relies on strongarm to find the appropriate file offset for the provided virtual address.
 
-_gala_ also provides `Patch` types that are especially convenient for producing custom iOS distributions. For example, it's straightforward to patch files that only exist within a mounted `.dmg`:
+*gala* also provides `Patch` types that are especially convenient for producing custom iOS distributions. For example, it's straightforward to patch files that only exist within a mounted `.dmg`:
 
 ```python
 DmgPatchSet([
