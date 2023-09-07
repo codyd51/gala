@@ -1,8 +1,35 @@
-gala logo
+<div align="center">
+  <img src="assets/readme_spread.png">
+</div>
 
-_gala_ is a jailbreak/tethered downgrade tool that currently supports iOS 4. _gala_ relies on limera1n for gaining code execution in SecureROM. 
+*gala* is a jailbreak/tethered downgrade tool that currently supports iOS 4. *gala* relies on [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) for gaining code execution in SecureROM, then gradually boots and compromises the system under its own steam from there.
 
-_gala_ is also a generic patching framework that emphasises maintainable and understandable patch sets. For example, here's how patching a specific instruction sequence looks:
+*gala* provides the following user-facing features:
+
+* Fully controlled bootchain and IPSW restore process
+* Custom boot logos
+* Kernel task can be controlled (`task_for_pid(0)`)
+* Neutered sandbox
+* Neutered code signing
+* Any task can be root (`suser() == 0`)
+* Enable `/dev/kmem` device file
+* Disable FreeBSD MAC enforcement
+* Allow RWX pages
+
+A typical jailbreak will look like this:
+
+<table>
+    <tr>
+        <td><img src="assets/readme/runner.png"/></td>
+        <td><img src="assets/readme/ibss_background.png"></td>
+    </tr> 
+    <tr>
+        <td><img src="assets/readme/runner.png"/></td>
+        <td><img src="assets/readme/ibss_background.png"></td>
+    </tr>
+</table>
+
+*gala* is also a generic patching framework that emphasises maintainable and understandable patch sets. For example, here's how patching a specific instruction sequence looks:
 
 ```python
     InstructionPatch(
@@ -19,7 +46,7 @@ _gala_ is also a generic patching framework that emphasises maintainable and und
 
 As a glance, the reader of this patch can clearly see exactly what's being replaced, and why.
 
-The instructions are assembled with an in-house ad-hoc assembler. `InstructionPath` performs extensive validations to ensure the patch does exactly what's described in the metadata. For example, `InstructionPatch` will validate:
+The instructions are assembled with an in-house ad-hoc assembler. `InstructionPatch` performs extensive validations to ensure the patch does exactly what's described in the metadata. For example, `InstructionPatch` will validate:
 
 * That the replaced instructions exactly match what's expected in the patch.
 * That disassembling the assembled patch instructions exactly matches what's written in the patch (in other words, that Capstone confirms that the in-house assembler produces the correct opcodes).
