@@ -14,12 +14,22 @@ const FUNC_ADDR_NOR_POWER_ON: usize = 0x4e8d;
 const FUNC_ADDR_NOR_INIT: usize = 0x690d;
 const FUNC_ADDR_FREE: usize = 0x3b95;
 const FUNC_ADDR_GET_DFU_IMAGE: usize = 0x4c85;
+const FUNC_ADDR_MEMZ_CREATE: usize = 0x7469;
+
+extern "C" {
+    fn image3_load_no_signature_check(memz_image: usize, arg2: *mut usize, arg3: *mut usize) -> usize;
+}
 
 #[no_mangle] pub unsafe extern "C"
 //fn await_image() -> i32 {
-fn c_entry_point() -> i32 {
+fn c_entry_point() -> usize {
     //call_func3_at_addr(FUNC_ADDR_NOR_POWER_ON, 1, 1, 0);
     //call_func1_at_addr(FUNC_ADDR_NOR_INIT, 0);
+    //let loaded_image_base = get_image();
+    //let memz_image = call_func3_at_addr(FUNC_ADDR_MEMZ_CREATE, USB_RECV_REGION_BASE, loaded_image_base, 0);
+
+    //memz_image
+    //loaded_image_base
     0
 }
 
@@ -32,7 +42,18 @@ fn get_image() -> usize {
     *leaking_dfu_buffer_ptr = 0;
     call_func1_at_addr(FUNC_ADDR_FREE, leaking_dfu_buffer_val);
 
-    return image_info;
+    image_info
+}
+
+#[no_mangle] pub unsafe extern "C"
+fn receive_and_jump_to_image() -> usize {
+    let image_base_addr = get_image();
+    let memz_image = call_func3_at_addr(FUNC_ADDR_MEMZ_CREATE, USB_RECV_REGION_BASE, image_base_addr, 0);
+
+    let mut load_address = USB_RECV_REGION_BASE;
+    let mut new_image_base_addr = image_base_addr;
+    let loaded_image_base_addr = image3_load_no_signature_check(memz_image, &mut load_address as *mut _, &mut new_image_base_addr as *mut _);
+    loaded_image_base_addr
 }
 
 // Everything that follows is extremely unsafe

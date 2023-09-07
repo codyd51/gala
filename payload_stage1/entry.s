@@ -65,33 +65,16 @@ continue_relocated:
     @ Set up a stack
     ldr r0, =stack_address
     mov sp, r0
+    @ Jump to ARM for compatibility with the Rust payload, which always targets ARM
+    blx _continue_loop
 
-    bl _c_entry_point
-
+.code 32
+.align 4
 .global _continue_loop
+.global _image3_load_no_signature_check
 _continue_loop:
-    @ r0 = _get_image()
-    bl _get_image
-
-    @ r0 = memz_create(LOAD_ADDRESS, r0, 0)
-    ldr r0, =LOAD_ADDRESS
-    mov r1, r0
-    mov r2, #0
-    ldr r3, =memz_create
-    blx r3
-
-    @ sp[0] = LOAD_ADDRESS
-    ldr r3, =LOAD_ADDRESS
-    str r3, [sp]
-    @ sp[1] = r4
-    str r4, [sp, #4]
-
-    mov r4, r0
-
-    @ r0 = image3_load_no_signature_check(r0, &sp[0], &sp[1])
-    mov r1, sp
-    add r2, sp, #4
-    bl image3_load_no_signature_check
+    @ Our Rust always targets ARM, so switch modes
+    blx _receive_and_jump_to_image
 
     LDR R1, =LOAD_ADDRESS
     MOV R2, #0
@@ -100,7 +83,8 @@ _continue_loop:
 
     /* jump_to should never return */
 
-image3_load_no_signature_check:
+.global _image3_load_no_signature_check
+_image3_load_no_signature_check:
     PUSH {R4-R7, LR}                            @ push_registers(R4, R5, R6, R7, LR)
 
     MOV R6, R11

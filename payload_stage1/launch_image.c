@@ -73,7 +73,7 @@ int image3_load_no_signature_check(int memz_create_output, int* load_address, st
 int create_image(int memz);
 int continue_loop();
 
-int get_image() {
+int get_image2() {
     //  TODO(PT): Define
     struct image_info* (*get_dfu_image)(int load_address, int max_size) = (void*)get_dfu_image_addr;
     struct image_info* image_info = get_dfu_image(USB_RECV_REGION_BASE, USB_RECV_REGION_SIZE);
@@ -88,7 +88,13 @@ int get_image() {
     return image_info;
 }
 
-void c_entry_point(void) {
+void c_entry_point2(uint32_t sp, uint32_t bp) {
+    // sp: 0x8403c000
+    //void c_entry_point(void) {
+    //void* p = NULL;
+    //uint32_t stack_pointer = &p;
+    //printf("%p", (void*)&p);
+
     int (*nor_power_on)(int arg1, int arg2, int arg3) = (void*)nor_power_on_addr;
     int (*nor_init)(int arg1) = (void*)nor_init_addr;
     struct image_info* (*get_dfu_image)(int load_address, int max_size) = (void*)get_dfu_image_addr;
@@ -98,6 +104,12 @@ void c_entry_point(void) {
 
     nor_power_on(1, 1, 0);
     nor_init(0);
+
+    uint32_t* buf = (uint32_t*)0x84000000;
+    buf[0] = sp;
+    buf[1] = bp;
+    //buf[0] = 0xaabbccdd;
+    //buf[1] = 0xeeff1122;
 
     //continue_loop();
     return;
