@@ -2,7 +2,7 @@
 	"arch": "arm",
 	"cpu": "arm",
 	"dynamic-linking": false,
-	"llvm-target": "arm",
+	"llvm-target": "thumb",
 	"executables": true,
 	"os": "axle",
 	"position-independent-executables": false,

