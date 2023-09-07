@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/readme_spread.png">
+  <img src="assets/readme/spread.png">
 </div>
 
 *gala* is a jailbreak/tethered downgrade tool that currently supports iOS 4. *gala* relies on [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) for gaining code execution in SecureROM, then gradually boots and compromises the system under its own steam from there.
@@ -16,7 +16,7 @@
 * Disable FreeBSD MAC enforcement
 * Allow RWX pages
 
-A typical jailbreak will look like this:
+A typical tethered jailbreak/restore will go through a process similar to the following:
 
 <table>
     <tr>
@@ -24,8 +24,8 @@ A typical jailbreak will look like this:
         <td><img src="assets/readme/ibss_background.png"></td>
     </tr> 
     <tr>
-        <td><img src="assets/readme/runner.png"/></td>
-        <td><img src="assets/readme/ibss_background.png"></td>
+        <td><img src="assets/readme/flashing_filesystem.png"/></td>
+        <td><img src="assets/readme/jailbroken_with_gala_alert.png"></td>
     </tr>
 </table>
 
