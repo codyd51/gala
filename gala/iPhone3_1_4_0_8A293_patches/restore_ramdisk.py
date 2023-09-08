@@ -3,7 +3,7 @@ from pathlib import Path
 from strongarm.macho import VirtualMemoryPointer
 
 from gala.assemble import Instr
-from gala.configuration import GALA_ROOT, GalaConfig
+from gala.configuration import GALA_ROOT, GalaConfig, ASSETS_ROOT
 from gala.patch_types import (
     BlobPatch,
     DmgApplyTarPatch,
@@ -47,11 +47,7 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
     )
 
     patches = [
-        DmgApplyTarPatch(
-            tar_path=Path(
-                "/Users/philliptennen/Documents/Jailbreak/tools/SSH-Ramdisk-Maker-and-Loader/resources/ssh_mod.tar",
-            )
-        ),
+        DmgApplyTarPatch(tar_path=ASSETS_ROOT / "ssh_for_restore_ramdisk.tar"),
         DmgReplaceFileContentsPatch(
             file_path=Path("usr/bin/umount"),
             new_content=(GALA_ROOT / "ramdisk_programs" / "umount" / "build" / "umount").read_bytes(),
