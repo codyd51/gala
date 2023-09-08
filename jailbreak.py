@@ -5,7 +5,7 @@ from pathlib import Path
 import usb
 import usb.core
 
-from configuration import ASSETS_ROOT, Color, DeviceBootConfig, GalaConfig, IpswPatcherConfig, GALA_ROOT
+from configuration import ASSETS_ROOT, GALA_ROOT, Color, DeviceBootConfig, GalaConfig, IpswPatcherConfig
 from device import DeviceMode, NoDfuDeviceFoundError, acquire_device_with_timeout
 from os_build import ImageType, OsBuildEnum
 from patcher import regenerate_patched_images
@@ -22,7 +22,9 @@ def boot_device(config: GalaConfig):
     image_types_to_paths = regenerate_patched_images(config)
 
     # Run our payload in SecureROM on a connected DFU device
-    securerom_shellcode_path = GALA_ROOT / "shellcode_programs" / "securerom_payload" / "build" / "securerom_payload_shellcode"
+    securerom_shellcode_path = (
+        GALA_ROOT / "shellcode_programs" / "securerom_payload" / "build" / "securerom_payload_shellcode"
+    )
     securerom_shellcode = securerom_shellcode_path.read_bytes()
     print(f"SecureROM shellcode length: {len(securerom_shellcode)}")
 

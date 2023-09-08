@@ -1,9 +1,7 @@
-from pathlib import Path
-
 from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
-from configuration import GalaConfig, GALA_ROOT
+from configuration import GALA_ROOT, GalaConfig
 from patches import BlobPatch, InstructionPatch, Patch, PatchSet
 
 
@@ -53,7 +51,13 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
             # PT: We might need a shellcode program that sets that var to 1, but how to run it at startup?
             BlobPatch(
                 address=VirtualMemoryPointer(0x80966080),
-                new_content=(GALA_ROOT / "shellcode_programs" / "kernelcache_set_debug_enabled" / "build" / "kernelcache_set_debug_enabled_shellcode").read_bytes()
+                new_content=(
+                    GALA_ROOT
+                    / "shellcode_programs"
+                    / "kernelcache_set_debug_enabled"
+                    / "build"
+                    / "kernelcache_set_debug_enabled_shellcode"
+                ).read_bytes(),
             ),
             # 0x80966080
             # 0x8026a800
