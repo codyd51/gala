@@ -3,7 +3,7 @@ from pathlib import Path
 from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
-from configuration import GalaConfig
+from configuration import GalaConfig, GALA_ROOT
 from patches import DmgPatchSet, DmgBinaryPatch, PatchSet, BlobPatch, InstructionPatch, DmgApplyTarPatch, \
     DmgReplaceFileContentsPatch, FilePermission
 
@@ -52,12 +52,12 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
         ),
         DmgReplaceFileContentsPatch(
             file_path=Path("usr/bin/umount"),
-            new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/umount/build/umount").read_bytes(),
+            new_content=(GALA_ROOT / "ramdisk_programs" / "umount" / "build" / "umount").read_bytes(),
             new_permissions=FilePermission.rwx(),
         ),
         DmgReplaceFileContentsPatch(
             file_path=Path("usr/bin/asr_wrapper"),
-            new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/asr_wrapper/build/asr_wrapper").read_bytes(),
+            new_content=(GALA_ROOT / "ramdisk_programs" / "asr_wrapper" / "build" / "asr_wrapper").read_bytes(),
             new_permissions=FilePermission.rwx(),
         ),
         restored_patches,

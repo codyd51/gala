@@ -4,6 +4,7 @@ from pathlib import Path
 from os_build import OsBuildEnum, ImageType
 
 JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
+GALA_ROOT = Path(__file__).parent
 PATCHED_IMAGES_ROOT = JAILBREAK_ROOT / "patched_images"
 ASSETS_ROOT = JAILBREAK_ROOT / "gala" / "assets"
 
