@@ -4,7 +4,11 @@ from pathlib import Path
 from gala.os_build import ImageType, OsBuildEnum
 
 JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
+
 GALA_ROOT = Path(__file__).parents[1]
+DEPENDENCIES_ROOT = GALA_ROOT / "dependencies"
+DEPENDENCY_PATCHES_ROOT = GALA_ROOT / "dependency_patches"
+
 PATCHED_IMAGES_ROOT = JAILBREAK_ROOT / "patched_images"
 ASSETS_ROOT = JAILBREAK_ROOT / "gala" / "assets"
 

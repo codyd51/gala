@@ -1,11 +1,13 @@
 import argparse
+import os
 import time
 from pathlib import Path
 
 import usb
 import usb.core
 
-from gala.configuration import ASSETS_ROOT, GALA_ROOT, Color, DeviceBootConfig, GalaConfig, IpswPatcherConfig
+from gala.configuration import ASSETS_ROOT, GALA_ROOT, Color, DeviceBootConfig, GalaConfig, IpswPatcherConfig, \
+    DEPENDENCIES_ROOT
 from gala.device import DeviceMode, NoDfuDeviceFoundError, acquire_device_with_timeout
 from gala.os_build import ImageType, OsBuildEnum
 from gala.patcher import regenerate_patched_images
@@ -168,11 +170,18 @@ def main():
         try:
             run_and_check(
                 [
-                    "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
+                    (DEPENDENCIES_ROOT / "idevicerestore" / "src" / "idevicerestore").as_posix(),
                     "--restore-mode",
                     "-e",
+                    # TODO(PT): Host this in the gala dir
                     "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
-                ]
+                ],
+                # Inform our patched idevicerestore about gala's location
+                # It needs this to know where to find gala's patched root filesystem, kernelcache, assets to send to the
+                # device, sshpass dependency, etc.
+                env_additions={
+                    "GALA_ROOT": GALA_ROOT.as_posix(),
+                },
             )
         except RuntimeError:
             config.log_event("Error: Restore failed.")
