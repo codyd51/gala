@@ -83,13 +83,7 @@ def recompile_payloads():
     print(securerom_payload_path)
 
     build(root / "payload_stage1")
-    build(root / "payload_stage2")
-    build(root / "shellcode_within_ibss")
-    build(root / "shellcode_in_asr")
-    build(root / "shellcode_within_ibec")
-    build(root / "shellcode_within_kernelcache")
     build(root / "kernelcache_set_debug_enabled")
-    build(root / "shellcode_in_mediakit")
     build_ramdisk_program(root / "umount")
     build_ramdisk_program(root / "asr_wrapper")
 

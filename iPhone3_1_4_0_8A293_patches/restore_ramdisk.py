@@ -44,8 +44,6 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
         ),
     )
 
-    asr_shellcode_addr = 0x1FA60
-    mediakit_shellcode_addr = 0x00032780
     patches = [
         DmgApplyTarPatch(
             tar_path=Path(
@@ -61,36 +59,6 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
             file_path=Path("usr/bin/asr_wrapper"),
             new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/asr_wrapper/build/asr_wrapper").read_bytes(),
             new_permissions=FilePermission.rwx(),
-        ),
-        DmgBinaryPatch(
-            binary_path=Path("usr/sbin/asr"),
-            inner_patch=PatchSet(
-                name="",
-                patches=[
-                    BlobPatch(
-                        address=VirtualMemoryPointer(0x1FA60),
-                        new_content=Path(
-                            "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_asr/build/shellcode_in_asr_shellcode"
-                        ).read_bytes(),
-                    ),
-                    # InstructionPatch.quick(0x00017df2, Instr.thumb(f"bl #{hex(asr_shellcode_addr)}")),
-                ],
-            ),
-        ),
-        DmgBinaryPatch(
-            binary_path=Path("System/Library/PrivateFrameworks/MediaKit.framework/MediaKit"),
-            inner_patch=PatchSet(
-                name="",
-                patches=[
-                    BlobPatch(
-                        address=VirtualMemoryPointer(mediakit_shellcode_addr),
-                        new_content=Path(
-                            "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_in_mediakit/build/shellcode_in_mediakit_shellcode"
-                        ).read_bytes(),
-                    ),
-                    # InstructionPatch.quick(0x0001b1b6, Instr.thumb(f"bl #{hex(mediakit_shellcode_addr)}")),
-                ],
-            ),
         ),
         restored_patches,
     ]

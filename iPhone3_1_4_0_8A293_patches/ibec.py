@@ -9,9 +9,7 @@ from patches import (BlobPatch, InstructionPatch, Patch, PatchSet)
 
 def get_ibec_patches(config: GalaConfig) -> list[Patch]:
     boot_args = config.boot_config.boot_args
-    ibec_shellcode_addr = 0x5FF000FC
     boot_args_addr = 0x5FF0028E
-    jump_to_comms = Instr.thumb(f"bl #{hex(ibec_shellcode_addr)}")
     return [
         PatchSet(
             name="Enable UART debug logs",
@@ -96,13 +94,6 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
         PatchSet(
             name="Tracing",
             patches=[
-                BlobPatch(
-                    address=VirtualMemoryPointer(ibec_shellcode_addr),
-                    new_content=Path(
-                        "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_within_ibec/build/shellcode_within_ibec_shellcode"
-                    ).read_bytes(),
-                ),
-                # InstructionPatch.shellcode2(ibec_shellcode_addr, 0x5ff0e4bc),
                 # OVRD
                 InstructionPatch.quick(0x5FF0DB24, Instr.thumb("cmp r0, r0")),
                 # CHIP
