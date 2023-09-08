@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import shutil
-import tempfile
 from copy import copy
 from pathlib import Path
 from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, IpswPatcherConfig, GalaConfig, \
-    ASSETS_ROOT
-from iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches, \
-    MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, \
-    MapOfBinaryTypesToPatchGenerators, MapOfPictureTypesToPatchGenerators
+from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig
+from iPhone3_1_4_0_8A293_patches import (
+    MapOfBinaryTypesToPatchGenerators,
+    MapOfDebTypesToPatchGenerators,
+    MapOfDmgTypesToPatchGenerators,
+    MapOfPictureTypesToPatchGenerators,
+    get_iphone_3_1_4_0_8a293_patches,
+)
 from os_build import ImageType, KeyRepository, OsBuildEnum
 from patches import Function, Patch
 from utils import TotalEnumMapping, run_and_check
@@ -50,23 +52,41 @@ class FunctionRepository:
 
 class PatchRepository:
     @classmethod
-    def builds_to_image_patches(cls) -> Mapping[OsBuildEnum, (MapOfPictureTypesToPatchGenerators, MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, MapOfBinaryTypesToPatchGenerators)]:
+    def builds_to_image_patches(
+        cls,
+    ) -> Mapping[
+        OsBuildEnum,
+        (
+            MapOfPictureTypesToPatchGenerators,
+            MapOfDebTypesToPatchGenerators,
+            MapOfDmgTypesToPatchGenerators,
+            MapOfBinaryTypesToPatchGenerators,
+        ),
+    ]:
         empty_patch_sets = (
-            ImageType.picture_types_mapping({
-                ImageType.AppleLogo: [],
-            }),
-            ImageType.deb_types_mapping({
-                ImageType.MobileSubstrate: [],
-            }),
-            ImageType.dmg_types_mapping({
-                ImageType.RestoreRamdisk: [],
-                ImageType.RootFilesystem: [],
-            }),
-            ImageType.binary_types_mapping({
-                ImageType.iBSS: [],
-                ImageType.iBEC: [],
-                ImageType.KernelCache: [],
-            }),
+            ImageType.picture_types_mapping(
+                {
+                    ImageType.AppleLogo: [],
+                }
+            ),
+            ImageType.deb_types_mapping(
+                {
+                    ImageType.MobileSubstrate: [],
+                }
+            ),
+            ImageType.dmg_types_mapping(
+                {
+                    ImageType.RestoreRamdisk: [],
+                    ImageType.RootFilesystem: [],
+                }
+            ),
+            ImageType.binary_types_mapping(
+                {
+                    ImageType.iBSS: [],
+                    ImageType.iBEC: [],
+                    ImageType.KernelCache: [],
+                }
+            ),
         )
         return TotalEnumMapping(
             {
@@ -196,7 +216,7 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
         repacked_dmg = output_dir / f"{file_name}.repacked"
 
         if not patcher_config.should_rebuild_root_filesystem:
-            print(f'Skip rebuilding root filesystem...')
+            print(f"Skip rebuilding root filesystem...")
             if not repacked_dmg.exists():
                 raise ValueError(f"Supposed to skip rebuilding root filesystem, but a cached version doesn't exist")
             return repacked_dmg
@@ -204,14 +224,16 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
         extracted_dmg.unlink(missing_ok=True)
 
         # Extract the root filesystem
-        run_and_check([
-            _XPWN_DMG.as_posix(),
-            "extract",
-            encrypted_image.as_posix(),
-            extracted_dmg.as_posix(),
-            "-k",
-            key_pair.key,
-        ])
+        run_and_check(
+            [
+                _XPWN_DMG.as_posix(),
+                "extract",
+                encrypted_image.as_posix(),
+                extracted_dmg.as_posix(),
+                "-k",
+                key_pair.key,
+            ]
+        )
 
         # Apply our patches
         patched_dmg.unlink(missing_ok=True)
@@ -220,12 +242,14 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
 
         # Rebuild the .dmg
         repacked_dmg.unlink(missing_ok=True)
-        run_and_check([
-            _XPWN_DMG.as_posix(),
-            "build",
-            patched_dmg.as_posix(),
-            repacked_dmg.as_posix(),
-        ])
+        run_and_check(
+            [
+                _XPWN_DMG.as_posix(),
+                "build",
+                patched_dmg.as_posix(),
+                repacked_dmg.as_posix(),
+            ]
+        )
         print(f"Wrote repacked {image_type.name} to {repacked_dmg.as_posix()}")
         # TODO(PT): Early return with repacked_dmg here?
 

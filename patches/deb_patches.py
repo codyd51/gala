@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from strongarm.macho import VirtualMemoryPointer, MachoParser
+from strongarm.macho import MachoParser, VirtualMemoryPointer
 
 from configuration import IpswPatcherConfig
 from patches.base import Patch
@@ -22,11 +22,11 @@ class DebPatchSet(Patch):
     patches: list[DebPatch]
 
     def apply(
-            self,
-            config: IpswPatcherConfig,
-            image_path: Path,
-            image_base_address: VirtualMemoryPointer,
-            image_data: bytearray,
+        self,
+        config: IpswPatcherConfig,
+        image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
@@ -45,25 +45,29 @@ class DebPatchSet(Patch):
         print(f"Mounting {path.name}")
         with tempfile.TemporaryDirectory() as mount_dir_raw:
             extracted_deb_dir = Path(mount_dir_raw) / "deb_mount_point"
-            run_and_check([
-                "/opt/homebrew/bin/dpkg-deb",
-                "-R",
-                path.as_posix(),
-                extracted_deb_dir.as_posix(),
-            ])
+            run_and_check(
+                [
+                    "/opt/homebrew/bin/dpkg-deb",
+                    "-R",
+                    path.as_posix(),
+                    extracted_deb_dir.as_posix(),
+                ]
+            )
 
             try:
                 print(f"Mounted .deb to {extracted_deb_dir.as_posix()}")
                 yield extracted_deb_dir
             finally:
                 # Repack the .deb
-                run_and_check([
-                    "/opt/homebrew/bin/dpkg-deb",
-                    "-Zgzip",
-                    "-b",
-                    extracted_deb_dir.as_posix(),
-                    path.as_posix(),
-                ])
+                run_and_check(
+                    [
+                        "/opt/homebrew/bin/dpkg-deb",
+                        "-Zgzip",
+                        "-b",
+                        extracted_deb_dir.as_posix(),
+                        path.as_posix(),
+                    ]
+                )
                 print(f"Unmounted {path.name}")
 
 

@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from strongarm.macho import VirtualMemoryPointer, MachoParser
+from strongarm.macho import MachoParser, VirtualMemoryPointer
 
 from configuration import IpswPatcherConfig
 from os_build import OsBuildEnum
-from patches import BlobPatch, InstructionPatch
+from patches import BlobPatch
 
 
 def main():
@@ -26,24 +26,24 @@ def main():
 
     if True:
         BlobPatch(
-            address=VirtualMemoryPointer(0x0000b13c),
-            new_content=bytes([0x03, 0xe0]),
+            address=VirtualMemoryPointer(0x0000B13C),
+            new_content=bytes([0x03, 0xE0]),
         ).apply(patcher_config, cynject, VirtualMemoryPointer(0), image_data)
 
     if True:
         BlobPatch(
-            address=VirtualMemoryPointer(0x0000b1c8),
-            new_content=bytes([0x00, 0xbf]),
+            address=VirtualMemoryPointer(0x0000B1C8),
+            new_content=bytes([0x00, 0xBF]),
         ).apply(patcher_config, cynject, VirtualMemoryPointer(0), image_data)
 
     BlobPatch(
-        address=VirtualMemoryPointer(0x0000b252),
-        new_content=bytes([0x00, 0xbf]),
+        address=VirtualMemoryPointer(0x0000B252),
+        new_content=bytes([0x00, 0xBF]),
     ).apply(patcher_config, cynject, VirtualMemoryPointer(0), image_data)
 
     print(image_data == cynject.read_bytes())
     output.write_bytes(image_data)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from configuration import GALA_ROOT
 
-
 _logger = logging.getLogger(__file__)
 
 
@@ -55,7 +54,7 @@ def build_ramdisk_program(program_folder: Path) -> Path:
     subprocess.run("./compile.sh", shell=True, cwd=program_folder)
     compiled_program = build_folder / program_name
     if not compiled_program.exists():
-        raise ValueError(f'Expected to produce compiled program at {compiled_program}')
+        raise ValueError(f"Expected to produce compiled program at {compiled_program}")
     return compiled_program
 
 

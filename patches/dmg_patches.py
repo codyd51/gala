@@ -7,10 +7,9 @@ from math import ceil
 from pathlib import Path
 from typing import Iterable
 
-from strongarm.macho import (MachoParser, VirtualMemoryPointer)
+from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from assemble import Instr, assemble
-from configuration import PATCHED_IMAGES_ROOT, IpswPatcherConfig
+from configuration import IpswPatcherConfig
 from patches.base import Patch
 from utils import run_and_check
 
@@ -46,7 +45,7 @@ class DmgPatchSet(Patch):
             extra_room = 1024 * 1024 * 4
             increased_dmg_size = current_dmg_size + extra_room
             total_dmg_size_in_mb = ceil(increased_dmg_size / 1024 / 1024)
-            print(f'Resizing .dmg from {current_dmg_size} bytes to {total_dmg_size_in_mb}MB')
+            print(f"Resizing .dmg from {current_dmg_size} bytes to {total_dmg_size_in_mb}MB")
             run_and_check(
                 [
                     "hdiutil",
@@ -116,7 +115,7 @@ class DmgRemoveTreePatch(DmgPatch):
     tree_path: Path
 
     def apply(self, config: IpswPatcherConfig, mounted_dmg_path: Path) -> None:
-        print(f'Deleting tree {self.tree_path} from .dmg ({mounted_dmg_path / self.tree_path}')
+        print(f"Deleting tree {self.tree_path} from .dmg ({mounted_dmg_path / self.tree_path}")
         shutil.rmtree(mounted_dmg_path / self.tree_path)
 
 
@@ -126,7 +125,7 @@ class FilePermission(Enum):
     Execute = auto()
 
     @classmethod
-    def rwx(cls) -> list['FilePermission']:
+    def rwx(cls) -> list["FilePermission"]:
         return [
             FilePermission.Read,
             FilePermission.Write,
@@ -142,12 +141,14 @@ class FilePermission(Enum):
             case FilePermission.Execute:
                 chmod_flag = "x"
             case _:
-                raise ValueError(f'Unhandled variant {self}')
-        run_and_check([
-            'chmod',
-            f'+{chmod_flag}',
-            file.as_posix(),
-        ])
+                raise ValueError(f"Unhandled variant {self}")
+        run_and_check(
+            [
+                "chmod",
+                f"+{chmod_flag}",
+                file.as_posix(),
+            ]
+        )
 
 
 @dataclass
@@ -162,7 +163,7 @@ class DmgReplaceFileContentsPatch(DmgPatch):
         qualified_path.parent.mkdir(parents=True, exist_ok=True)
         qualified_path.write_bytes(self.new_content)
         if perms := self.new_permissions:
-            print(f'Applying permissions to {qualified_path}...')
+            print(f"Applying permissions to {qualified_path}...")
             for perm in perms:
                 perm.apply_to_file(qualified_path)
 

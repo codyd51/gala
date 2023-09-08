@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from os_build import OsBuildEnum, ImageType
+from os_build import ImageType, OsBuildEnum
 
 JAILBREAK_ROOT = Path("/Users/philliptennen/Documents/Jailbreak")
 GALA_ROOT = Path(__file__).parent

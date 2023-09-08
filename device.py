@@ -144,10 +144,12 @@ def acquire_device(mode: DeviceMode) -> Iterator[Device]:
     with maybe_acquire_device(mode) as maybe_device:
         if not maybe_device:
             # Use an exception class corresponding to the requested device type
-            exception_type = TotalEnumMapping({
-                DeviceMode.DFU: NoDfuDeviceFoundError,
-                DeviceMode.Recovery: NoRecoveryDeviceFoundError,
-            })[mode]
+            exception_type = TotalEnumMapping(
+                {
+                    DeviceMode.DFU: NoDfuDeviceFoundError,
+                    DeviceMode.Recovery: NoRecoveryDeviceFoundError,
+                }
+            )[mode]
             raise exception_type(f"Unable to find a {mode.name} Mode device")
         yield maybe_device
 

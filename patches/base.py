@@ -16,11 +16,11 @@ class Function:
 class Patch(ABC):
     @abstractmethod
     def apply(
-            self,
-            patcher_config: IpswPatcherConfig,
-            decrypted_image_path: Path,
-            image_base_address: VirtualMemoryPointer,
-            image_data: bytearray,
+        self,
+        patcher_config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
     ) -> None:
         ...
 
@@ -31,15 +31,16 @@ class PatchSet(Patch):
     This has no difference in functionality to declaring top-level patches individually, and serves purely as an
     organizational tool.
     """
+
     name: str
     patches: list[Patch]
 
     def apply(
-            self,
-            config: IpswPatcherConfig,
-            decrypted_image_path: Path,
-            image_base_address: VirtualMemoryPointer,
-            image_data: bytearray,
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
     ) -> None:
         print(f"Applying patch set {self.name}...")
         for patch in self.patches:

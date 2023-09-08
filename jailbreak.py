@@ -5,10 +5,10 @@ from pathlib import Path
 import usb
 import usb.core
 
-from configuration import DeviceBootConfig, IpswPatcherConfig, GalaConfig, ASSETS_ROOT, Color
-from device import DeviceMode, acquire_device_with_timeout, NoDfuDeviceFoundError
+from configuration import ASSETS_ROOT, Color, DeviceBootConfig, GalaConfig, IpswPatcherConfig, GALA_ROOT
+from device import DeviceMode, NoDfuDeviceFoundError, acquire_device_with_timeout
 from os_build import ImageType, OsBuildEnum
-from patcher import (regenerate_patched_images)
+from patcher import regenerate_patched_images
 from recompile_payloads import recompile_payloads
 from securerom import execute_securerom_payload
 from utils import run_and_check
@@ -107,7 +107,7 @@ def boot_device_with_infinite_retry(config: GalaConfig):
             boot_device(config)
             break
         except NoDfuDeviceFoundError:
-            print('No DFU device found')
+            print("No DFU device found")
 
 
 def main():
@@ -115,8 +115,8 @@ def main():
     parser.add_argument("--log_high_level_events_to_file", action="store", default=None)
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--jailbreak', action='store_true')
-    group.add_argument('--boot', action='store_true')
+    group.add_argument("--jailbreak", action="store_true")
+    group.add_argument("--boot", action="store_true")
 
     args = parser.parse_args()
 
@@ -127,16 +127,16 @@ def main():
         maybe_progress_file = Path(maybe_progress_file_path)
 
     if args.jailbreak:
-        print('Performing downgrade / jailbreak...')
-        print('(WARNING: This will wipe all data on the device!)')
+        print("Performing downgrade / jailbreak...")
+        print("(WARNING: This will wipe all data on the device!)")
         should_rebuild_root_filesystem = True
         boot_args = "rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3"
     elif args.boot:
-        print(f'Performing a tethered boot from disk...')
+        print(f"Performing a tethered boot from disk...")
         should_rebuild_root_filesystem = False
         boot_args = "rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3"
     else:
-        raise ValueError(f'No job specified')
+        raise ValueError(f"No job specified")
 
     config = GalaConfig(
         boot_config=DeviceBootConfig(
@@ -158,18 +158,20 @@ def main():
     boot_device_with_infinite_retry(config)
 
     if args.jailbreak:
-        print('Device booted, flashing OS image...')
+        print("Device booted, flashing OS image...")
         config.log_event("Flashing OS image...")
         # Give restored_external a moment to come up
         time.sleep(5)
 
         try:
-            run_and_check([
-                "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
-                "--restore-mode",
-                "-e",
-                "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
-            ])
+            run_and_check(
+                [
+                    "/Users/philliptennen/Documents/Jailbreak/tools/idevicerestore/src/idevicerestore",
+                    "--restore-mode",
+                    "-e",
+                    "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
+                ]
+            )
         except RuntimeError:
             config.log_event("Error: Restore failed.")
             raise
@@ -179,7 +181,7 @@ def main():
     else:
         raise ValueError("Unknown job")
 
-    print('Done!')
+    print("Done!")
 
 
 if __name__ == "__main__":

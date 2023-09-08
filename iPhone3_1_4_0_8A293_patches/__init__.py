@@ -1,16 +1,14 @@
-from typing import Mapping, Callable
+from typing import Callable, Mapping
 
 from configuration import GalaConfig
-from os_build import ImageType
-from patches import Patch
-
-from iPhone3_1_4_0_8A293_patches.ibss import get_ibss_patches
+from iPhone3_1_4_0_8A293_patches.assets import get_apple_logo_patches, get_mobilesubstrate_patches
 from iPhone3_1_4_0_8A293_patches.ibec import get_ibec_patches
+from iPhone3_1_4_0_8A293_patches.ibss import get_ibss_patches
 from iPhone3_1_4_0_8A293_patches.kernelcache import get_kernelcache_patches
 from iPhone3_1_4_0_8A293_patches.restore_ramdisk import get_restore_ramdisk_patches
 from iPhone3_1_4_0_8A293_patches.root_filesystem import get_rootfs_patches
-from iPhone3_1_4_0_8A293_patches.assets import (get_apple_logo_patches, get_mobilesubstrate_patches)
-
+from os_build import ImageType
+from patches import Patch
 
 # PT: Some patches have serial dependencies (i.e. the root filesystem needs a .deb that's produced by a previous step),
 # so we can't generate the patched images in one pool. Instead, we need to execute them as an ordered series.
@@ -23,7 +21,11 @@ MapOfDmgTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
 MapOfBinaryTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
 
 
-def get_iphone_3_1_4_0_8a293_patches() -> (MapOfDebTypesToPatchGenerators, MapOfDmgTypesToPatchGenerators, MapOfBinaryTypesToPatchGenerators):
+def get_iphone_3_1_4_0_8a293_patches() -> (
+    MapOfDebTypesToPatchGenerators,
+    MapOfDmgTypesToPatchGenerators,
+    MapOfBinaryTypesToPatchGenerators,
+):
     # TODO(PT): Remove binary_types_mapping() and have dedicated Patch types for every code path
     return (
         ImageType.picture_types_mapping(
@@ -39,15 +41,17 @@ def get_iphone_3_1_4_0_8a293_patches() -> (MapOfDebTypesToPatchGenerators, MapOf
                 ImageType.MobileSubstrate: get_mobilesubstrate_patches,
             }
         ),
-        ImageType.dmg_types_mapping({
-            ImageType.RestoreRamdisk: get_restore_ramdisk_patches,
-            ImageType.RootFilesystem: get_rootfs_patches,
-        }),
+        ImageType.dmg_types_mapping(
+            {
+                ImageType.RestoreRamdisk: get_restore_ramdisk_patches,
+                ImageType.RootFilesystem: get_rootfs_patches,
+            }
+        ),
         ImageType.binary_types_mapping(
             {
                 ImageType.iBSS: get_ibss_patches,
                 ImageType.iBEC: get_ibec_patches,
                 ImageType.KernelCache: get_kernelcache_patches,
             }
-        )
+        ),
     )

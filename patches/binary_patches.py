@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from capstone import CS_ARCH_ARM, CS_MODE_THUMB, Cs
-from strongarm.macho import (ArchitectureNotSupportedError, MachoParser,
-                             VirtualMemoryPointer)
+from strongarm.macho import ArchitectureNotSupportedError, MachoParser, VirtualMemoryPointer
 
 from assemble import Instr, assemble
 from configuration import IpswPatcherConfig
@@ -120,7 +119,7 @@ class InstructionPatch(Patch):
             try:
                 assembled_bytes = assemble(patched_instr_address, patched_instr)
             except ValueError as e:
-                raise ValueError(f"Failed to assemble instruction \"{patched_instr.value}\": {e}")
+                raise ValueError(f'Failed to assemble instruction "{patched_instr.value}": {e}')
             # It's possible for assembled Thumb instructions to take up 4 bytes: for example, THUMB bl <offset>.
             # Therefore, check the length of the assembled bytes, rather than relying on size reported by the format
             assembled_bytes_len = len(assembled_bytes)
@@ -158,11 +157,11 @@ class BlobPatch(Patch):
     new_content: bytes
 
     def apply(
-            self,
-            config: IpswPatcherConfig,
-            decrypted_image_path: Path,
-            image_base_address: VirtualMemoryPointer,
-            image_data: bytearray,
+        self,
+        config: IpswPatcherConfig,
+        decrypted_image_path: Path,
+        image_base_address: VirtualMemoryPointer,
+        image_data: bytearray,
     ) -> None:
         print(f"Applying unstructured patch of {len(self.new_content)} bytes at {self.address}")
         try:

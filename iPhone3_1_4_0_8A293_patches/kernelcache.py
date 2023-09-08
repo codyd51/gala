@@ -3,39 +3,39 @@ from pathlib import Path
 from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
-from configuration import GalaConfig
-from patches import Patch, BlobPatch, PatchSet, InstructionPatch
+from configuration import GalaConfig, GALA_ROOT
+from patches import BlobPatch, InstructionPatch, Patch, PatchSet
 
 
 def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     kernelcache_shellcode_addr = 0x8057A314
 
-    sandbox_callbacks_start = 0x803c5a40
-    sandbox_callbacks_end = 0x803c5f20
-    zero_fill = b'\0' * (sandbox_callbacks_end - sandbox_callbacks_start)
+    sandbox_callbacks_start = 0x803C5A40
+    sandbox_callbacks_end = 0x803C5F20
+    zero_fill = b"\0" * (sandbox_callbacks_end - sandbox_callbacks_start)
     sandbox_blob_patch = BlobPatch(address=VirtualMemoryPointer(sandbox_callbacks_start), new_content=zero_fill)
     sandbox_patch = PatchSet(
         name="Neuter sandbox",
         patches=[
             sandbox_blob_patch,
-            InstructionPatch.quick(0x803c445e, Instr.thumb_nop(), expected_length=2),
+            InstructionPatch.quick(0x803C445E, Instr.thumb_nop(), expected_length=2),
             # Patch out the call to sandbox_mac_policy_register and make it look like it returned zero?
-            InstructionPatch.quick(0x803c100a, Instr.thumb("movs r0, #0"), expected_length=2),
-        ]
+            InstructionPatch.quick(0x803C100A, Instr.thumb("movs r0, #0"), expected_length=2),
+        ],
     )
     setuid_patch = PatchSet(
         name="Everyone is root",
         patches=[
-            #InstructionPatch.quick(0x8014c502, Instr.thumb("movs r0, #0"), expected_length=2),
-            #InstructionPatch.quick(0x8014c696, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014cfde, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014cfe4, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014cfea, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014cff0, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014cffc, Instr.thumb("cmp r0, r0"), expected_length=2),
-            #InstructionPatch.quick(0x8014d070, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014d076, Instr.thumb("nop"), expected_length=2),
-            #InstructionPatch.quick(0x8014d07c, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014c502, Instr.thumb("movs r0, #0"), expected_length=2),
+            # InstructionPatch.quick(0x8014c696, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014cfde, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014cfe4, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014cfea, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014cff0, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014cffc, Instr.thumb("cmp r0, r0"), expected_length=2),
+            # InstructionPatch.quick(0x8014d070, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014d076, Instr.thumb("nop"), expected_length=2),
+            # InstructionPatch.quick(0x8014d07c, Instr.thumb("nop"), expected_length=2),
             # kauth_cred_getuid always returns 0
             # This patch causes the device to fail to boot...
             # Logs "AppleSerialMultiplexer: mux::timeGetAdjustmentGated: Forcing time update" once every few seconds forever
@@ -120,10 +120,10 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     enable_dev_kmem = PatchSet(
         name="Enable /dev/kmem",
         patches=[
-            InstructionPatch.quick(0x8009f7ac, Instr.thumb("movs r3, #1")),
+            InstructionPatch.quick(0x8009F7AC, Instr.thumb("movs r3, #1")),
             # Set permission bits
-            #InstructionPatch.quick(0x8009f738, Instr.arm("mov.w r4, #0x1b6")),
-            BlobPatch(address=VirtualMemoryPointer(0x8009f738), new_content=bytes([0x4F, 0xF4, 0xDB, 0x74])),
+            # InstructionPatch.quick(0x8009f738, Instr.arm("mov.w r4, #0x1b6")),
+            BlobPatch(address=VirtualMemoryPointer(0x8009F738), new_content=bytes([0x4F, 0xF4, 0xDB, 0x74])),
             # Need to set group too?
         ],
     )
@@ -131,42 +131,39 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     enable_task_for_pid_0 = PatchSet(
         name="Enable task_for_pid(0)",
         patches=[
-            InstructionPatch.quick(0x8017e552, Instr.thumb("b #0x8017e56c"), expected_length=2),
-        ]
+            InstructionPatch.quick(0x8017E552, Instr.thumb("b #0x8017e56c"), expected_length=2),
+        ],
     )
 
     # http://www.it-docs.net/ddata/781.pdf
     sandbox_debug_mode = PatchSet(
         name="SandboxDebugMode",
         patches=[
-            InstructionPatch.quick(0x803c4578, Instr.thumb("movs r3, #1"), expected_length=2),
-            InstructionPatch.quick(0x803c457a, Instr.thumb("movs r3, #1"), expected_length=2),
-        ]
+            InstructionPatch.quick(0x803C4578, Instr.thumb("movs r3, #1"), expected_length=2),
+            InstructionPatch.quick(0x803C457A, Instr.thumb("movs r3, #1"), expected_length=2),
+        ],
     )
 
     disable_mac_enforcement = PatchSet(
         name="Disable MAC enforcement",
         patches=[
-            BlobPatch(VirtualMemoryPointer(addr), new_content=int(0).to_bytes(4, byteorder='little'))
-            for addr in
-            [
-                0x8025ef80,
-                #0x8025eff8,
-                #0x8025f020,
-                #0x8025f048,
-
+            BlobPatch(VirtualMemoryPointer(addr), new_content=int(0).to_bytes(4, byteorder="little"))
+            for addr in [
+                0x8025EF80,
+                # 0x8025eff8,
+                # 0x8025f020,
+                # 0x8025f048,
                 # PT: This patch causes the device to fail to boot
                 ## 0x8025f070,
-
-                #0x8025f098,
-                #0x8025f0c0,
-                #0x8025f0e8,
+                # 0x8025f098,
+                # 0x8025f0c0,
+                # 0x8025f0e8,
                 ##0x8025f110,
-                #0x8025f138,
-                #0x8025f160,
-                0x8025f188,
+                # 0x8025f138,
+                # 0x8025f160,
+                0x8025F188,
             ]
-        ]
+        ],
     )
 
     allow_rwx_pages = PatchSet(
@@ -175,11 +172,11 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
             # Ref: https://www.theiphonewiki.com/wiki/Vm_map_protect_Patch
             # vm_map_protect: The original instruction clears the VM_PROT_EXECUTE bit
             # This basic block is reached from a "tst VM_PROT_EXECUTE bit" branch
-            InstructionPatch.quick(0x8003d9fc, Instr.thumb_nop()),
+            InstructionPatch.quick(0x8003D9FC, Instr.thumb_nop()),
             # Same for vm_map_enter
-            InstructionPatch.quick(0x800409e8, Instr.thumb_nop()),
+            InstructionPatch.quick(0x800409E8, Instr.thumb_nop()),
             InstructionPatch.quick(0x80040976, Instr.thumb_nop()),
-        ]
+        ],
     )
 
     return [

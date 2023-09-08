@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from configuration import GalaConfig, ASSETS_ROOT
+from configuration import ASSETS_ROOT, GalaConfig
 from os_build import ImageType
-from patches import DmgPatchSet, DmgReplaceFileContentsPatch, DmgApplyTarPatch
+from patches import DmgApplyTarPatch, DmgPatchSet, DmgReplaceFileContentsPatch
 
 
 def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
@@ -16,7 +16,7 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
 /dev/disk0s1 / hfs rw,suid,dev 0 1
 /dev/disk0s2s1 /private/var hfs rw,suid,dev 0 2
 """
-        ).encode()
+        ).encode(),
     )
 
     install_cydia = DmgApplyTarPatch(tar_path=ASSETS_ROOT / "Cydia.tar")
@@ -29,7 +29,9 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
 
     # Also provide our patched MobileSubstrate build
     patcher_config = config.patcher_config
-    patched_mobile_substrate_name = f"{patcher_config.os_build.asset_path_for_image_type(ImageType.MobileSubstrate).stem}.patched"
+    patched_mobile_substrate_name = (
+        f"{patcher_config.os_build.asset_path_for_image_type(ImageType.MobileSubstrate).stem}.patched"
+    )
     provide_patched_mobile_substrate = DmgReplaceFileContentsPatch(
         file_path=Path("private/var/gala/mobilesubstrate_0.9.6301_iphoneos-arm.deb"),
         # TODO(PT): Perhaps the IpswPatcherConfig can provide the patched images dir?
@@ -52,12 +54,10 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
         install_dropbear,
         install_cydia,
         # Delete the Compass app to make room for the Cydia patch
-        #DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
+        # DmgRemoveTreePatch(tree_path=Path("Applications/Compass.app")),
         provide_globalsign_root_r3_cert,
         provide_patched_mobile_substrate,
         provide_deb_for_substrate_safe_mode,
         provide_deb_for_access_local_files_in_safari,
     ]
     return [DmgPatchSet(patches=patches)]
-
-

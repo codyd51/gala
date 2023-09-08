@@ -3,9 +3,17 @@ from pathlib import Path
 from strongarm.macho import VirtualMemoryPointer
 
 from assemble import Instr
-from configuration import GalaConfig, GALA_ROOT
-from patches import DmgPatchSet, DmgBinaryPatch, PatchSet, BlobPatch, InstructionPatch, DmgApplyTarPatch, \
-    DmgReplaceFileContentsPatch, FilePermission
+from configuration import GALA_ROOT, GalaConfig
+from patches import (
+    BlobPatch,
+    DmgApplyTarPatch,
+    DmgBinaryPatch,
+    DmgPatchSet,
+    DmgReplaceFileContentsPatch,
+    FilePermission,
+    InstructionPatch,
+    PatchSet,
+)
 
 
 def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
@@ -18,15 +26,9 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
                 # Don't clear effaceable storage
                 # InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # Don't wait for server ASR
-                #InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                BlobPatch(
-                    address=VirtualMemoryPointer(0x00031f10),
-                    new_content="/usr/bin/asr_wrapper\0".encode()
-                ),
-                BlobPatch(
-                    address=VirtualMemoryPointer(0x00031f28),
-                    new_content="\0".encode()
-                ),
+                # InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                BlobPatch(address=VirtualMemoryPointer(0x00031F10), new_content="/usr/bin/asr_wrapper\0".encode()),
+                BlobPatch(address=VirtualMemoryPointer(0x00031F28), new_content="\0".encode()),
                 # Don't create partitions
                 # InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
                 # No fixup /var
@@ -37,9 +39,9 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
                 #    VirtualMemoryPointer(0x0007267C), new_content=int(0x00030E30).to_bytes(4, byteorder="little")
                 # ),
                 # No flash LLB
-                InstructionPatch.quick(0x00007d64, Instr.thumb("b #0x7d7e")),
+                InstructionPatch.quick(0x00007D64, Instr.thumb("b #0x7d7e")),
                 # Don't claim the display
-                InstructionPatch.quick(0x00009e14, [Instr.thumb("b #0xa044"), Instr.thumb_nop()], expected_length=4),
+                InstructionPatch.quick(0x00009E14, [Instr.thumb("b #0xa044"), Instr.thumb_nop()], expected_length=4),
             ],
         ),
     )
@@ -79,10 +81,8 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
 </dict>
 </plist>
 """
-                ).encode()
+                ).encode(),
             )
         )
 
     return [DmgPatchSet(patches=patches)]
-
-
