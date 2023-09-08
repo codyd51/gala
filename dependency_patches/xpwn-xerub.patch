@@ -1,0 +1,139 @@
+From 2d75529af18d3dbdb08419ce7c9dc7ee5911ddf7 Mon Sep 17 00:00:00 2001
+From: Phillip Tennen <phillip@axleos.com>
+Date: Fri, 8 Sep 2023 22:19:05 +0100
+Subject: [PATCH] Update for OpenSSL API changes
+
+---
+ dmg/filevault.c          | 23 ++++++++++++++---------
+ includes/dmg/filevault.h |  2 +-
+ ipsw-patch/validate.c    | 12 ++++++------
+ 3 files changed, 21 insertions(+), 16 deletions(-)
+
+diff --git a/dmg/filevault.c b/dmg/filevault.c
+index 3bda9a0..791ac03 100644
+--- a/dmg/filevault.c
++++ b/dmg/filevault.c
+@@ -11,6 +11,7 @@
+ #include <openssl/hmac.h>
+ #include <openssl/aes.h>
+ #include <openssl/evp.h>
++#include <openssl/hmac.h>
+ 
+ #define CHUNKNO(oft, info) ((uint32_t)((oft)/info->blockSize))
+ #define CHUNKOFFSET(oft, info) ((size_t)((oft) - ((off_t)(CHUNKNO(oft, info)) * (off_t)info->blockSize)))
+@@ -51,9 +52,9 @@ static void writeChunk(FileVaultInfo* info) {
+ 	myChunk = info->curChunk;
+ 
+ 	FLIPENDIAN(myChunk);
+-	HMAC_Init_ex(&(info->hmacCTX), NULL, 0, NULL, NULL);
+-	HMAC_Update(&(info->hmacCTX), (unsigned char *) &myChunk, sizeof(uint32_t));
+-	HMAC_Final(&(info->hmacCTX), msgDigest, &msgDigestLen);
++	HMAC_Init_ex(info->hmacCTX, NULL, 0, NULL, NULL);
++	HMAC_Update(info->hmacCTX, (unsigned char *) &myChunk, sizeof(uint32_t));
++	HMAC_Final(info->hmacCTX, msgDigest, &msgDigestLen);
+ 
+ 	AES_cbc_encrypt(info->chunk, buffer, info->blockSize, &(info->aesEncKey), msgDigest, AES_ENCRYPT);
+ 
+@@ -85,9 +86,9 @@ static void cacheChunk(FileVaultInfo* info, uint32_t chunk) {
+ 	info->curChunk = chunk;
+ 
+ 	FLIPENDIAN(chunk);
+-	HMAC_Init_ex(&(info->hmacCTX), NULL, 0, NULL, NULL);
+-	HMAC_Update(&(info->hmacCTX), (unsigned char *) &chunk, sizeof(uint32_t));
+-	HMAC_Final(&(info->hmacCTX), msgDigest, &msgDigestLen);
++	HMAC_Init_ex(info->hmacCTX, NULL, 0, NULL, NULL);
++	HMAC_Update(info->hmacCTX, (unsigned char *) &chunk, sizeof(uint32_t));
++	HMAC_Final(info->hmacCTX, msgDigest, &msgDigestLen);
+ 
+ 	AES_cbc_encrypt(buffer, info->chunk, info->blockSize, &(info->aesKey), msgDigest, AES_DECRYPT);
+ }
+@@ -167,6 +168,8 @@ off_t fvGetLength(AbstractFile* file) {
+ 	return info->dataSize;
+ }
+ 
++void HMAC_CTX_cleanup(void*);
++
+ void fvClose(AbstractFile* file) {
+ 	FileVaultInfo* info = (FileVaultInfo*) (file->data);
+ 
+@@ -177,7 +180,8 @@ void fvClose(AbstractFile* file) {
+ 		cacheChunk(info, 0);
+ 	}
+ 
+-	HMAC_CTX_cleanup(&(info->hmacCTX));
++    printf("PT*** CANNOT DO\n");
++	//HMAC_CTX_cleanup(info->hmacCTX);
+ 
+ 	if(info->headerDirty) {
+ 		if(info->version == 2) {
+@@ -191,6 +195,7 @@ void fvClose(AbstractFile* file) {
+ 	free(info);
+ 	free(file);
+ }
++void HMAC_CTX_init(void*);
+ 
+ AbstractFile* createAbstractFileFromFileVault(AbstractFile* file, const char* key) {
+ 	FileVaultInfo* info;
+@@ -234,8 +239,8 @@ AbstractFile* createAbstractFileFromFileVault(AbstractFile* file, const char* ke
+ 		hmacKey[i] = curByte;
+ 	}
+ 
+-	HMAC_CTX_init(&(info->hmacCTX));
+-	HMAC_Init_ex(&(info->hmacCTX), hmacKey, sizeof(hmacKey), EVP_sha1(), NULL);
++	HMAC_CTX_reset(info->hmacCTX);
++	HMAC_Init_ex(info->hmacCTX, hmacKey, sizeof(hmacKey), EVP_sha1(), NULL);
+ 	AES_set_decrypt_key(aesKey, FILEVAULT_CIPHER_KEY_LENGTH * 8, &(info->aesKey));
+ 	AES_set_encrypt_key(aesKey, FILEVAULT_CIPHER_KEY_LENGTH * 8, &(info->aesEncKey));
+ 
+diff --git a/includes/dmg/filevault.h b/includes/dmg/filevault.h
+index 42cd0f4..fa54727 100644
+--- a/includes/dmg/filevault.h
++++ b/includes/dmg/filevault.h
+@@ -79,7 +79,7 @@ typedef struct FileVaultInfo {
+ 
+ 	AbstractFile*	file;
+ 
+-	HMAC_CTX	hmacCTX;
++	HMAC_CTX*	hmacCTX;
+ 	AES_KEY		aesKey;
+ 	AES_KEY		aesEncKey;
+ 
+diff --git a/ipsw-patch/validate.c b/ipsw-patch/validate.c
+index c720e85..8abdc64 100644
+--- a/ipsw-patch/validate.c
++++ b/ipsw-patch/validate.c
+@@ -290,17 +290,17 @@ cryptoMagic(X509 *x0, X509 *x1, X509 *x2,
+ 	int rv = 0;
+ 	EVP_PKEY *pk = X509_get_pubkey(x2);
+ 	if (pk) {
+-		if (pk->type == EVP_PKEY_RSA) {
++        if (EVP_PKEY_id(pk) == EVP_PKEY_RSA) {
+ 			RSA *rsa = EVP_PKEY_get1_RSA(pk);
+ 			if (rsa) {
+ 				X509_STORE *store = X509_STORE_new();
+ 				if (store) {
+-					X509_STORE_CTX ctx;
++					X509_STORE_CTX* ctx = X509_STORE_CTX_new();
+ 					X509_STORE_add_cert(store, x0);
+ 					X509_STORE_add_cert(store, x1);
+-					if (X509_STORE_CTX_init(&ctx, store, x2, 0) == 1) {
+-						X509_STORE_CTX_set_flags(&ctx, X509_V_FLAG_IGNORE_CRITICAL);
+-						if (X509_verify_cert(&ctx) == 1) {
++					if (X509_STORE_CTX_init(ctx, store, x2, 0) == 1) {
++						X509_STORE_CTX_set_flags(ctx, X509_V_FLAG_IGNORE_CRITICAL);
++						if (X509_verify_cert(ctx) == 1) {
+ 							unsigned char md[SHA_DIGEST_LENGTH];
+ 							if (partialDigest) {
+ 								// XXX we need to flip ECID back before hashing
+@@ -311,7 +311,7 @@ cryptoMagic(X509 *x0, X509 *x1, X509 *x2,
+ 							}
+ 							rv = RSA_verify(NID_sha1, md, SHA_DIGEST_LENGTH, rsaSigData, rsaSigLen, rsa);
+ 						}
+-						X509_STORE_CTX_cleanup(&ctx);
++						X509_STORE_CTX_cleanup(ctx);
+ 					}
+ 					X509_STORE_free(store);
+ 				}
+-- 
+2.39.3 (Apple Git-145)
+

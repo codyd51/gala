@@ -1,0 +1,532 @@
+From fdcad2912fb6af6c2eac2c4f258ceac33269b5eb Mon Sep 17 00:00:00 2001
+From: Phillip Tennen <pt@datatheorem.io>
+Date: Sat, 9 Sep 2023 00:01:43 +0100
+Subject: [PATCH] Implement the exact restore flow that gala expects
+
+---
+ src/asr.c            |  19 ++++
+ src/common.c         |  20 ++--
+ src/idevicerestore.c |  43 +--------
+ src/restore.c        | 212 ++++++++++++++++++++++++++++++++++++++++---
+ 4 files changed, 232 insertions(+), 62 deletions(-)
+
+diff --git a/src/asr.c b/src/asr.c
+index a1aba76..7ac2957 100644
+--- a/src/asr.c
++++ b/src/asr.c
+@@ -142,6 +142,7 @@ int asr_receive(asr_client_t asr, plist_t* data)
+ 	buffer = (char*)malloc(ASR_BUFFER_SIZE);
+ 	if (buffer == NULL) {
+ 		error("ERROR: Unable to allocate memory for ASR receive buffer\n");
++        printf("ERROR: Unable to allocate memory for ASR receive buffer\n");
+ 		return -1;
+ 	}
+ 
+@@ -189,6 +190,9 @@ int asr_send_buffer(asr_client_t asr, const char* data, uint32_t size)
+ 		error("ERROR: Unable to send data to ASR. Sent %u of %u bytes.\n", bytes, size);
+ 		return -1;
+ 	}
++    else {
++        printf("Successfully sent %u bytes to ASR\n", size);
++    }
+ 
+ 	return 0;
+ }
+@@ -216,6 +220,7 @@ int asr_perform_validation(asr_client_t asr, const char* filesystem)
+ 	plist_t payload_info = NULL;
+ 	int attempts = 0;
+ 
++    printf("asr_perform_validation %s\n", filesystem);
+ 	file = fopen(filesystem, "rb");
+ 	if (file == NULL) {
+ 		return -1;
+@@ -253,13 +258,22 @@ int asr_perform_validation(asr_client_t asr, const char* filesystem)
+ 	}
+ 	plist_free(packet_info);
+ 
++    printf("WAITING...\n");
++    sleep(5);
++    printf("WAITED!\n");
++
+ 	while (1) {
++        /*
+ 		if (asr_receive(asr, &packet) < 0) {
+ 			error("ERROR: Unable to receive validation packet\n");
+ 			return -1;
+ 		}
++         */
++        int ret = asr_receive(asr, &packet);
++        printf("Retval of asr_receive: %d\n", ret);
+ 
+ 		if (packet == NULL) {
++            printf("WAIT AFTER PACKET FAIL\n");
+ 			if (attempts < 5) {
+ 				info("Retrying to receive validation packet... %d\n", attempts);
+ 				attempts++;
+@@ -277,6 +291,8 @@ int asr_perform_validation(asr_client_t asr, const char* filesystem)
+ 		}
+ 		plist_get_string_val(node, &command);
+ 
++        printf("Got command from ASR: %s\n", command);
++
+ 		if (!strcmp(command, "OOBData")) {
+ 			int ret = asr_handle_oob_data_request(asr, packet, file);
+ 			plist_free(packet);
+@@ -310,6 +326,7 @@ int asr_handle_oob_data_request(asr_client_t asr, plist_t packet, FILE* file)
+ 		return -1;
+ 	}
+ 	plist_get_uint_val(oob_length_node, &oob_length);
++    printf("Got OOB Length: %d\n", oob_length);
+ 
+ 	oob_offset_node = plist_dict_get_item(packet, "OOB Offset");
+ 	if (!oob_offset_node || PLIST_UINT != plist_get_node_type(oob_offset_node)) {
+@@ -317,6 +334,7 @@ int asr_handle_oob_data_request(asr_client_t asr, plist_t packet, FILE* file)
+ 		return -1;
+ 	}
+ 	plist_get_uint_val(oob_offset_node, &oob_offset);
++    printf("Got OOB Offset: %d\n", oob_offset);
+ 
+ 	oob_data = (char*) malloc(oob_length);
+ 	if (oob_data == NULL) {
+@@ -336,6 +354,7 @@ int asr_handle_oob_data_request(asr_client_t asr, plist_t packet, FILE* file)
+ 		return -1;
+ 	}
+ 
++    printf("Sending OOB data to the device...\n");
+ 	if (asr_send_buffer(asr, oob_data, oob_length) < 0) {
+ 		error("ERROR: Unable to send OOB data to ASR\n");
+ 		free(oob_data);
+diff --git a/src/common.c b/src/common.c
+index 068f2dd..b8d819a 100644
+--- a/src/common.c
++++ b/src/common.c
+@@ -65,7 +65,7 @@ struct idevicerestore_mode_t idevicerestore_modes[] = {
+ 	{  5, "Normal"   },
+ };
+ 
+-int idevicerestore_debug = 0;
++int idevicerestore_debug = 1;
+ 
+ #define idevicerestore_err_buff_size 256
+ static char idevicerestore_err_buff[idevicerestore_err_buff_size] = {0, };
+@@ -80,10 +80,11 @@ static int debug_disabled = 0;
+ 
+ void info(const char* format, ...)
+ {
+-	if (info_disabled) return;
++	//if (info_disabled) return;
+ 	va_list vargs;
+ 	va_start(vargs, format);
+-	vfprintf((info_stream) ? info_stream : stdout, format, vargs);
++	//vfprintf((info_stream) ? info_stream : stdout, format, vargs);
++    vfprintf(stdout, format, vargs);
+ 	va_end(vargs);
+ }
+ 
+@@ -94,21 +95,24 @@ void error(const char* format, ...)
+ 	va_copy(vargs2, vargs);
+ 	vsnprintf(idevicerestore_err_buff, idevicerestore_err_buff_size, format, vargs);
+ 	va_end(vargs);
+-	if (!error_disabled) {
+-		vfprintf((error_stream) ? error_stream : stderr, format, vargs2);
+-	}
++	//if (!error_disabled) {
++		//vfprintf((error_stream) ? error_stream : stderr, format, vargs2);
++    vfprintf(stdout, format, vargs2);
++	//}
+ 	va_end(vargs2);
+ }
+ 
+ void debug(const char* format, ...)
+ {
+-	if (debug_disabled) return;
++	//if (debug_disabled) return;
++    /*
+ 	if (!idevicerestore_debug) {
+ 		return;
+ 	}
++     */
+ 	va_list vargs;
+ 	va_start(vargs, format);
+-	vfprintf((debug_stream) ? debug_stream : stderr, format, vargs);
++	vfprintf(stdout, format, vargs);
+ 	va_end(vargs);
+ }
+ 
+diff --git a/src/idevicerestore.c b/src/idevicerestore.c
+index 466cfe2..641788a 100644
+--- a/src/idevicerestore.c
++++ b/src/idevicerestore.c
+@@ -354,14 +354,7 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
+ 
+ 	// check which mode the device is currently in so we know where to start
+ 	mutex_lock(&client->device_event_mutex);
+-	if (client->mode == MODE_UNKNOWN) {
+-		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 10000);
+-		if (client->mode == MODE_UNKNOWN || (client->flags & FLAG_QUIT)) {
+-			mutex_unlock(&client->device_event_mutex);
+-			error("ERROR: Unable to discover device mode. Please make sure a device is attached.\n");
+-			return -1;
+-		}
+-	}
++    client->mode = MODE_RESTORE;
+ 	idevicerestore_progress(client, RESTORE_STEP_DETECT, 0.1);
+ 	info("Found device in %s mode\n", client->mode->string);
+ 	mutex_unlock(&client->device_event_mutex);
+@@ -456,10 +449,8 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
+ 		error("ERROR: Unable to discover device type\n");
+ 		return -1;
+ 	}
+-	if (client->ecid == 0) {
+-		error("ERROR: Unable to determine ECID\n");
+-		return -1;
+-	}
++    // PT: gala doesn't personalize, so the ECID doesn't matter
++    client->ecid = 0x00000363F615C377;
+ 	info("ECID: %" PRIu64 "\n", client->ecid);
+ 
+ 	idevicerestore_progress(client, RESTORE_STEP_DETECT, 0.2);
+@@ -909,33 +900,6 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
+ 		free(device_version);
+ 	}
+ 
+-	if (client->flags & FLAG_ERASE && client->flags & FLAG_INTERACTIVE) {
+-		char input[64];
+-		printf("################################ [ WARNING ] #################################\n"
+-		       "# You are about to perform an *ERASE* restore. ALL DATA on the target device #\n"
+-		       "# will be IRREVERSIBLY DESTROYED. If you want to update your device without  #\n"
+-		       "# erasing the user data, hit CTRL+C now and restart without -e or --erase    #\n"
+-		       "# command line switch.                                                       #\n"
+-		       "# If you want to continue with the ERASE, please type YES and press ENTER.   #\n"
+-		       "##############################################################################\n");
+-		while (1) {
+-			printf("> ");
+-			fflush(stdout);
+-			fflush(stdin);
+-			input[0] = '\0';
+-			get_user_input(input, 63, 0);
+-			if (client->flags & FLAG_QUIT) {
+-				return -1;
+-			}
+-			if (*input != '\0' && !strcmp(input, "YES")) {
+-				break;
+-			} else {
+-				printf("Invalid input. Please type YES or hit CTRL+C to abort.\n");
+-				continue;
+-			}
+-		}
+-	}
+-
+ 	idevicerestore_progress(client, RESTORE_STEP_PREPARE, 0.0);
+ 
+ 	/* check if all components we need are actually there */
+@@ -1053,6 +1017,7 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
+ 	idevicerestore_progress(client, RESTORE_STEP_PREPARE, 0.2);
+ 
+ 	/* retrieve shsh blobs if required */
++    tss_enabled = false;
+ 	if (tss_enabled) {
+ 		int stashbag_commit_required = 0;
+ 
+diff --git a/src/restore.c b/src/restore.c
+index 486ffb5..874a1b4 100644
+--- a/src/restore.c
++++ b/src/restore.c
+@@ -118,6 +118,123 @@ static int restore_finished = 0;
+ 
+ static int restore_device_connected = 0;
+ 
++int run_and_wait(const char** argv) {
++    printf("run_and_wait:\n");
++    int i = 0;
++    while (true) {
++        if (argv[i] == NULL) {
++            break;
++        }
++        printf("\t%s\n", argv[i]);
++        i += 1;
++    }
++    int pid = fork();
++    if (!pid) {
++        // Child
++        int ret = execvp(argv[0], argv);
++        printf("How did we get here?! %d\n", ret);
++        exit(-1);
++    }
++
++    int status = -2;
++    if (waitpid(pid, &status, 0) == -1) {
++        printf("waitpid() failed\n");
++        exit(-1);
++    };
++    return status;
++}
++
++void spin_until_file_appears_on_device(const char* path) {
++    printf("Spinning until path appears on-device: %s\n", path);
++    const char* remote_path_start = "root@localhost:";
++    char* remote_path_len = strlen(remote_path_start) + strlen(path) + 1;
++    char* remote_path = calloc(1, remote_path_len);
++    snprintf(remote_path, remote_path_len, "%s%s", remote_path_start, path);
++
++    printf("remote path: %s\n", remote_path);
++
++    // We need a path that already exists, otherwise scp fails with "scp: open local "./test": Read-only file system"
++    char sentinel_file[] = "/tmp/gala-copied-sentinel_file-XXXXXX";
++    int event_log_fd = mkstemp(sentinel_file);
++    if (event_log_fd == -1) {
++        printf("Failed to make sentinel file?!\n");
++        exit(1);
++    }
++
++    char sshpass_path[256] = {0};
++    snprintf(sshpass_path, sizeof(sshpass_path), "%s/dependencies/sshpass/sshpass", getenv("GALA_ROOT"));
++    char* argv[] = {sshpass_path, "-p", "alpine", "scp", "-P", "2222", "-o", "StrictHostKeyChecking=no", "-oHostKeyAlgorithms=+ssh-dss", remote_path, sentinel_file, NULL};
++    while (true) {
++        int ret = run_and_wait(argv);
++        if (ret != 0) {
++            int delay_seconds = 5;
++            printf("File does not exist yet, waiting %d seconds...\n", delay_seconds);
++            sleep(delay_seconds);
++        } else {
++            printf("File appeared on-device! %s\n", path);
++            free(remote_path);
++            return;
++        }
++    }
++
++    // Immediately unlink the file so that the only extant reference to the file is this process
++    // Once this process exits, the log file will be deleted
++    unlink(sentinel_file);
++}
++
++void send_root_filesystem() {
++    printf("Sending root filesystem...\n");
++    char local_rootfs_path[256] = {0};
++    snprintf(local_rootfs_path, sizeof(local_rootfs_path), "%s/patched_images/iPhone3,1_4.0_8A293/018-6303-385.dmg.repacked", getenv("GALA_ROOT"));
++    const char* remote_path = "root@localhost:/mnt2/gala/root_filesystem.dmg";
++    char sshpass_path[256] = {0};
++    snprintf(sshpass_path, sizeof(sshpass_path), "%s/dependencies/sshpass/sshpass", getenv("GALA_ROOT"));
++    char* argv[] = {sshpass_path, "-p", "alpine", "scp", "-P", "2222", "-o", "StrictHostKeyChecking=no", "-oHostKeyAlgorithms=+ssh-dss", local_rootfs_path, remote_path, NULL};
++    int ret = run_and_wait(argv);
++    if (ret != 0) {
++        printf("Failed to send root filesystem. %d\n", ret);
++        exit(-1);
++    }
++    printf("Root filesystem uploaded!\n");
++}
++
++void send_file_to_gala_assets_dir(const char* local_path, const char* remote_file_name) {
++    printf("Uploading %s...\n", local_path);
++    char* buf = calloc(1024, 1);
++    snprintf(buf, 1024, "root@localhost:/mnt2/gala/%s", remote_file_name);
++
++    char sshpass_path[256] = {0};
++    snprintf(sshpass_path, sizeof(sshpass_path), "%s/dependencies/sshpass/sshpass", getenv("GALA_ROOT"));
++    char* argv[] = {sshpass_path, "-p", "alpine", "scp", "-P", "2222", "-o", "StrictHostKeyChecking=no", "-oHostKeyAlgorithms=+ssh-dss", local_path, buf, NULL};
++    int ret = run_and_wait(argv);
++    if (ret != 0) {
++        printf("Failed to upload file: %d\n", ret);
++        exit(-1);
++    }
++    printf("Successfully uploaded file %s!\n", local_path);
++}
++
++void create_sentinel_file_on_device(const char* name) {
++    printf("Creating a sentinel file on the device at %s...\n", name);
++
++    char sentinel_file[] = "/tmp/gala-sentinel_file-XXXXXX";
++    int event_log_fd = mkstemp(sentinel_file);
++    if (event_log_fd == -1) {
++        printf("Failed to make sentinel file?!\n");
++        exit(1);
++    }
++    send_file_to_gala_assets_dir(sentinel_file, name);
++    // Immediately unlink the file so that the only extant reference to the file is this process
++    // Once this process exits, the log file will be deleted
++    unlink(sentinel_file);
++}
++
++void inform_device_that_root_filesystem_is_uploaded() {
++    printf("Creating a sentinel file to inform the device that the root filesystem is uploaded...\n");
++    create_sentinel_file_on_device("sentinel__rootfs_is_fully_uploaded");
++    printf("Successfully created sentinel file to inform device that the upload has completed!\n");
++}
++
+ int restore_client_new(struct idevicerestore_client_t* client)
+ {
+ 	struct restore_client_t* restore = (struct restore_client_t*) malloc(sizeof(struct restore_client_t));
+@@ -1041,6 +1158,7 @@ int restore_send_root_ticket(restored_client_t restore, struct idevicerestore_cl
+ 
+ int restore_send_component(restored_client_t restore, struct idevicerestore_client_t* client, plist_t build_identity, const char* component, const char* component_name)
+ {
++    printf("restore_send_component(%s)\n", component);
+ 	unsigned int size = 0;
+ 	unsigned char* data = NULL;
+ 	char* path = NULL;
+@@ -1065,16 +1183,39 @@ int restore_send_component(restored_client_t restore, struct idevicerestore_clie
+ 			return -1;
+ 		}
+ 	}
+-
+-	unsigned char* component_data = NULL;
+-	unsigned int component_size = 0;
+-	int ret = extract_component(client->ipsw, path, &component_data, &component_size);
+-	free(path);
+-	path = NULL;
+-	if (ret < 0) {
+-		error("ERROR: Unable to extract component %s\n", component);
+-		return -1;
+-	}
++    printf("got path %s\n", path);
++
++    unsigned char* component_data = NULL;
++    unsigned int component_size = 0;
++    int ret = 0;
++
++    const char* kernelcache_path = "kernelcache.release.n90";
++    if (!strncmp(path, kernelcache_path, strlen(kernelcache_path))) {
++        printf("*** CAUGHT kernelcache!\n");
++
++        char kernelcache_path[256] = {0};
++        snprintf(kernelcache_path, sizeof(kernelcache_path), "%s/patched_images/iPhone3,1_4.0_8A293/kernelcache.release.n90.reencrypted", getenv("GALA_ROOT"));
++        FILE* f = fopen(kernelcache_path, "rb");
++        fseek(f, 0, SEEK_END);
++        long fsize = ftell(f);
++        fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
++
++        char* kernelcache_contents = malloc(fsize + 1);
++        fread(kernelcache_contents, fsize, 1, f);
++        fclose(f);
++
++        component_data = kernelcache_contents;
++        component_size = fsize;
++    }
++    else {
++        int ret = extract_component(client->ipsw, path, &component_data, &component_size);
++        free(path);
++        path = NULL;
++        if (ret < 0) {
++            error("ERROR: Unable to extract component %s\n", component);
++            return -1;
++        }
++    }
+ 
+ 	ret = personalize_component(component, component_data, component_size, client->tss, &data, &size);
+ 	free(component_data);
+@@ -1124,6 +1265,7 @@ int restore_send_nor(restored_client_t restore, struct idevicerestore_client_t*
+ 	int flash_version_1 = 0;
+ 
+ 	info("About to send NORData...\n");
++    printf("*** About to send NORData...\n");
+ 
+ 	plist_t arguments = plist_dict_get_item(message, "Arguments");
+ 	if (arguments && plist_get_node_type(arguments) == PLIST_DICT) {
+@@ -3688,16 +3830,51 @@ int restore_handle_data_request_msg(struct idevicerestore_client_t* client, idev
+ 	node = plist_dict_get_item(message, "DataType");
+ 	if (node && PLIST_STRING == plist_get_node_type(node)) {
+ 		const char *type = plist_get_string_ptr(node, NULL);
++        printf("*** HANDLING restore_handle_data_request_msg type=%s\n", type);
+ 
+ 		// this request is sent when restored is ready to receive the filesystem
+ 		if (!strcmp(type, "SystemImageData")) {
+-			if(restore_send_filesystem(client, device, filesystem) < 0) {
+-				error("ERROR: Unable to send filesystem\n");
+-				return -2;
+-			}
++            printf("*** SystemImageData\n");
++
++            // Spin until the device says it's ready for images
++            spin_until_file_appears_on_device("/mnt2/gala/sentinel__device_is_ready_for_host_to_send_image_assets");
++
++            char asset_path_buf[256] = {0};
++            const char* gala_root_path = getenv("GALA_ROOT");
++
++            snprintf(asset_path_buf, sizeof(asset_path_buf), "%s/assets/boot_logo.png", gala_root_path);
++            send_file_to_gala_assets_dir(asset_path_buf, "boot_logo.png");
++
++            snprintf(asset_path_buf, sizeof(asset_path_buf), "%s/assets/mounting_dev_disk0s2s1.png", gala_root_path);
++            send_file_to_gala_assets_dir(asset_path_buf, "mounting_dev_disk0s2s1.png");
++
++            snprintf(asset_path_buf, sizeof(asset_path_buf), "%s/assets/receiving_filesystem_over_usb2.png", gala_root_path);
++            send_file_to_gala_assets_dir(asset_path_buf, "receiving_filesystem_over_usb2.png");
++
++            snprintf(asset_path_buf, sizeof(asset_path_buf), "%s/assets/running_asr.png", gala_root_path);
++            send_file_to_gala_assets_dir(asset_path_buf, "running_asr.png");
++
++            snprintf(asset_path_buf, sizeof(asset_path_buf), "%s/assets/unmounting.png", gala_root_path);
++            send_file_to_gala_assets_dir(asset_path_buf, "unmounting.png");
++
++            snprintf(asset_path_buf, sizeof(asset_path_buf), "%s/assets/finished.png", gala_root_path);
++            send_file_to_gala_assets_dir(asset_path_buf, "finished.png");
++
++            // Inform the device that all the images are now uploaded
++            create_sentinel_file_on_device("sentinel__host_has_uploaded_image_assets");
++
++            // Spin until the sentinel file appears indicating that the device is ready for us to
++            // send the root filesystem
++            spin_until_file_appears_on_device("/mnt2/gala/sentinel__device_is_ready_for_host_to_send_rootfs");
++
++            // Send the root filesystem
++            // TODO(PT): Refactor to use send_file_to_gala_assets_dir
++            send_root_filesystem();
++            inform_device_that_root_filesystem_is_uploaded();
+ 		}
+ 
+ 		else if (!strcmp(type, "BuildIdentityDict")) {
++            printf("*** BuildIdentityDict\n");
+ 			if (restore_send_buildidentity(restore, client, message) < 0) {
+ 				error("ERROR: Unable to send RootTicket\n");
+ 				return -1;
+@@ -3705,6 +3882,7 @@ int restore_handle_data_request_msg(struct idevicerestore_client_t* client, idev
+ 		}
+ 
+ 		else if (!strcmp(type, "PersonalizedBootObjectV3")) {
++            printf("*** PersonalizedBootObjectV3\n");
+ 			if (restore_send_personalized_boot_object_v3(restore, client, message, build_identity) < 0) {
+ 				error("ERROR: Unable to send PersonalizedBootObjectV3\n");
+ 				return -1;
+@@ -3712,6 +3890,7 @@ int restore_handle_data_request_msg(struct idevicerestore_client_t* client, idev
+ 		}
+ 
+ 		else if (!strcmp(type, "SourceBootObjectV4")) {
++            printf("*** SourceBootObjectV4\n");
+ 			if (restore_send_source_boot_object_v4(restore, client, message, build_identity) < 0) {
+ 				error("ERROR: Unable to send SourceBootObjectV4\n");
+ 				return -1;
+@@ -3750,6 +3929,7 @@ int restore_handle_data_request_msg(struct idevicerestore_client_t* client, idev
+ 		}
+ 		// send KernelCache
+ 		else if (!strcmp(type, "KernelCache")) {
++            printf("*** Sending kernelcache!\n");
+ 			if (restore_send_component(restore, client, build_identity, "KernelCache", NULL) < 0) {
+ 				error("ERROR: Unable to send kernelcache\n");
+ 				return -1;
+@@ -4247,7 +4427,7 @@ int restore_device(struct idevicerestore_client_t* client, plist_t build_identit
+ 	// this is the restore process loop, it reads each message in from
+ 	// restored and passes that data on to it's specific handler
+ 	while (!(client->flags & FLAG_QUIT)) {
+-		if (err != 0 && client->flags & FLAG_IGNORE_ERRORS) {
++        if (err != 0 && client->flags & FLAG_IGNORE_ERRORS) {
+ 			error("WARNING: Attempting to continue after critical error, restore might fail...\n");
+ 			err = 0;
+ 		}
+@@ -4256,6 +4436,7 @@ int restore_device(struct idevicerestore_client_t* client, plist_t build_identit
+ 		if (err < 0) {
+ 			error("ERROR: Unable to successfully restore device\n");
+ 			client->flags |= FLAG_QUIT;
++            exit(1);
+ 		}
+ 
+ 		restore_error = restored_receive(restore, &message);
+@@ -4279,6 +4460,7 @@ int restore_device(struct idevicerestore_client_t* client, plist_t build_identit
+ 
+ 		// discover what kind of message has been received
+ 		node = plist_dict_get_item(message, "MsgType");
++        debug_plist(message);
+ 		if (!node || plist_get_node_type(node) != PLIST_STRING) {
+ 			debug("Unknown message received:\n");
+ 			//if (idevicerestore_debug)
+-- 
+2.39.3 (Apple Git-145)
+

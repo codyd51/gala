@@ -1,0 +1,25 @@
+From 5ea2830c040c7cbc5f4755ca3a8ed970abee0027 Mon Sep 17 00:00:00 2001
+From: Phillip Tennen <pt@datatheorem.io>
+Date: Fri, 8 Sep 2023 22:09:38 +0100
+Subject: [PATCH] Add a forward declaration to satisfy the compiler
+
+---
+ ipsw-patch/xpwntool.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/ipsw-patch/xpwntool.c b/ipsw-patch/xpwntool.c
+index 51f8af6..23d1d2b 100644
+--- a/ipsw-patch/xpwntool.c
++++ b/ipsw-patch/xpwntool.c
+@@ -5,6 +5,8 @@
+ 
+ #define BUFFERSIZE (1024*1024)
+ 
++void exploit24kpwn(AbstractFile* file);
++
+ int main(int argc, char* argv[]) {
+ 	char* inData;
+ 	size_t inDataSize;
+--
+2.39.3 (Apple Git-145)
+
