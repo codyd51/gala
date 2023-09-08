@@ -1,8 +1,8 @@
 from strongarm.macho import VirtualMemoryPointer
 
-from assemble import Instr
-from configuration import GalaConfig
-from patches import InstructionPatch, Patch, PatchSet
+from gala.assemble import Instr
+from gala.configuration import GalaConfig
+from gala.patch_types import InstructionPatch, Patch, PatchSet
 
 
 def get_ibss_patches(_config: GalaConfig) -> list[Patch]:

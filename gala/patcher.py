@@ -7,17 +7,17 @@ from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig
-from iPhone3_1_4_0_8A293_patches import (
+from gala.configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig
+from gala.iPhone3_1_4_0_8A293_patches import (
     MapOfBinaryTypesToPatchGenerators,
     MapOfDebTypesToPatchGenerators,
     MapOfDmgTypesToPatchGenerators,
     MapOfPictureTypesToPatchGenerators,
     get_iphone_3_1_4_0_8a293_patches,
 )
-from os_build import ImageType, KeyRepository, OsBuildEnum
-from patches import Function, Patch
-from utils import TotalEnumMapping, run_and_check
+from gala.os_build import ImageType, KeyRepository, OsBuildEnum
+from gala.patch_types import Function, Patch
+from gala.utils import TotalEnumMapping, run_and_check
 
 _XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
 _XPWN_DMG = JAILBREAK_ROOT / "tools" / "xpwn" / "dmg" / "dmg"

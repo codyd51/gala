@@ -6,9 +6,9 @@ from pathlib import Path
 from capstone import CS_ARCH_ARM, CS_MODE_THUMB, Cs
 from strongarm.macho import ArchitectureNotSupportedError, MachoParser, VirtualMemoryPointer
 
-from assemble import Instr, assemble
-from configuration import IpswPatcherConfig
-from patches.base import Patch
+from gala.assemble import Instr, assemble
+from gala.configuration import IpswPatcherConfig
+from gala.patch_types import Patch
 
 
 @dataclass

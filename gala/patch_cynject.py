@@ -2,9 +2,9 @@ from pathlib import Path
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from configuration import IpswPatcherConfig
-from os_build import OsBuildEnum
-from patches import BlobPatch
+from gala.configuration import IpswPatcherConfig
+from gala.os_build import OsBuildEnum
+from gala.patch_types import BlobPatch
 
 
 def main():

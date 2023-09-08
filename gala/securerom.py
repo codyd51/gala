@@ -5,10 +5,10 @@ from typing import Self
 import usb
 from strongarm.macho import VirtualMemoryPointer
 
-from configuration import GalaConfig
-from device import Device, DeviceMode, acquire_device_with_timeout
-from os_build import DeviceModel
-from utils import TotalEnumMapping
+from gala.configuration import GalaConfig
+from gala.device import Device, DeviceMode, acquire_device_with_timeout
+from gala.os_build import DeviceModel
+from gala.utils import TotalEnumMapping
 
 _Cursor = int
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from os_build import ImageType, OsBuildEnum
-from patcher import JAILBREAK_ROOT
+from gala.os_build import ImageType, OsBuildEnum
+from gala.patcher import JAILBREAK_ROOT
 
 
 def fetch_original_decrypted_image() -> Path:

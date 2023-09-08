@@ -1,14 +1,14 @@
 from typing import Callable, Mapping
 
-from configuration import GalaConfig
-from iPhone3_1_4_0_8A293_patches.assets import get_apple_logo_patches, get_mobilesubstrate_patches
-from iPhone3_1_4_0_8A293_patches.ibec import get_ibec_patches
-from iPhone3_1_4_0_8A293_patches.ibss import get_ibss_patches
-from iPhone3_1_4_0_8A293_patches.kernelcache import get_kernelcache_patches
-from iPhone3_1_4_0_8A293_patches.restore_ramdisk import get_restore_ramdisk_patches
-from iPhone3_1_4_0_8A293_patches.root_filesystem import get_rootfs_patches
-from os_build import ImageType
-from patches import Patch
+from gala.configuration import GalaConfig
+from gala.iPhone3_1_4_0_8A293_patches.assets import get_apple_logo_patches, get_mobilesubstrate_patches
+from gala.iPhone3_1_4_0_8A293_patches.ibec import get_ibec_patches
+from gala.iPhone3_1_4_0_8A293_patches.ibss import get_ibss_patches
+from gala.iPhone3_1_4_0_8A293_patches.kernelcache import get_kernelcache_patches
+from gala.iPhone3_1_4_0_8A293_patches.restore_ramdisk import get_restore_ramdisk_patches
+from gala.iPhone3_1_4_0_8A293_patches.root_filesystem import get_rootfs_patches
+from gala.os_build import ImageType
+from gala.patch_types import Patch
 
 # PT: Some patches have serial dependencies (i.e. the root filesystem needs a .deb that's produced by a previous step),
 # so we can't generate the patched images in one pool. Instead, we need to execute them as an ordered series.

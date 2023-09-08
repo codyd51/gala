@@ -1,8 +1,8 @@
 from strongarm.macho import VirtualMemoryPointer
 
-from assemble import Instr
-from configuration import GalaConfig
-from patches import BlobPatch, InstructionPatch, Patch, PatchSet
+from gala.assemble import Instr
+from gala.configuration import GalaConfig
+from gala.patch_types import BlobPatch, InstructionPatch, Patch, PatchSet
 
 
 def get_ibec_patches(config: GalaConfig) -> list[Patch]:

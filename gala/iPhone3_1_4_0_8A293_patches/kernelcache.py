@@ -1,8 +1,8 @@
 from strongarm.macho import VirtualMemoryPointer
 
-from assemble import Instr
-from configuration import GALA_ROOT, GalaConfig
-from patches import BlobPatch, InstructionPatch, Patch, PatchSet
+from gala.assemble import Instr
+from gala.configuration import GALA_ROOT, GalaConfig
+from gala.patch_types import BlobPatch, InstructionPatch, Patch, PatchSet
 
 
 def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:

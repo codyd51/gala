@@ -9,9 +9,9 @@ from typing import Iterable
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from configuration import IpswPatcherConfig
-from patches.base import Patch
-from utils import run_and_check
+from gala.configuration import IpswPatcherConfig
+from gala.patch_types import Patch
+from gala.utils import run_and_check
 
 
 @dataclass

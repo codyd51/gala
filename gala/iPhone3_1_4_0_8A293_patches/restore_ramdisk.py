@@ -2,9 +2,9 @@ from pathlib import Path
 
 from strongarm.macho import VirtualMemoryPointer
 
-from assemble import Instr
-from configuration import GALA_ROOT, GalaConfig
-from patches import (
+from gala.assemble import Instr
+from gala.configuration import GALA_ROOT, GalaConfig
+from gala.patch_types import (
     BlobPatch,
     DmgApplyTarPatch,
     DmgBinaryPatch,

@@ -3,7 +3,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from configuration import GALA_ROOT
+from gala.configuration import GALA_ROOT
 
 _logger = logging.getLogger(__file__)
 

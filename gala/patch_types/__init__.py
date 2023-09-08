@@ -1,7 +1,7 @@
-from patches.base import Function, Patch, PatchSet
-from patches.binary_patches import BlobPatch, InstructionPatch
-from patches.deb_patches import DebPatch, DebPatchSet
-from patches.dmg_patches import (
+from gala.patch_types.base import Function, Patch, PatchSet
+from gala.patch_types.binary_patches import BlobPatch, InstructionPatch
+from gala.patch_types.deb_patches import DebPatch, DebBinaryPatch, DebPatchSet
+from gala.patch_types.dmg_patches import (
     DmgApplyTarPatch,
     DmgBinaryPatch,
     DmgPatch,
@@ -17,6 +17,7 @@ __all__ = [
     "Function",
     "InstructionPatch",
     "BlobPatch",
+    "DebBinaryPatch",
     "DebPatch",
     "DebPatchSet",
     "DmgPatch",

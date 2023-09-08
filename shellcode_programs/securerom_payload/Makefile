@@ -11,4 +11,4 @@ build/securerom_payload_packed build/securerom_payload_shellcode:
 	# Ref: https://blog.rust-lang.org/2020/01/03/reducing-support-for-32-bit-apple-targets.html
 	cargo +nightly-2020-01-01-x86_64-apple-darwin build --target=armv7-apple-ios --manifest-path=./rust_securerom_payload/Cargo.toml
 	ld build/entry.o ./rust_securerom_payload/target/armv7-apple-ios/debug/librust_securerom_payload.a -U _main -U start -static -o build/securerom_payload_packed
-	python3 ../../dump_shellcode.py build/securerom_payload_packed build/securerom_payload_shellcode
+	python3 ../dump_shellcode.py build/securerom_payload_packed build/securerom_payload_shellcode

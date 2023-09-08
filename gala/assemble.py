@@ -4,7 +4,7 @@ from typing import Self
 
 from strongarm.macho import VirtualMemoryPointer
 
-from utils import TotalEnumMapping
+from gala.utils import TotalEnumMapping
 
 
 class InstrFormat(Enum):

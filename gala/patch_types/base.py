@@ -4,7 +4,7 @@ from pathlib import Path
 
 from strongarm.macho import VirtualMemoryPointer
 
-from configuration import IpswPatcherConfig
+from gala.configuration import IpswPatcherConfig
 
 
 @dataclass

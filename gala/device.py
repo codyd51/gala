@@ -11,8 +11,8 @@ import usb.core
 from usb.backend import libusb1
 from usb.backend.libusb1 import _LibUSB
 
-from os_build import DeviceModel
-from utils import TotalEnumMapping, chunks
+from gala.os_build import DeviceModel
+from gala.utils import TotalEnumMapping, chunks
 
 
 class NoDfuDeviceFoundError(Exception):

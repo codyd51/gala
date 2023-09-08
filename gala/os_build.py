@@ -7,7 +7,7 @@ from typing import Any, Mapping
 
 from strongarm.macho import VirtualMemoryPointer
 
-from utils import TotalEnumMapping
+from gala.utils import TotalEnumMapping
 
 
 class DeviceModel(Enum):
@@ -179,7 +179,7 @@ class OsBuildEnum(Enum):
         )[self.model][image_type]
 
     def asset_path_for_image_type(self, image_type: ImageType) -> Path:
-        from configuration import ASSETS_ROOT
+        from gala.configuration import ASSETS_ROOT
 
         # This only applies to .debs, which are stored in assets/ instead of in an IPSW
         return TotalEnumMapping(
