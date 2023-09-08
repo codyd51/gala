@@ -7,7 +7,7 @@ from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from gala.configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig
+from gala.configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig, DEPENDENCIES_ROOT
 from gala.iPhone3_1_4_0_8A293_patches import (
     MapOfBinaryTypesToPatchGenerators,
     MapOfDebTypesToPatchGenerators,
@@ -19,9 +19,9 @@ from gala.os_build import ImageType, KeyRepository, OsBuildEnum
 from gala.patch_types import Function, Patch
 from gala.utils import TotalEnumMapping, run_and_check
 
-_XPWNTOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
-_XPWN_DMG = JAILBREAK_ROOT / "tools" / "xpwn" / "dmg" / "dmg"
-_IMAGETOOL = JAILBREAK_ROOT / "tools" / "xpwn-xerub" / "ipsw-patch" / "imagetool"
+_XPWNTOOL = DEPENDENCIES_ROOT / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
+_XPWN_DMG = DEPENDENCIES_ROOT / "xpwn" / "dmg" / "dmg"
+_IMAGETOOL = DEPENDENCIES_ROOT / "xpwn-xerub" / "ipsw-patch" / "imagetool"
 
 
 class FunctionRepository:
