@@ -41,25 +41,8 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
             # Logs "AppleSerialMultiplexer: mux::timeGetAdjustmentGated: Forcing time update" once every few seconds forever
             # InstructionPatch.quick(0x8013cb70, Instr.thumb("movs r0, #0"), expected_length=2),
             # Checking retval of `suser`. Instead of `cbnz not_root`, set retval = 0.
-            InstructionPatch.quick(0x8014c696, Instr.thumb("movs r0, #0"), expected_length=2),
-        ]
-    )
-
-    shellcode_patch = PatchSet(
-        name="Shellcode",
-        patches=[
-            BlobPatch(
-                address=VirtualMemoryPointer(0x8014d424),
-                new_content=Path(
-                    "/Users/philliptennen/Documents/Jailbreak/gala/shellcode_within_kernelcache/build/shellcode_within_kernelcache_shellcode"
-                ).read_bytes(),
-            ),
-            InstructionPatch.quick(0x8014cfac, Instr.thumb(f"bl #{hex(0x8014d424)}")),
-            #BlobPatch(
-            #    address=VirtualMemoryPointer(0x8014cfac),
-            #    new_content=b'A' * 128,
-            #)
-        ]
+            InstructionPatch.quick(0x8014C696, Instr.thumb("movs r0, #0"), expected_length=2),
+        ],
     )
 
     neuter_amfi = PatchSet(
@@ -70,9 +53,7 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
             # PT: We might need a shellcode program that sets that var to 1, but how to run it at startup?
             BlobPatch(
                 address=VirtualMemoryPointer(0x80966080),
-                new_content=Path(
-                    "/Users/philliptennen/Documents/Jailbreak/gala/kernelcache_set_debug_enabled/build/kernelcache_set_debug_enabled_shellcode"
-                ).read_bytes(),
+                new_content=(GALA_ROOT / "shellcode_programs" / "kernelcache_set_debug_enabled" / "build" / "kernelcache_set_debug_enabled_shellcode").read_bytes()
             ),
             # 0x80966080
             # 0x8026a800

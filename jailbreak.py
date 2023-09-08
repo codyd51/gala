@@ -22,7 +22,7 @@ def boot_device(config: GalaConfig):
     image_types_to_paths = regenerate_patched_images(config)
 
     # Run our payload in SecureROM on a connected DFU device
-    securerom_shellcode_path = Path(__file__).parent / "payload_stage1" / "build" / "payload_stage1_shellcode"
+    securerom_shellcode_path = GALA_ROOT / "shellcode_programs" / "securerom_payload" / "build" / "securerom_payload_shellcode"
     securerom_shellcode = securerom_shellcode_path.read_bytes()
     print(f"SecureROM shellcode length: {len(securerom_shellcode)}")
 
