@@ -196,5 +196,3 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
         sandbox_debug_mode,
         allow_rwx_pages,
     ]
-
-
