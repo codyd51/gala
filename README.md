@@ -90,15 +90,3 @@ _Example: Injecting a shellcode program_
 PT: Perhaps clone sshpass and dpkg as tools/?
 
 * sshpass
-
-There are some misconceptions in your comments that I think could be useful to clear up. 
-
-When exploiting a running system, your goal typically won't be to disable ASLR (which would only impact newly spawned processes), but instead to 'infoleak' where ASLR has placed important things you care about, so you know where to access them. 
-
-Modern devices have mechanisms like KPP/KTRR, though, which make it impossible to modify kernel code anyhow. 
-
-You also propose that CoreGraphics might not be sandboxed. CoreGraphics is a dynamic library which can be loaded into any process. It's _processes_ that are sandboxed, not dynamic libraries, so CoreGraphics can definitely exist in a process that has a sandbox profile applied just fine. 
-
-You also mention that graphics functions might not be sandboxed because they need to access graphics acceleration features. This is a good thought! In fact, the kernel extension that enables hardware graphics acceleration, IOMobileFramebuffer, is accessible from the app sandbox for this very reason. As a point of interest, many vulnerabilities have been discovered in IOMobileFramebuffer over the years -- it's an attractive target specifically because it's reachable from the app sandbox.
-
-Lastly, you mention jailbreaking the sandbox. I know what you mean, but "jailbreaking" typically refers to a series of abilities, such as the ability to control the kernel task, the ability to create RWX pages, the ability to bypass the FreeBSD MAC policies, etc. The ability to bypass sandbox restrictions is only one condition of a jailbreak, and a sandbox escape doesn't imply a full jailbreak. Also, jailbreaking doesn't entirely break "the sandbox" -- it's a selective change that can be applied on a per-process basis.
