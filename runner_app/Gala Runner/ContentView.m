@@ -13,9 +13,6 @@
     if ((self = [super initWithFrame:frame])) {
         self.logsView = logsView;
         self.bufferedData = [NSMutableString new];
-        //NSString* imagePath = @"/Users/philliptennen/Documents/Jailbreak/gala/assets/boot_logo_for_gui.png";
-        //NSString* imagePath = @"/Users/philliptennen/Documents/Jailbreak/gala/assets/boot_logo_for_gui.png";
-        //NSImage* image = [[NSImage alloc] initByReferencingFile:imagePath];
         NSImage* image = [NSImage imageNamed:@"boot_logo_for_gui.png"];
         NSImageView* logo = [NSImageView imageViewWithImage:image];
 
@@ -88,7 +85,6 @@
 - (void)runGala:(NSArray<NSString*>*)args {
     // TODO(PT): Ensure there's no ongoing task
     self.ongoingTask = [[NSTask alloc] init];
-    //self.ongoingTask.executableURL = [NSURL fileURLWithPath:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python"].absoluteURL;
     // Invoke bash instead of Python directly so that the Python script spawned by gala pick up the PATH
     self.ongoingTask.executableURL = [NSURL fileURLWithPath:@"/bin/bash"];
     

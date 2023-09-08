@@ -7,10 +7,6 @@ from gala.patch_types import InstructionPatch, Patch, PatchSet
 
 def get_ibss_patches(_config: GalaConfig) -> list[Patch]:
     return [
-        # BlobPatch(
-        #    address=VirtualMemoryPointer(0x8400de48),
-        #    new_content=Path("/Users/philliptennen/Documents/Jailbreak/gala/payload_stage2/build/payload_stage2_shellcode").read_bytes(),
-        # ),
         PatchSet(
             name="Enable UART debug logs",
             patches=[
