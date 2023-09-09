@@ -54,7 +54,7 @@ class FunctionRepository:
     @classmethod
     def function_with_name(cls, os_build: OsBuildEnum, name: str) -> Function:
         known_functions = cls._BUILDS_TO_KNOWN_FUNCTIONS[os_build]
-        names_to_functions = {f.name: f for f in known_functions}   # type: ignore
+        names_to_functions = {f.name: f for f in known_functions}  # type: ignore
         return names_to_functions[name]
 
 
