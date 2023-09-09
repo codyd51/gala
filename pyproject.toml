@@ -5,3 +5,17 @@ line-length = 120
 profile = "black"
 line_length = 120
 force_single_line = true
+
+[tool.mypy]
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.flake8]
+max-line-length = 120
+# E203 whitespace before ':' (Black sometimes violates this)
+# W503 warning about a linebreak before a boolean operator (and/or). (black formats this way)
+ignore = "E203, W503"
