@@ -1,17 +1,21 @@
+import shutil
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Iterator
 
-import shutil
-from typing import Generator, Iterator, Iterable, Callable
-
+import requests
 from invoke import task
 from invoke.context import Context
-import requests
 
-from gala.configuration import GALA_ROOT, DEPENDENCIES_ROOT, DEPENDENCY_PATCHES_ROOT, ZIPPED_IPSWS_ROOT, \
-    UNZIPPED_IPSWS_ROOT
+from gala.configuration import (
+    DEPENDENCIES_ROOT,
+    DEPENDENCY_PATCHES_ROOT,
+    GALA_ROOT,
+    UNZIPPED_IPSWS_ROOT,
+    ZIPPED_IPSWS_ROOT,
+)
 from gala.os_build import OsBuildEnum
 
 
@@ -59,10 +63,11 @@ def _ensure_pre_dependencies_are_installed() -> None:
     print(f"Verifying that {embolden(str(len(pre_dependencies)))} pre-dependencies are installed...")
 
     for pre_dependency in pre_dependencies:
-        print(f"Checking for pre-dependency \"{embolden(pre_dependency)}\"")
+        print(f'Checking for pre-dependency "{embolden(pre_dependency)}"')
         if shutil.which(pre_dependency) is None:
             print(
-                f"{embolden('Toolchain setup failed: ')} pre-dependency \"{embolden(pre_dependency)}\" not found. Is it installed and in $PATH?")
+                f"{embolden('Toolchain setup failed: ')} pre-dependency \"{embolden(pre_dependency)}\" not found. Is it installed and in $PATH?"
+            )
             sys.exit(0)
 
     print(embolden("Verified pre-dependencies."))
@@ -143,10 +148,10 @@ def _clone_and_build_dependencies(ctx: Context) -> None:
                 ctx.run(f"git apply {patch.as_posix()}")
 
             for command in dependency_info.compile_commands:
-                print(f"Running compile command \"{embolden(command)}\"...")
+                print(f'Running compile command "{embolden(command)}"...')
                 ctx.run(command)
 
-        print(f"Successfully built \"{embolden(dependency_info.cloned_directory_name)}\"...")
+        print(f'Successfully built "{embolden(dependency_info.cloned_directory_name)}"...')
     print()
     print(f"Successfully cloned and built {embolden(str(len(dependencies)))} dependencies.")
 
@@ -159,14 +164,15 @@ def _iter_bytes_received_by_chunk_size(chunk_size: int) -> Iterator[int]:
 
 
 def _download_file(url: str, dest_path: Path, percent_completed_callback: Callable[[float], None] = None) -> None:
-    print(f'Downloading {embolden(url)}...')
+    print(f"Downloading {embolden(url)}...")
     chunk_size = 1024 * 8
     with requests.get(url, stream=True) as resp:
         resp.raise_for_status()
         content_length = resp.raw.length_remaining
         with dest_path.open("wb") as dest_file:
-            for (bytes_received_so_far, chunk) in zip(_iter_bytes_received_by_chunk_size(chunk_size),
-                                                      resp.iter_content(chunk_size=chunk_size)):
+            for bytes_received_so_far, chunk in zip(
+                _iter_bytes_received_by_chunk_size(chunk_size), resp.iter_content(chunk_size=chunk_size)
+            ):
                 dest_file.write(chunk)
 
                 if percent_completed_callback:
@@ -199,18 +205,20 @@ def _download_and_unzip_ipsw(ctx: Context, os_build: OsBuildEnum) -> None:
     ZIPPED_IPSWS_ROOT.mkdir(exist_ok=True)
     downloaded_path = ZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}.zip"
     _download_file_and_report_progress(os_build.download_url, downloaded_path)
-    print(f'IPSW download complete.')
+    print(f"IPSW download complete.")
     print()
 
     unzipped_path = UNZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}"
-    print(f'Unzipping {embolden(downloaded_path.relative_to(GALA_ROOT))} to {embolden(unzipped_path.relative_to(GALA_ROOT))}...')
+    print(
+        f"Unzipping {embolden(downloaded_path.relative_to(GALA_ROOT))} to {embolden(unzipped_path.relative_to(GALA_ROOT))}..."
+    )
     shutil.unpack_archive(downloaded_path.as_posix(), unzipped_path.as_posix())
-    print(f'Unzipped IPSW to {embolden(unzipped_path.relative_to(GALA_ROOT))}.')
+    print(f"Unzipped IPSW to {embolden(unzipped_path.relative_to(GALA_ROOT))}.")
 
 
 @task
 def setup_toolchain(ctx: Context) -> None:
-    print(embolden('Setting up gala toolchain...'))
+    print(embolden("Setting up gala toolchain..."))
 
     _ensure_pre_dependencies_are_installed()
     _install_required_rust_toolchain(ctx)

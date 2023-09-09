@@ -7,7 +7,7 @@ from typing import Mapping
 
 from strongarm.macho import MachoParser, VirtualMemoryPointer
 
-from gala.configuration import JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig, DEPENDENCIES_ROOT
+from gala.configuration import DEPENDENCIES_ROOT, JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig
 from gala.iPhone3_1_4_0_8A293_patches import (
     MapOfBinaryTypesToPatchGenerators,
     MapOfDebTypesToPatchGenerators,

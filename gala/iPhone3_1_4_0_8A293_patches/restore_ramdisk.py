@@ -3,7 +3,7 @@ from pathlib import Path
 from strongarm.macho import VirtualMemoryPointer
 
 from gala.assemble import Instr
-from gala.configuration import GALA_ROOT, GalaConfig, ASSETS_ROOT
+from gala.configuration import ASSETS_ROOT, GALA_ROOT, GalaConfig
 from gala.patch_types import (
     BlobPatch,
     DmgApplyTarPatch,

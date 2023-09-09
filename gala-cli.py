@@ -1,13 +1,19 @@
 import argparse
-import os
 import time
 from pathlib import Path
 
 import usb
 import usb.core
 
-from gala.configuration import ASSETS_ROOT, GALA_ROOT, Color, DeviceBootConfig, GalaConfig, IpswPatcherConfig, \
-    DEPENDENCIES_ROOT
+from gala.configuration import (
+    ASSETS_ROOT,
+    DEPENDENCIES_ROOT,
+    GALA_ROOT,
+    Color,
+    DeviceBootConfig,
+    GalaConfig,
+    IpswPatcherConfig,
+)
 from gala.device import DeviceMode, NoDfuDeviceFoundError, acquire_device_with_timeout
 from gala.os_build import ImageType, OsBuildEnum
 from gala.patcher import regenerate_patched_images
