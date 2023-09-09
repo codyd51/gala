@@ -24,8 +24,12 @@ isort==5.12.0
     # via -r requirements-dev.in
 mccabe==0.7.0
     # via flake8
+mypy==1.5.1
+    # via -r requirements-dev.in
 mypy-extensions==1.0.0
-    # via black
+    # via
+    #   black
+    #   mypy
 packaging==23.1
     # via black
 pathspec==0.11.2
@@ -40,5 +44,7 @@ pyflakes==3.1.0
     #   flake8
 requests==2.31.0
     # via -r requirements-dev.in
+typing-extensions==4.7.1
+    # via mypy
 urllib3==2.0.4
     # via requests
