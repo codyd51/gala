@@ -14,10 +14,16 @@ charset-normalizer==3.2.0
     # via requests
 click==8.1.7
     # via black
+flake8==6.1.0
+    # via flake8-pyproject
+flake8-pyproject==1.2.3
+    # via -r requirements-dev.in
 idna==3.4
     # via requests
 isort==5.12.0
     # via -r requirements-dev.in
+mccabe==0.7.0
+    # via flake8
 mypy-extensions==1.0.0
     # via black
 packaging==23.1
@@ -26,8 +32,12 @@ pathspec==0.11.2
     # via black
 platformdirs==3.10.0
     # via black
+pycodestyle==2.11.0
+    # via flake8
 pyflakes==3.1.0
-    # via autoflake
+    # via
+    #   autoflake
+    #   flake8
 requests==2.31.0
     # via -r requirements-dev.in
 urllib3==2.0.4
