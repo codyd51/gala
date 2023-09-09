@@ -4,3 +4,4 @@ autoflake==2.2.1
 requests==2.31.0
 flake8-pyproject==1.2.3
 mypy==1.5.1
+types-requests==2.31.0.2
