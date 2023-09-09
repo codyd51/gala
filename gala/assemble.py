@@ -156,13 +156,6 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             raise NotImplementedError(mnemonic)
 
 
-def twos_complement2(val: int, bit_count: int) -> int:
-    if (val & (1 << (bit_count - 1))) != 0:  # if sign bit is set e.g., 8bit: 128-255
-        print(f"sign bit is set")
-        val = val - (1 << bit_count)  # compute negative value
-    return val  # return positive value as is
-
-
 def twos_complement(val: int, nbits: int) -> int:
     """Compute the 2's complement of int value val"""
     if val < 0:

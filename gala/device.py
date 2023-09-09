@@ -33,11 +33,6 @@ def _get_libusb_backend() -> _LibUSB:
     return backend
 
 
-def dump_usb_devices():
-    for dev in usb.core.find(find_all=True, backend=_get_libusb_backend()):
-        print(dev)
-
-
 class DeviceMode(Enum):
     DFU = auto()
     Recovery = auto()
