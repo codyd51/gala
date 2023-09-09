@@ -71,7 +71,7 @@ class ImageType(Enum):
         ]
 
     @classmethod
-    def validate_type_subsets(cls):
+    def validate_type_subsets(cls) -> None:
         all_types = {t for t in ImageType}
         categories = [
             set(x)
@@ -104,21 +104,21 @@ class ImageType(Enum):
         return TotalEnumMapping(mapping, omitted_variants=[x for x in ImageType if x not in subkeys])
 
     @classmethod
-    def binary_types_mapping(cls, mapping: dict[ImageType, Any]):
+    def binary_types_mapping(cls, mapping: dict[ImageType, Any]) -> Any:
         # TODO(PT): Perhaps instead we could have a special 'inject PNG' patch, rather than having a totally
         # separate code path for pictures
         return cls._mapping_total_over_subkeys(mapping, ImageType.binary_types())
 
     @classmethod
-    def deb_types_mapping(cls, mapping: dict[ImageType, Any]):
+    def deb_types_mapping(cls, mapping: dict[ImageType, Any]) -> Any:
         return cls._mapping_total_over_subkeys(mapping, ImageType.deb_types())
 
     @classmethod
-    def dmg_types_mapping(cls, mapping: dict[ImageType, Any]):
+    def dmg_types_mapping(cls, mapping: dict[ImageType, Any]) -> Any:
         return cls._mapping_total_over_subkeys(mapping, ImageType.dmg_types())
 
     @classmethod
-    def picture_types_mapping(cls, mapping: dict[ImageType, Any]):
+    def picture_types_mapping(cls, mapping: dict[ImageType, Any]) -> Any:
         return cls._mapping_total_over_subkeys(mapping, ImageType.picture_types())
 
 
@@ -134,7 +134,7 @@ class OsBuildEnum(Enum):
     iPhone3_1_6_1_10B144 = auto()
 
     @property
-    def unescaped_name(self):
+    def unescaped_name(self) -> str:
         return TotalEnumMapping(
             {
                 OsBuildEnum.iPhone3_1_4_0_8A293: "iPhone3,1_4.0_8A293",
@@ -196,7 +196,7 @@ class OsBuildEnum(Enum):
 
     @property
     def download_url(self) -> str:
-        def not_implemented():
+        def not_implemented() -> None:
             raise NotImplementedError()
 
         # PT: This map is callback-based as a small trick to stay total without needing to define all the URLs at once
@@ -209,7 +209,9 @@ class OsBuildEnum(Enum):
                 self.iPhone3_1_5_0_9A334: not_implemented,
                 self.iPhone3_1_6_1_10B144: not_implemented,
             }
-        )[self]()
+        )[
+            self  # type: ignore
+        ]()
 
 
 @dataclass

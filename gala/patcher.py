@@ -4,13 +4,14 @@ import shutil
 from copy import copy
 from pathlib import Path
 from typing import Mapping
+from typing import Tuple
 
 from strongarm.macho import MachoParser
 from strongarm.macho import VirtualMemoryPointer
 
 from gala.configuration import DEPENDENCIES_ROOT
-from gala.configuration import JAILBREAK_ROOT
 from gala.configuration import PATCHED_IMAGES_ROOT
+from gala.configuration import UNZIPPED_IPSWS_ROOT
 from gala.configuration import GalaConfig
 from gala.configuration import IpswPatcherConfig
 from gala.iPhone3_1_4_0_8A293_patches import MapOfBinaryTypesToPatchGenerators
@@ -52,7 +53,7 @@ class FunctionRepository:
 
     @classmethod
     def function_with_name(cls, os_build: OsBuildEnum, name: str) -> Function:
-        known_functions = cls._BUILDS_TO_KNOWN_FUNCTIONS[os_build]
+        known_functions = cls._BUILDS_TO_KNOWN_FUNCTIONS[os_build]  # type: ignore
         names_to_functions = {f.name: f for f in known_functions}
         return names_to_functions[name]
 
@@ -63,12 +64,12 @@ class PatchRepository:
         cls,
     ) -> Mapping[
         OsBuildEnum,
-        (
+        Tuple[
             MapOfPictureTypesToPatchGenerators,
             MapOfDebTypesToPatchGenerators,
             MapOfDmgTypesToPatchGenerators,
             MapOfBinaryTypesToPatchGenerators,
-        ),
+        ],
     ]:
         empty_patch_sets = (
             ImageType.picture_types_mapping(
@@ -112,7 +113,7 @@ def dump_text_section(input_file: Path) -> bytes:
     return binary.get_content_from_virtual_address(text_section.address, text_section.size)
 
 
-def decrypt_img3(path: Path, output_path: Path, key: str, iv: str):
+def decrypt_img3(path: Path, output_path: Path, key: str, iv: str) -> None:
     run_and_check(
         [
             _XPWNTOOL.as_posix(),
@@ -128,7 +129,7 @@ def decrypt_img3(path: Path, output_path: Path, key: str, iv: str):
         raise RuntimeError(f"Expected decrypted img3 to be produced at {output_path.as_posix()}")
 
 
-def encrypt_img3(path: Path, output_path: Path, original_img3: Path, key: str, iv: str):
+def encrypt_img3(path: Path, output_path: Path, original_img3: Path, key: str, iv: str) -> None:
     run_and_check(
         [
             _XPWNTOOL.as_posix(),
@@ -150,12 +151,13 @@ def apply_patches(
     input: Path,
     output: Path,
     patches: list[Patch],
-):
+) -> None:
     print(f"Applying {len(patches)} patches to {image_type.name}, output={output}...")
     # TODO(PT): The base address may need to vary based on OS version as well as image type?
     # TODO(PT): The base address should perhaps be renamed to something like `a_priori_load_address`
-    # For Mach-O's, the MachO contains the load address. We just need to know it for objects like the iBSS and iBEC, which are 'raw'
-    # For pictures and ramdisks it's irrelevant
+    # For Mach-O's, the MachO contains the load address. We just need to know it for
+    # objects like the iBSS and iBEC, which are 'raw'.
+    # For pictures and dmg's it's irrelevant
     base_address = image_type.base_address
     input_bytes = input.read_bytes()
     patched_bytes = bytearray(copy(input_bytes))
@@ -164,7 +166,7 @@ def apply_patches(
         patch.apply(patcher_config, input, base_address, patched_bytes)
 
     if patched_bytes != input_bytes:
-        print(f"Bytes successfully modified?")
+        print("Bytes successfully modified?")
 
     output.write_bytes(patched_bytes)
 
@@ -195,7 +197,7 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
 
-    ipsw = JAILBREAK_ROOT / "unzipped_ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
+    ipsw = UNZIPPED_IPSWS_ROOT / os_build.unescaped_name
     encrypted_image = ipsw / image_ipsw_subpath
     if not encrypted_image.exists():
         raise ValueError(f"Expected to find an encrypted image at {encrypted_image}")
@@ -223,9 +225,9 @@ def patch_image(config: GalaConfig, image_type: ImageType, patches: list[Patch])
         repacked_dmg = output_dir / f"{file_name}.repacked"
 
         if not patcher_config.should_rebuild_root_filesystem:
-            print(f"Skip rebuilding root filesystem...")
+            print("Skip rebuilding root filesystem...")
             if not repacked_dmg.exists():
-                raise ValueError(f"Supposed to skip rebuilding root filesystem, but a cached version doesn't exist")
+                raise ValueError("Supposed to skip rebuilding root filesystem, but a cached version doesn't exist")
             return repacked_dmg
 
         extracted_dmg.unlink(missing_ok=True)
@@ -296,8 +298,8 @@ def regenerate_patched_images(config: GalaConfig) -> Mapping[ImageType, Path]:
 
 def generate_patched_ipsw(os_build: OsBuildEnum, image_types_to_paths: Mapping[ImageType, Path]) -> None:
     # Produce a patched IPSW
-    ipsw = JAILBREAK_ROOT / "ipsw" / f"{os_build.unescaped_name}_Restore.ipsw.unzipped"
-    output_dir = JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
+    ipsw = UNZIPPED_IPSWS_ROOT / os_build.unescaped_name
+    output_dir = PATCHED_IMAGES_ROOT / os_build.unescaped_name
     unzipped_patched_ipsw = output_dir / "patched.ipsw.unzipped"
     if unzipped_patched_ipsw.exists():
         shutil.rmtree(unzipped_patched_ipsw)

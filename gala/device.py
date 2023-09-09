@@ -43,7 +43,7 @@ class DeviceMode(Enum):
     Recovery = auto()
 
     @property
-    def usb_product_id(self):
+    def usb_product_id(self) -> int:
         return TotalEnumMapping(
             {
                 DeviceMode.DFU: 0x1227,
@@ -77,7 +77,7 @@ class Device:
 
     def send_command(self, command: str) -> None:
         if self.mode != DeviceMode.Recovery:
-            raise ValueError(f"Sending commands is only supported in Recovery Mode")
+            raise ValueError("Sending commands is only supported in Recovery Mode")
         self.handle.ctrl_transfer(0x40, 0, data_or_wLength=command.encode() + b"\x00", timeout=30000)
 
     def dfu_upload_data(self, data: bytes, timeout_ms: int = 3000) -> None:
@@ -94,10 +94,12 @@ class Device:
             sent_bytes_counter += len(chunk)
 
     def dfu_notify_upload_finished(self) -> None:
-        #  Ref: https://archive.conference.hitb.org/hitbsecconf2013kul/materials/D2T1%20-%20Joshua%20'p0sixninja'%20Hill%20-%20SHAttered%20Dreams.pdf
+        # Ref: https://archive.conference.hitb.org/hitbsecconf2013kul/
+        # materials/D2T1%20-%20Joshua%20'p0sixninja'%20Hill%20-%20SHAttered%20Dreams.pdf
         # "Image validation starts whenever the global “file received” variable has been set."
-        # "This can be caused by sending 1 empty “Send Data” packet, and 3 “Get Status” packets followed by a USB reset."
-        print(f"Informing the DFU device that the upload has finished...")
+        # "This can be caused by sending 1 empty “Send Data” packet,
+        # and 3 “Get Status” packets followed by a USB reset."
+        print("Informing the DFU device that the upload has finished...")
         self.handle.ctrl_transfer(0x21, 1, 0, 0, 0, timeout=100)
         # Send a 'Get Status' three times
         for _ in range(3):
@@ -114,7 +116,7 @@ class Device:
         max_recovery_upload_chunk_size = 0x4000
         try:
             if self.handle.ctrl_transfer(0x41, 0, 0, timeout=1000) != 0:
-                raise ValueError(f"Expected a response of 0")
+                raise ValueError("Expected a response of 0")
         except Exception as e:
             print(f"Skipping exception {e}")
         sent_bytes_counter = 0

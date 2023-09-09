@@ -64,7 +64,7 @@ def register_name_to_encoded_value(register_name: str) -> str:
 
 def immediate_literal_to_int(imm: str) -> int:
     if imm[0] != "#":
-        raise ValueError(f"Expected a hash character")
+        raise ValueError("Expected a hash character")
     # Handle base-16 and base-10
     if imm[1:3] == "0x":
         return int(imm[3:], 16)
@@ -115,7 +115,7 @@ def assemble_thumb(address: VirtualMemoryPointer, mnemonic: str, ops: list[str])
             dest_offset = dest_offset >> 1
             if dest_offset <= 0:
                 # Negative offsets are actually allowed, but are unhandled for now
-                raise ValueError(f"Expected a positive offset")
+                raise ValueError("Expected a positive offset")
             if abs(dest_offset) > 2048:
                 raise ValueError("Expected offset to be <= 2048")
             return "11100{offset11}".format(
@@ -163,7 +163,7 @@ def twos_complement2(val: int, bit_count: int) -> int:
     return val  # return positive value as is
 
 
-def twos_complement(val, nbits):
+def twos_complement(val: int, nbits: int) -> int:
     """Compute the 2's complement of int value val"""
     if val < 0:
         val = (1 << nbits) + val
@@ -251,7 +251,7 @@ def assemble(address: VirtualMemoryPointer, instr: Instr) -> bytes:
 
     # 16F0F2F9
     # 503407fb
-    print(f"Assembled {binascii.hexlify(ret)}")
+    print(f"Assembled {str(binascii.hexlify(ret))}")
     return ret
 
 

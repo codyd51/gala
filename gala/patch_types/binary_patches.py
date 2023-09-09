@@ -93,13 +93,13 @@ class InstructionPatch(Patch):
         try:
             macho_parser = MachoParser(decrypted_image_path)
             if macho_parser.is_magic_supported():
-                print(f"Applying instruction patch to a Mach-O")
+                print("Applying instruction patch to a Mach-O")
                 binary = macho_parser.get_armv7_slice()
                 patch_file_offset = binary.file_offset_for_virtual_address(self.address)
             else:
                 raise ArchitectureNotSupportedError()
         except ArchitectureNotSupportedError:
-            print(f"Applying instruction patch to a raw binary")
+            print("Applying instruction patch to a raw binary")
             patch_file_offset = self.address - image_base_address
 
         instr_bytes = data[patch_file_offset : patch_file_offset + region_size]
@@ -108,7 +108,8 @@ class InstructionPatch(Patch):
         # Validate the original instructions are what we expect
         if len(actual_orig_instructions) != len(self.orig_instructions):
             raise ValueError(
-                f"Expected to find {len(self.orig_instructions)} instructions, but found {len(actual_orig_instructions)}: {self.orig_instructions}, {actual_orig_instructions}"
+                f"Expected to find {len(self.orig_instructions)} instructions, "
+                f"but found {len(actual_orig_instructions)}: {self.orig_instructions}, {actual_orig_instructions}"
             )
         for actual_orig_instruction, expected_orig_instruction in zip(actual_orig_instructions, self.orig_instructions):
             actual_orig_instruction_str = f"{actual_orig_instruction.mnemonic} {actual_orig_instruction.op_str}"
@@ -172,16 +173,16 @@ class BlobPatch(Patch):
         try:
             macho_parser = MachoParser(decrypted_image_path)
             if macho_parser.is_magic_supported():
-                print(f"Applying blob patch to a Mach-O")
+                print("Applying blob patch to a Mach-O")
                 binary = macho_parser.get_armv7_slice()
                 patch_file_offset = binary.file_offset_for_virtual_address(self.address)
             else:
                 raise ArchitectureNotSupportedError()
         except ArchitectureNotSupportedError:
-            print(f"Applying blob patch to a raw binary")
+            print("Applying blob patch to a raw binary")
             patch_file_offset = self.address - image_base_address
 
         if patch_file_offset < 0 or patch_file_offset >= len(image_data):
             raise ValueError(f"Invalid offset {patch_file_offset}")
-        print(f"File offset for {self.new_content} is {hex(patch_file_offset)}")
+        print(f"File offset for blob patch is {hex(patch_file_offset)}")
         image_data[patch_file_offset : patch_file_offset + len(self.new_content)] = self.new_content

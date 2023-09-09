@@ -8,6 +8,7 @@ import usb.core
 from gala.configuration import ASSETS_ROOT
 from gala.configuration import DEPENDENCIES_ROOT
 from gala.configuration import GALA_ROOT
+from gala.configuration import UNZIPPED_IPSWS_ROOT
 from gala.configuration import Color
 from gala.configuration import DeviceBootConfig
 from gala.configuration import GalaConfig
@@ -23,7 +24,7 @@ from gala.securerom import execute_securerom_payload
 from gala.utils import run_and_check
 
 
-def boot_device(config: GalaConfig):
+def boot_device(config: GalaConfig) -> None:
     # We need to always recompile the payloads because they may impact what gets injected into the patched images
     config.log_event("Compiling payloads...")
     recompile_payloads()
@@ -89,9 +90,11 @@ def boot_device(config: GalaConfig):
         # Upload the device tree, ramdisk, and kernelcache
         config.log_event("Starting kernel...")
         recovery_device.upload_file(
-            Path(
-                "/Users/philliptennen/Documents/Jailbreak/unzipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw.unzipped/Firmware/all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3"
-            )
+            # TODO(PT): Look this up using our modeling
+            UNZIPPED_IPSWS_ROOT
+            / "iPhone3,1_4.0_8A293"
+            / "Firmware"
+            / ("all_flash/all_flash.n90ap.production/DeviceTree.n90ap.img3")
         )
         recovery_device.send_command("devicetree")
         time.sleep(2)
@@ -112,7 +115,7 @@ def boot_device(config: GalaConfig):
     time.sleep(5)
 
 
-def boot_device_with_infinite_retry(config: GalaConfig):
+def boot_device_with_infinite_retry(config: GalaConfig) -> None:
     while True:
         try:
             boot_device(config)
@@ -121,7 +124,7 @@ def boot_device_with_infinite_retry(config: GalaConfig):
             print("No DFU device found")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--log_high_level_events_to_file", action="store", default=None)
 
@@ -143,11 +146,11 @@ def main():
         should_rebuild_root_filesystem = True
         boot_args = "rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3"
     elif args.boot:
-        print(f"Performing a tethered boot from disk...")
+        print("Performing a tethered boot from disk...")
         should_rebuild_root_filesystem = False
         boot_args = "rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3"
     else:
-        raise ValueError(f"No job specified")
+        raise ValueError("No job specified")
 
     config = GalaConfig(
         boot_config=DeviceBootConfig(

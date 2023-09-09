@@ -10,8 +10,6 @@ from gala.patch_types import PatchSet
 
 
 def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
-    kernelcache_shellcode_addr = 0x8057A314
-
     sandbox_callbacks_start = 0x803C5A40
     sandbox_callbacks_end = 0x803C5F20
     zero_fill = b"\0" * (sandbox_callbacks_end - sandbox_callbacks_start)
@@ -40,7 +38,8 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
             # InstructionPatch.quick(0x8014d07c, Instr.thumb("nop"), expected_length=2),
             # kauth_cred_getuid always returns 0
             # This patch causes the device to fail to boot...
-            # Logs "AppleSerialMultiplexer: mux::timeGetAdjustmentGated: Forcing time update" once every few seconds forever
+            # Logs "AppleSerialMultiplexer: mux::timeGetAdjustmentGated: Forcing time update"
+            # once every few seconds forever
             # InstructionPatch.quick(0x8013cb70, Instr.thumb("movs r0, #0"), expected_length=2),
             # Checking retval of `suser`. Instead of `cbnz not_root`, set retval = 0.
             InstructionPatch.quick(0x8014C696, Instr.thumb("movs r0, #0"), expected_length=2),
@@ -50,7 +49,9 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     neuter_amfi = PatchSet(
         name="Neuter AMFI",
         patches=[
-            # PT: Can't patch this because it's in __common,__DATA, bss which takes up no space on disk (and takes up zero space in the file/has zero 'file data' -- Hopper 'magically' shows XRefs to this region)
+            # PT: Can't patch this because it's in __common,__DATA,
+            # bss which takes up no space on disk (and takes up zero space in the file/has zero
+            # 'file data' -- Hopper 'magically' shows XRefs to this region)
             # PE_i_can_has_debugger
             # PT: We might need a shellcode program that sets that var to 1, but how to run it at startup?
             BlobPatch(
@@ -139,17 +140,6 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
             BlobPatch(VirtualMemoryPointer(addr), new_content=int(0).to_bytes(4, byteorder="little"))
             for addr in [
                 0x8025EF80,
-                # 0x8025eff8,
-                # 0x8025f020,
-                # 0x8025f048,
-                # PT: This patch causes the device to fail to boot
-                ## 0x8025f070,
-                # 0x8025f098,
-                # 0x8025f0c0,
-                # 0x8025f0e8,
-                ##0x8025f110,
-                # 0x8025f138,
-                # 0x8025f160,
                 0x8025F188,
             ]
         ],

@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from gala.configuration import PATCHED_IMAGES_ROOT
 from gala.os_build import ImageType
 from gala.os_build import OsBuildEnum
-from gala.patcher import JAILBREAK_ROOT
 
 
 def fetch_original_decrypted_image() -> Path:
@@ -11,14 +11,14 @@ def fetch_original_decrypted_image() -> Path:
     image_ipsw_subpath = os_build.ipsw_path_for_image_type(image_type)
     file_name = image_ipsw_subpath.name
 
-    patches_output_dir = JAILBREAK_ROOT / "patched_images" / os_build.unescaped_name
+    patches_output_dir = PATCHED_IMAGES_ROOT / os_build.unescaped_name
     decrypted_image = patches_output_dir / f"{file_name}.decrypted"
 
     print(decrypted_image)
     return decrypted_image
 
 
-def main():
+def main() -> None:
     original_image_path = fetch_original_decrypted_image()
     original_image_bytes = original_image_path.read_bytes()
     print(len(original_image_bytes))

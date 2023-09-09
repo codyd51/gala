@@ -8,7 +8,7 @@ from gala.configuration import GALA_ROOT
 _logger = logging.getLogger(__file__)
 
 
-def build_shellcode_program(payload_folder: Path):
+def build_shellcode_program(payload_folder: Path) -> None:
     payload_name = payload_folder.name
     _logger.info(f"Compiling payload: {payload_name}...")
 
@@ -66,7 +66,7 @@ def build_ramdisk_programs() -> None:
         build_ramdisk_program(maybe_program_dir)
 
 
-def recompile_payloads():
+def recompile_payloads() -> None:
     build_shellcode_programs()
     build_ramdisk_programs()
 

@@ -1,5 +1,6 @@
 from typing import Callable
 from typing import Mapping
+from typing import Tuple
 
 from gala.configuration import GalaConfig
 from gala.iPhone3_1_4_0_8A293_patches.assets import get_apple_logo_patches
@@ -24,9 +25,12 @@ MapOfBinaryTypesToPatchGenerators = _MapOfImageTypeToPatchGenerator
 
 
 def get_iphone_3_1_4_0_8a293_patches() -> (
-    MapOfDebTypesToPatchGenerators,
-    MapOfDmgTypesToPatchGenerators,
-    MapOfBinaryTypesToPatchGenerators,
+    Tuple[
+        MapOfPictureTypesToPatchGenerators,
+        MapOfDebTypesToPatchGenerators,
+        MapOfDmgTypesToPatchGenerators,
+        MapOfBinaryTypesToPatchGenerators,
+    ]
 ):
     # TODO(PT): Remove binary_types_mapping() and have dedicated Patch types for every code path
     return (

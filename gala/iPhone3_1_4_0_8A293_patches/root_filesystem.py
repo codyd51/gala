@@ -8,7 +8,7 @@ from gala.patch_types import DmgPatchSet
 from gala.patch_types import DmgReplaceFileContentsPatch
 
 
-def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
+def get_rootfs_patches(config: GalaConfig) -> list[DmgPatchSet]:
     # TODO(PT): To truly reflect that this has a serial dependency on the Cydia Substrate patched image,
     # the (image type -> already-generated patched image path) mapping should be provided here.
 
@@ -24,7 +24,8 @@ def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:
 
     install_cydia = DmgApplyTarPatch(tar_path=ASSETS_ROOT / "Cydia.tar")
 
-    # Provide the GlobalSign Root G3 certificate, which the user will need to install to be able to connect to Cydia servers
+    # Provide the GlobalSign Root G3 certificate, which the user will
+    # need to install to be able to connect to Cydia servers
     provide_globalsign_root_r3_cert = DmgReplaceFileContentsPatch(
         file_path=Path("private/var/gala/GlobalSign_Root_R3.crt"),
         new_content=(ASSETS_ROOT / "GlobalSign_Root_R3.crt").read_bytes(),

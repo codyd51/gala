@@ -21,7 +21,7 @@ from gala.os_build import OsBuildEnum
 @task
 def autoformat(ctx: Context) -> None:
     path = GALA_ROOT
-    print(f"\U000027A1 Autoformatting code...")
+    print("\U000027A1 Autoformatting code...")
     ctx.run(
         f"autoflake -r --in-place --remove-all-unused-imports {path}",
         pty=True,
@@ -35,7 +35,8 @@ def autoformat(ctx: Context) -> None:
 @task
 def autoformat_lint(ctx: Context) -> None:
     path = GALA_ROOT
-    print(f"\U000027A1Running linters and code quality checks...")
+    ctx.run(f"mypy {path}", pty=True, echo=True)
+    print("\U000027A1Running linters and code quality checks...")
     ctx.run(f"autoflake -cr --remove-all-unused-imports {path} --quiet", hide="out", echo=True)
     ctx.run(f"isort --check --diff {path}", pty=True, echo=True)
     ctx.run(f"mypy {path}", pty=True, echo=True)
@@ -77,7 +78,8 @@ def _ensure_pre_dependencies_are_installed() -> None:
         print(f'Checking for pre-dependency "{embolden(pre_dependency)}"')
         if shutil.which(pre_dependency) is None:
             print(
-                f"{embolden('Toolchain setup failed: ')} pre-dependency \"{embolden(pre_dependency)}\" not found. Is it installed and in $PATH?"
+                f"{embolden('Toolchain setup failed: ')} pre-dependency "
+                f'"{embolden(pre_dependency)}" not found. Is it installed and in $PATH?'
             )
             sys.exit(0)
 
@@ -153,9 +155,9 @@ def _clone_and_build_dependencies(ctx: Context) -> None:
 
             for patch in dependency_info.patch_files or []:
                 # Ensure the patch is valid and can be applied
-                print(f"Validating {embolden(patch.relative_to(GALA_ROOT))}...")
+                print(f"Validating {embolden(patch.relative_to(GALA_ROOT).as_posix())}...")
                 ctx.run(f"git apply --check {patch.as_posix()}")
-                print(f"Applying {embolden(patch.relative_to(GALA_ROOT))}...")
+                print(f"Applying {embolden(patch.relative_to(GALA_ROOT).as_posix())}...")
                 ctx.run(f"git apply {patch.as_posix()}")
 
             for command in dependency_info.compile_commands:
@@ -174,7 +176,9 @@ def _iter_bytes_received_by_chunk_size(chunk_size: int) -> Iterator[int]:
         bytes_received_so_far += chunk_size
 
 
-def _download_file(url: str, dest_path: Path, percent_completed_callback: Callable[[float], None] = None) -> None:
+def _download_file(
+    url: str, dest_path: Path, percent_completed_callback: Callable[[float], None] | None = None
+) -> None:
     print(f"Downloading {embolden(url)}...")
     chunk_size = 1024 * 8
     with requests.get(url, stream=True) as resp:
@@ -216,15 +220,16 @@ def _download_and_unzip_ipsw(ctx: Context, os_build: OsBuildEnum) -> None:
     ZIPPED_IPSWS_ROOT.mkdir(exist_ok=True)
     downloaded_path = ZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}.zip"
     _download_file_and_report_progress(os_build.download_url, downloaded_path)
-    print(f"IPSW download complete.")
+    print("IPSW download complete.")
     print()
 
-    unzipped_path = UNZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}"
+    unzipped_path = UNZIPPED_IPSWS_ROOT / os_build.unescaped_name
     print(
-        f"Unzipping {embolden(downloaded_path.relative_to(GALA_ROOT))} to {embolden(unzipped_path.relative_to(GALA_ROOT))}..."
+        f"Unzipping {embolden(downloaded_path.relative_to(GALA_ROOT).as_posix())}"
+        f" to {embolden(unzipped_path.relative_to(GALA_ROOT).as_posix())}..."
     )
     shutil.unpack_archive(downloaded_path.as_posix(), unzipped_path.as_posix())
-    print(f"Unzipped IPSW to {embolden(unzipped_path.relative_to(GALA_ROOT))}.")
+    print(f"Unzipped IPSW to {embolden(unzipped_path.relative_to(GALA_ROOT).as_posix())}.")
 
 
 @task

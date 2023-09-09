@@ -6,7 +6,7 @@ from enum import Enum
 from enum import auto
 from math import ceil
 from pathlib import Path
-from typing import Iterable
+from typing import Iterator
 
 from strongarm.macho import MachoParser
 from strongarm.macho import VirtualMemoryPointer
@@ -58,6 +58,7 @@ class DmgPatchSet(Patch):
                 ]
             )
 
+            mounted_dmg_root: Path  # PT: Just to help mypy
             with self._mount_dmg(decrypted_dmg_with_dmg_extension) as mounted_dmg_root:
                 print(f"Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}")
                 for patch in self.patches:
@@ -66,7 +67,7 @@ class DmgPatchSet(Patch):
 
     @staticmethod
     @contextmanager
-    def _mount_dmg(path: Path) -> Iterable[Path]:
+    def _mount_dmg(path: Path) -> Iterator[Path]:
         print(f"Mounting {path.name}")
         with tempfile.TemporaryDirectory() as mount_dir_raw:
             mount_point = Path(mount_dir_raw) / "dmg_mount_point"
@@ -189,7 +190,7 @@ class DmgBinaryPatch(DmgPatch):
         # Apply the patch to the binary
         patched_binary_data = bytearray(qualified_binary_path.read_bytes())
         self.inner_patch.apply(config, qualified_binary_path, virtual_base, patched_binary_data)
-        print(f"Writing patched binary...")
+        print("Writing patched binary...")
 
         qualified_binary_path.write_bytes(patched_binary_data)
 

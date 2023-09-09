@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from typing import Iterator
 from typing import Mapping
+from typing import Sequence
 from typing import Set
 from typing import TypeVar
 
@@ -51,7 +52,7 @@ class TotalEnumMapping(Mapping[_EnumType, _MapValueType]):
         return len(self.enum_mapping)
 
 
-def run_and_check(cmd_list: list[str], cwd: Path = None, env_additions: dict[str, str] | None = None) -> None:
+def run_and_check(cmd_list: list[str], cwd: Path | None = None, env_additions: dict[str, str] | None = None) -> None:
     print(" ".join(cmd_list), cwd)
     env = os.environ.copy()
     if env_additions:
@@ -82,7 +83,7 @@ def hexdump(src: bytes) -> None:
         print(line)
 
 
-def chunks(lst: Collection[Any], n: int) -> Iterator[Collection[Any]]:
+def chunks(lst: Sequence[Any], n: int) -> Iterator[Collection[Any]]:
     """Yield successive n-sized chunks from lst"""
     for i in range(0, len(lst), n):
         yield lst[i : i + n]

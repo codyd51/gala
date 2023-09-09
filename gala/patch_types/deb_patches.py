@@ -2,7 +2,8 @@ import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterator
+from typing import Sequence
 
 from strongarm.macho import MachoParser
 from strongarm.macho import VirtualMemoryPointer
@@ -20,7 +21,7 @@ class DebPatch:
 
 @dataclass
 class DebPatchSet(Patch):
-    patches: list[DebPatch]
+    patches: Sequence[DebPatch]
 
     def apply(
         self,
@@ -42,7 +43,7 @@ class DebPatchSet(Patch):
 
     @staticmethod
     @contextmanager
-    def _mount_deb(path: Path) -> Iterable[Path]:
+    def _mount_deb(path: Path) -> Iterator[Path]:
         print(f"Mounting {path.name}")
         with tempfile.TemporaryDirectory() as mount_dir_raw:
             extracted_deb_dir = Path(mount_dir_raw) / "deb_mount_point"
@@ -91,7 +92,7 @@ class DebBinaryPatch(DebPatch):
         # Apply the patch to the binary
         patched_binary_data = bytearray(qualified_binary_path.read_bytes())
         self.inner_patch.apply(config, qualified_binary_path, virtual_base, patched_binary_data)
-        print(f"Writing patched binary...")
+        print("Writing patched binary...")
 
         qualified_binary_path.write_bytes(patched_binary_data)
 

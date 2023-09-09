@@ -75,7 +75,7 @@ def execute_securerom_payload(config: GalaConfig, payload: bytes) -> None:
     print("Awaiting DFU device...")
     config.log_event("Awaiting DFU device...")
     with acquire_device_with_timeout(DeviceMode.DFU, timeout=100) as device:
-        print(f"Got DFU device")
+        print("Got DFU device")
         print(f"Executing a payload of {len(payload)} bytes in SecureROM via limera1n...")
         config.log_event("Exploiting SecureROM...")
         exploit_info = SecureRomLimera1nExploitInfo.info_for_model(device.model)
@@ -113,7 +113,7 @@ def execute_securerom_payload(config: GalaConfig, payload: bytes) -> None:
         except usb.core.USBTimeoutError:
             # Expected/desired here
             pass
-        print(f"Sent exploit to overflow heap")
+        print("Sent exploit to overflow heap")
 
         # Reset the device and inform it there's a file ready to be processed
         try:

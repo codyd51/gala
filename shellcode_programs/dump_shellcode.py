@@ -16,7 +16,7 @@ def dump_text_section_to_file(input_file: Path, output_file: Path) -> None:
         f.write(dump_text_section(input_file))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("object_file_path")
     parser.add_argument("output_path")
