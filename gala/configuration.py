@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from gala.os_build import ImageType, OsBuildEnum
+from gala.os_build import ImageType
+from gala.os_build import OsBuildEnum
 
 GALA_ROOT = Path(__file__).parents[1]
 

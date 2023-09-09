@@ -2,12 +2,14 @@ import shutil
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
+from enum import auto
 from math import ceil
 from pathlib import Path
 from typing import Iterable
 
-from strongarm.macho import MachoParser, VirtualMemoryPointer
+from strongarm.macho import MachoParser
+from strongarm.macho import VirtualMemoryPointer
 
 from gala.configuration import IpswPatcherConfig
 from gala.patch_types import Patch

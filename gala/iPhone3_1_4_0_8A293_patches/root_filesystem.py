@@ -1,8 +1,11 @@
 from pathlib import Path
 
-from gala.configuration import ASSETS_ROOT, GalaConfig
+from gala.configuration import ASSETS_ROOT
+from gala.configuration import GalaConfig
 from gala.os_build import ImageType
-from gala.patch_types import DmgApplyTarPatch, DmgPatchSet, DmgReplaceFileContentsPatch
+from gala.patch_types import DmgApplyTarPatch
+from gala.patch_types import DmgPatchSet
+from gala.patch_types import DmgReplaceFileContentsPatch
 
 
 def get_rootfs_patches(config: GalaConfig) -> [DmgPatchSet]:

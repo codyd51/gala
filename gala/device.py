@@ -2,7 +2,8 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
+from enum import auto
 from pathlib import Path
 from typing import Optional
 
@@ -12,7 +13,8 @@ from usb.backend import libusb1
 from usb.backend.libusb1 import _LibUSB
 
 from gala.os_build import DeviceModel
-from gala.utils import TotalEnumMapping, chunks
+from gala.utils import TotalEnumMapping
+from gala.utils import chunks
 
 
 class NoDfuDeviceFoundError(Exception):

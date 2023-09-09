@@ -5,17 +5,18 @@ from pathlib import Path
 import usb
 import usb.core
 
-from gala.configuration import (
-    ASSETS_ROOT,
-    DEPENDENCIES_ROOT,
-    GALA_ROOT,
-    Color,
-    DeviceBootConfig,
-    GalaConfig,
-    IpswPatcherConfig,
-)
-from gala.device import DeviceMode, NoDfuDeviceFoundError, acquire_device_with_timeout
-from gala.os_build import ImageType, OsBuildEnum
+from gala.configuration import ASSETS_ROOT
+from gala.configuration import DEPENDENCIES_ROOT
+from gala.configuration import GALA_ROOT
+from gala.configuration import Color
+from gala.configuration import DeviceBootConfig
+from gala.configuration import GalaConfig
+from gala.configuration import IpswPatcherConfig
+from gala.device import DeviceMode
+from gala.device import NoDfuDeviceFoundError
+from gala.device import acquire_device_with_timeout
+from gala.os_build import ImageType
+from gala.os_build import OsBuildEnum
 from gala.patcher import regenerate_patched_images
 from gala.recompile_payloads import recompile_payloads
 from gala.securerom import execute_securerom_payload

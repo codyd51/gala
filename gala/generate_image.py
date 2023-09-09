@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from gala.os_build import ImageType, OsBuildEnum
+from gala.os_build import ImageType
+from gala.os_build import OsBuildEnum
 from gala.patcher import JAILBREAK_ROOT
 
 

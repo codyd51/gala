@@ -3,10 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from capstone import CS_ARCH_ARM, CS_MODE_THUMB, Cs
-from strongarm.macho import ArchitectureNotSupportedError, MachoParser, VirtualMemoryPointer
+from capstone import CS_ARCH_ARM
+from capstone import CS_MODE_THUMB
+from capstone import Cs
+from strongarm.macho import ArchitectureNotSupportedError
+from strongarm.macho import MachoParser
+from strongarm.macho import VirtualMemoryPointer
 
-from gala.assemble import Instr, assemble
+from gala.assemble import Instr
+from gala.assemble import assemble
 from gala.configuration import IpswPatcherConfig
 from gala.patch_types import Patch
 

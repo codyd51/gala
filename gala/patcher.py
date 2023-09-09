@@ -5,19 +5,26 @@ from copy import copy
 from pathlib import Path
 from typing import Mapping
 
-from strongarm.macho import MachoParser, VirtualMemoryPointer
+from strongarm.macho import MachoParser
+from strongarm.macho import VirtualMemoryPointer
 
-from gala.configuration import DEPENDENCIES_ROOT, JAILBREAK_ROOT, PATCHED_IMAGES_ROOT, GalaConfig, IpswPatcherConfig
-from gala.iPhone3_1_4_0_8A293_patches import (
-    MapOfBinaryTypesToPatchGenerators,
-    MapOfDebTypesToPatchGenerators,
-    MapOfDmgTypesToPatchGenerators,
-    MapOfPictureTypesToPatchGenerators,
-    get_iphone_3_1_4_0_8a293_patches,
-)
-from gala.os_build import ImageType, KeyRepository, OsBuildEnum
-from gala.patch_types import Function, Patch
-from gala.utils import TotalEnumMapping, run_and_check
+from gala.configuration import DEPENDENCIES_ROOT
+from gala.configuration import JAILBREAK_ROOT
+from gala.configuration import PATCHED_IMAGES_ROOT
+from gala.configuration import GalaConfig
+from gala.configuration import IpswPatcherConfig
+from gala.iPhone3_1_4_0_8A293_patches import MapOfBinaryTypesToPatchGenerators
+from gala.iPhone3_1_4_0_8A293_patches import MapOfDebTypesToPatchGenerators
+from gala.iPhone3_1_4_0_8A293_patches import MapOfDmgTypesToPatchGenerators
+from gala.iPhone3_1_4_0_8A293_patches import MapOfPictureTypesToPatchGenerators
+from gala.iPhone3_1_4_0_8A293_patches import get_iphone_3_1_4_0_8a293_patches
+from gala.os_build import ImageType
+from gala.os_build import KeyRepository
+from gala.os_build import OsBuildEnum
+from gala.patch_types import Function
+from gala.patch_types import Patch
+from gala.utils import TotalEnumMapping
+from gala.utils import run_and_check
 
 _XPWNTOOL = DEPENDENCIES_ROOT / "xpwn-xerub" / "ipsw-patch" / "xpwntool"
 _XPWN_DMG = DEPENDENCIES_ROOT / "xpwn" / "dmg" / "dmg"

@@ -6,7 +6,9 @@ import usb
 from strongarm.macho import VirtualMemoryPointer
 
 from gala.configuration import GalaConfig
-from gala.device import Device, DeviceMode, acquire_device_with_timeout
+from gala.device import Device
+from gala.device import DeviceMode
+from gala.device import acquire_device_with_timeout
 from gala.os_build import DeviceModel
 from gala.utils import TotalEnumMapping
 

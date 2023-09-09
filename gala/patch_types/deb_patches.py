@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from strongarm.macho import MachoParser, VirtualMemoryPointer
+from strongarm.macho import MachoParser
+from strongarm.macho import VirtualMemoryPointer
 
 from gala.configuration import IpswPatcherConfig
 from gala.patch_types import Patch

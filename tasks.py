@@ -3,19 +3,18 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import Callable
+from typing import Iterator
 
 import requests
 from invoke import task
 from invoke.context import Context
 
-from gala.configuration import (
-    DEPENDENCIES_ROOT,
-    DEPENDENCY_PATCHES_ROOT,
-    GALA_ROOT,
-    UNZIPPED_IPSWS_ROOT,
-    ZIPPED_IPSWS_ROOT,
-)
+from gala.configuration import DEPENDENCIES_ROOT
+from gala.configuration import DEPENDENCY_PATCHES_ROOT
+from gala.configuration import GALA_ROOT
+from gala.configuration import UNZIPPED_IPSWS_ROOT
+from gala.configuration import ZIPPED_IPSWS_ROOT
 from gala.os_build import OsBuildEnum
 
 

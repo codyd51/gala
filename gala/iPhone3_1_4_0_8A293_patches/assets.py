@@ -2,7 +2,11 @@ from pathlib import Path
 
 from gala.assemble import Instr
 from gala.configuration import GalaConfig
-from gala.patch_types import DebBinaryPatch, DebPatchSet, InstructionPatch, Patch, PatchSet
+from gala.patch_types import DebBinaryPatch
+from gala.patch_types import DebPatchSet
+from gala.patch_types import InstructionPatch
+from gala.patch_types import Patch
+from gala.patch_types import PatchSet
 
 
 def get_mobilesubstrate_patches(_config: GalaConfig) -> list[DebPatchSet]:

@@ -1,7 +1,9 @@
-from typing import Callable, Mapping
+from typing import Callable
+from typing import Mapping
 
 from gala.configuration import GalaConfig
-from gala.iPhone3_1_4_0_8A293_patches.assets import get_apple_logo_patches, get_mobilesubstrate_patches
+from gala.iPhone3_1_4_0_8A293_patches.assets import get_apple_logo_patches
+from gala.iPhone3_1_4_0_8A293_patches.assets import get_mobilesubstrate_patches
 from gala.iPhone3_1_4_0_8A293_patches.ibec import get_ibec_patches
 from gala.iPhone3_1_4_0_8A293_patches.ibss import get_ibss_patches
 from gala.iPhone3_1_4_0_8A293_patches.kernelcache import get_kernelcache_patches

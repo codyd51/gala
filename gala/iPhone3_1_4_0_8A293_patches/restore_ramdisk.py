@@ -3,17 +3,17 @@ from pathlib import Path
 from strongarm.macho import VirtualMemoryPointer
 
 from gala.assemble import Instr
-from gala.configuration import ASSETS_ROOT, GALA_ROOT, GalaConfig
-from gala.patch_types import (
-    BlobPatch,
-    DmgApplyTarPatch,
-    DmgBinaryPatch,
-    DmgPatchSet,
-    DmgReplaceFileContentsPatch,
-    FilePermission,
-    InstructionPatch,
-    PatchSet,
-)
+from gala.configuration import ASSETS_ROOT
+from gala.configuration import GALA_ROOT
+from gala.configuration import GalaConfig
+from gala.patch_types import BlobPatch
+from gala.patch_types import DmgApplyTarPatch
+from gala.patch_types import DmgBinaryPatch
+from gala.patch_types import DmgPatchSet
+from gala.patch_types import DmgReplaceFileContentsPatch
+from gala.patch_types import FilePermission
+from gala.patch_types import InstructionPatch
+from gala.patch_types import PatchSet
 
 
 def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:

@@ -3,7 +3,11 @@ import subprocess
 from collections.abc import Collection
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Set, TypeVar
+from typing import Any
+from typing import Iterator
+from typing import Mapping
+from typing import Set
+from typing import TypeVar
 
 from more_itertools import all_equal
 

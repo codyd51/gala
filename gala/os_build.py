@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
+from enum import auto
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
+from typing import Mapping
 
 from strongarm.macho import VirtualMemoryPointer
 
