@@ -2,6 +2,9 @@
   <img src="assets/readme/spread.png" width="60%">
 </div>
 
+![](https://github.com/codyd51/gala/actions/workflows/main.yml/badge.svg)
+![](https://img.shields.io/badge/py-3.11-green)
+
 **gala** is a jailbreak/tethered downgrade tool that currently supports iOS 4. **gala** implements [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) to gain code execution in SecureROM, then gradually boots and compromises the system from there.
 
 **gala** comes with an [extensive write-up](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) on developing an iOS jailbreak.
