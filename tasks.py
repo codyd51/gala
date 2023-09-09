@@ -22,7 +22,7 @@ from gala.os_build import OsBuildEnum
 @task
 def autoformat(ctx: Context) -> None:
     path = GALA_ROOT
-    print(f"\U000027A1 Running autoformat")
+    print(f"\U000027A1 Autoformatting code...")
     ctx.run(
         f"autoflake -r --in-place --remove-all-unused-imports {path}",
         pty=True,
@@ -30,7 +30,19 @@ def autoformat(ctx: Context) -> None:
     )
     ctx.run(f"isort {path}", pty=True, echo=True)
     ctx.run(f"black {path}", pty=True, echo=True)
-    print("Finished running autoformat! \U0001F389")
+    print("Finished autoformatting.\U0001F389")
+
+
+@task
+def autoformat_lint(ctx: Context) -> None:
+    path = GALA_ROOT
+    print(f"\U000027A1Running linters and code quality checks...")
+    ctx.run(f"autoflake -cr --remove-all-unused-imports {path} --quiet", hide="out", echo=True)
+    ctx.run(f"isort --check --diff {path}", pty=True, echo=True)
+    ctx.run(f"mypy {path}", pty=True, echo=True)
+    ctx.run(f"flake8 {path}", pty=True, echo=True)
+    ctx.run(f"black --check {path}", pty=True, echo=True)
+    print("Finished running code quality checks! \U0001F389")
 
 
 def embolden(s: str) -> str:
