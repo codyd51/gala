@@ -90,3 +90,4 @@ _Example: Injecting a shellcode program_
 PT: Perhaps clone sshpass and dpkg as tools/?
 
 * sshpass
+* Write about the flow, e.g. SecureROM exploit, then patch iBSS to accept unsigned images, etc

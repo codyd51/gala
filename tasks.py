@@ -1,13 +1,17 @@
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import shutil
+from typing import Generator, Iterator, Iterable, Callable
+
 from invoke import task
 from invoke.context import Context
+import requests
 
-import shutil
-
-from gala.configuration import GALA_ROOT, DEPENDENCIES_ROOT, DEPENDENCY_PATCHES_ROOT
+from gala.configuration import GALA_ROOT, DEPENDENCIES_ROOT, DEPENDENCY_PATCHES_ROOT, ZIPPED_IPSWS_ROOT
+from gala.os_build import OsBuildEnum
 
 
 @task
@@ -43,10 +47,7 @@ class DependencyInfo:
     patch_files: list[Path] | None = None
 
 
-@task
-def setup_toolchain(ctx: Context) -> None:
-    print(embolden('Setting up gala toolchain...'))
-
+def _ensure_pre_dependencies_are_installed() -> None:
     # Ensure all the pre-dependencies we need are already installed...
     pre_dependencies = [
         "git",
@@ -54,17 +55,27 @@ def setup_toolchain(ctx: Context) -> None:
         "openssl",
         "rustup",
     ]
+    print(f"Verifying that {embolden(str(len(pre_dependencies)))} pre-dependencies are installed...")
+
     for pre_dependency in pre_dependencies:
         print(f"Checking for pre-dependency \"{embolden(pre_dependency)}\"")
         if shutil.which(pre_dependency) is None:
-            print(f"{embolden('Toolchain setup failed: ')} pre-dependency \"{embolden(pre_dependency)}\" not found. Is it installed and in $PATH?")
+            print(
+                f"{embolden('Toolchain setup failed: ')} pre-dependency \"{embolden(pre_dependency)}\" not found. Is it installed and in $PATH?")
             sys.exit(0)
 
-    print(f"Installing the Rust toolchain that supports {embolden('armv7-apple-ios')}...")
-    ctx.run("rustup toolchain add nightly-2020-01-01 --profile minimal", pty=True, echo=True)
+    print(embolden("Verified pre-dependencies."))
     print()
 
-    print(embolden("Building dependencies..."))
+
+def _install_required_rust_toolchain(ctx: Context) -> None:
+    print(f"Installing the Rust toolchain that supports {embolden('armv7-apple-ios')}...")
+    ctx.run("rustup toolchain add nightly-2020-01-01 --profile minimal", pty=True, echo=True)
+    print(f"Installed the Rust toolchain that supports {embolden('armv7-apple-ios')}...")
+    print()
+
+
+def _clone_and_build_dependencies(ctx: Context) -> None:
     DEPENDENCIES_ROOT.mkdir(exist_ok=True)
 
     dependencies = [
@@ -113,6 +124,7 @@ def setup_toolchain(ctx: Context) -> None:
             ],
         ),
     ]
+    print(f"Building {embolden(str(len(dependencies)))} dependencies...")
     for dependency_info in dependencies:
         print(f"Cloning {embolden(dependency_info.repo_url)} to revision {embolden(dependency_info.git_revision)}...")
 
@@ -134,3 +146,67 @@ def setup_toolchain(ctx: Context) -> None:
                 ctx.run(command)
 
         print(f"Successfully built \"{embolden(dependency_info.cloned_directory_name)}\"...")
+    print()
+    print(f"Successfully cloned and built {embolden(str(len(dependencies)))} dependencies.")
+
+
+def _iter_bytes_received_by_chunk_size(chunk_size: int) -> Iterator[int]:
+    bytes_received_so_far = 0
+    while True:
+        yield bytes_received_so_far
+        bytes_received_so_far += chunk_size
+
+
+def _download_file(url: str, dest_path: Path, percent_completed_callback: Callable[[float], None] = None) -> None:
+    print(f'Downloading {embolden(url)}...')
+    chunk_size = 1024 * 8
+    with requests.get(url, stream=True) as resp:
+        resp.raise_for_status()
+        content_length = resp.raw.length_remaining
+        with dest_path.open("wb") as dest_file:
+            for (bytes_received_so_far, chunk) in zip(_iter_bytes_received_by_chunk_size(chunk_size),
+                                                      resp.iter_content(chunk_size=chunk_size)):
+                dest_file.write(chunk)
+
+                if percent_completed_callback:
+                    percent_complete = bytes_received_so_far / float(content_length)
+                    percent_completed_callback(percent_complete)
+
+
+def _download_file_and_report_progress(url: str, dest_path: Path) -> None:
+    report_completion_at_percentage_interval = 5
+    reported_percentages = []
+    start_time = time.time()
+
+    def _time_elapsed() -> str:
+        return f"{int(time.time() - start_time): <3} seconds"
+
+    def _progress_callback(percent_completed: float) -> None:
+        # Scale 0.15 => 15
+        percent_completed *= 100
+        # Truncate 43.4 -> 40
+        boundary = int(percent_completed) - (int(percent_completed) % report_completion_at_percentage_interval)
+        if boundary not in reported_percentages:
+            reported_percentages.append(boundary)
+            print(f'{_time_elapsed()}: {embolden(f"{boundary}%")}...')
+
+    _download_file(url, dest_path, _progress_callback)
+    _progress_callback(1)
+
+
+def _download_and_unzip_ipsw(ctx: Context, os_build: OsBuildEnum) -> None:
+    ZIPPED_IPSWS_ROOT.mkdir(exist_ok=True)
+    downloaded_path = ZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}.zip"
+    _download_file_and_report_progress(os_build.download_url, downloaded_path)
+    print(f'IPSW download complete.')
+    print()
+
+
+@task
+def setup_toolchain(ctx: Context) -> None:
+    print(embolden('Setting up gala toolchain...'))
+
+    # _ensure_pre_dependencies_are_installed()
+    # _install_required_rust_toolchain(ctx)
+    # _clone_and_build_dependencies(ctx)
+    _download_and_unzip_ipsw(ctx, OsBuildEnum.iPhone3_1_4_0_8A293)
