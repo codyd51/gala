@@ -6,3 +6,5 @@ target/
 .idea
 __pycache__/
 dependencies/
+patched_images/
+ipsws/

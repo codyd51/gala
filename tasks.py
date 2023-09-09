@@ -10,7 +10,8 @@ from invoke import task
 from invoke.context import Context
 import requests
 
-from gala.configuration import GALA_ROOT, DEPENDENCIES_ROOT, DEPENDENCY_PATCHES_ROOT, ZIPPED_IPSWS_ROOT
+from gala.configuration import GALA_ROOT, DEPENDENCIES_ROOT, DEPENDENCY_PATCHES_ROOT, ZIPPED_IPSWS_ROOT, \
+    UNZIPPED_IPSWS_ROOT
 from gala.os_build import OsBuildEnum
 
 
@@ -201,12 +202,17 @@ def _download_and_unzip_ipsw(ctx: Context, os_build: OsBuildEnum) -> None:
     print(f'IPSW download complete.')
     print()
 
+    unzipped_path = UNZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}"
+    print(f'Unzipping {embolden(downloaded_path.relative_to(GALA_ROOT))} to {embolden(unzipped_path.relative_to(GALA_ROOT))}...')
+    shutil.unpack_archive(downloaded_path.as_posix(), unzipped_path.as_posix())
+    print(f'Unzipped IPSW to {embolden(unzipped_path.relative_to(GALA_ROOT))}.')
+
 
 @task
 def setup_toolchain(ctx: Context) -> None:
     print(embolden('Setting up gala toolchain...'))
 
-    # _ensure_pre_dependencies_are_installed()
-    # _install_required_rust_toolchain(ctx)
-    # _clone_and_build_dependencies(ctx)
+    _ensure_pre_dependencies_are_installed()
+    _install_required_rust_toolchain(ctx)
+    _clone_and_build_dependencies(ctx)
     _download_and_unzip_ipsw(ctx, OsBuildEnum.iPhone3_1_4_0_8A293)
