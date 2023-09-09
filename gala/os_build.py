@@ -192,6 +192,21 @@ class OsBuildEnum(Enum):
             }
         )[self.model][image_type]
 
+    @property
+    def download_url(self) -> str:
+        def not_implemented():
+            raise NotImplementedError()
+
+        # PT: This map is callback-based as a small trick to stay total without needing to define all the URLs at once
+        return TotalEnumMapping({
+            self.iPhone3_1_4_0_8A293: lambda: (
+                "https://secure-appldnld.apple.com/iPhone4/061-7380.20100621,Vfgb5/iPhone3,1_4.0_8A293_Restore.ipsw"
+            ),
+            self.iPhone3_1_4_1_8B117: not_implemented,
+            self.iPhone3_1_5_0_9A334: not_implemented,
+            self.iPhone3_1_6_1_10B144: not_implemented,
+        })[self]()
+
 
 @dataclass
 class KeyIvPair:
