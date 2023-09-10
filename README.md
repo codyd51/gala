@@ -88,12 +88,38 @@ _Example: Injecting a shellcode program_
     ])
 ```
 
-# Requirements
+# Installing gala
 
-PT: Perhaps clone sshpass and dpkg as tools/?
+Set up a Python 3.11 virtual environment.
 
-* sshpass
-* Write about the flow, e.g. SecureROM exploit, then patch iBSS to accept unsigned images, etc
+```bash
+$ virtualenv -p python3.11 ./venv
+# Or your preferred virtual environment manager
+```
+
+Install **gala's** Python dependencies.
+
+```bash
+$ pip install -r requirements.txt -r requirements-dev.txt
+```
+
+Set up **gala's** toolchain and the working tree. This will perform steps such as:
+
+* Ensuring pre-dependencies (such as `git` and `rustup`) are installed.
+* Installing the obsolete Rust nightly version that **gala** depends on.
+* Building **gala's** forks of iOS interaction projects such as `idevicerestore`.
+* Downloading and unzipping an iOS 4 IPSW from Apple.
+
+```bash
+$ invoke setup-toolchain
+```
+
+# Running gala
+
+```bash
+$ invoke launch-gui
+```
+
 # How gala works
 
 **gala** comes with a [writeup](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) detailing the process of writing an iOS jailbreak. Here's what happens on the device at a high-level:
