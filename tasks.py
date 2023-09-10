@@ -71,6 +71,7 @@ def _ensure_pre_dependencies_are_installed() -> None:
         "irecovery",
         "openssl",
         "rustup",
+        "dpkg-deb",
     ]
     print(f"Verifying that {embolden(str(len(pre_dependencies)))} pre-dependencies are installed...")
 
