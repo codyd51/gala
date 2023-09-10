@@ -94,3 +94,37 @@ PT: Perhaps clone sshpass and dpkg as tools/?
 
 * sshpass
 * Write about the flow, e.g. SecureROM exploit, then patch iBSS to accept unsigned images, etc
+# How gala works
+
+**gala** comes with a [writeup](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) detailing the process of writing an iOS jailbreak. Here's what happens on the device at a high-level:
+
+* The user places the device into DFU mode. 
+* The device's SecureROM waits for an iBSS image to be uploaded over USB.
+* **gala** sends a series of malformed USB control packets to upload and jump to shellcode.
+* The shellcode takes over the process of waiting for an iBSS image, and embeds a runloop that will accept and load any unsigned image.
+* **gala** uploads a patched iBSS that has its code signature checks patched out.
+* The SecureROM loads and jumps to the patched iBSS.
+* **gala** uploads a patched iBEC that has its code signature checks patched out. 
+* The iBSS loads and jumps to the patched iBEC.
+* **gala** uploads a patched Restore ramdisk, a patched kernelcache, and a device tree. 
+* **gala** specifies boot arguments that indicate that the device should boot from the uploaded Restore ramdisk.
+* The iBEC loads and jumps to the kernelcache. 
+* The patched Restore ramdisk starts up a **gala**-owned service that communicates with **gala** on the host machine.
+* **gala** sends a patched filesystem image over USB, and flashes it to the device.
+* **gala** intentionally doesn't flash a new LLB to NOR. 
+* The device reboots (and fails to boot, since the LLB sees that the boot-chain has an invalid code signature).
+
+At this point, the device is jailbroken. The user then clicks the `Tethered boot` button, and the process is similar:
+
+* The user places the device into DFU mode.
+* The device's SecureROM waits for an iBSS image to be uploaded over USB.
+* **gala** sends a series of malformed USB control packets to upload and jump to shellcode.
+* The shellcode takes over the process of waiting for an iBSS image, and embeds a runloop that will accept and load any unsigned image.
+* **gala** uploads a patched iBSS that has its code signature checks patched out.
+* The SecureROM loads and jumps to the patched iBSS.
+* **gala** uploads a patched iBEC that has its code signature checks patched out.
+* The iBSS loads and jumps to the patched iBEC.
+* **gala** uploads a patched Restore ramdisk, a patched kernelcache, and a device tree.
+* **gala** specifies boot arguments that indicate that the device should boot from the filesystem on NAND.
+* The iBEC loads and jumps to the kernelcache.
+* The device boots to iOS.
