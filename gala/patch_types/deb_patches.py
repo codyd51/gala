@@ -47,6 +47,10 @@ class DebPatchSet(Patch):
     def _mount_deb(path: Path) -> Iterator[Path]:
         print(f"Mounting {path.name}")
         dpkg_deb_path = shutil.which("dpkg-deb")
+        if not dpkg_deb_path:
+            # PT: Just for mypy, as this should have been handled by the check when setting up the toolchain.
+            raise RuntimeError(f"Failed to find dpkg-deb in PATH")
+
         with tempfile.TemporaryDirectory() as mount_dir_raw:
             extracted_deb_dir = Path(mount_dir_raw) / "deb_mount_point"
             run_and_check(
