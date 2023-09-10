@@ -1,3 +1,4 @@
+import shutil
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -45,11 +46,12 @@ class DebPatchSet(Patch):
     @contextmanager
     def _mount_deb(path: Path) -> Iterator[Path]:
         print(f"Mounting {path.name}")
+        dpkg_deb_path = shutil.which("dpkg-deb")
         with tempfile.TemporaryDirectory() as mount_dir_raw:
             extracted_deb_dir = Path(mount_dir_raw) / "deb_mount_point"
             run_and_check(
                 [
-                    "/opt/homebrew/bin/dpkg-deb",
+                    dpkg_deb_path,
                     "-R",
                     path.as_posix(),
                     extracted_deb_dir.as_posix(),
@@ -63,7 +65,7 @@ class DebPatchSet(Patch):
                 # Repack the .deb
                 run_and_check(
                     [
-                        "/opt/homebrew/bin/dpkg-deb",
+                        dpkg_deb_path,
                         "-Zgzip",
                         "-b",
                         extracted_deb_dir.as_posix(),
