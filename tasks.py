@@ -82,7 +82,7 @@ def _ensure_pre_dependencies_are_installed() -> None:
                 f"{embolden('Toolchain setup failed: ')} pre-dependency "
                 f'"{embolden(pre_dependency)}" not found. Is it installed and in $PATH?'
             )
-            sys.exit(0)
+            sys.exit(1)
 
     print(embolden("Verified pre-dependencies."))
     print()
