@@ -105,7 +105,8 @@ def _clone_and_build_dependencies(ctx: Context) -> None:
             git_revision="ac362d4ffe4d0489a26144a1483ebf3b431da899",
             patch_files=[DEPENDENCY_PATCHES_ROOT / "xpwn.patch"],
             compile_commands=[
-                "cmake .",
+                # PT: -fcommon is required to build on Ubuntu
+                "cmake . -DCMAKE_C_FLAGS=\"-fcommon\"",
                 "make",
             ],
         ),
