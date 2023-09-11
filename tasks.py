@@ -119,7 +119,8 @@ def _clone_and_build_dependencies(ctx: Context) -> None:
                 DEPENDENCY_PATCHES_ROOT / "xpwn-xerub2.patch",
             ],
             compile_commands=[
-                "cmake .",
+                # PT: -fcommon is required to build on Ubuntu
+                'cmake . -DCMAKE_C_FLAGS="-fcommon"',
                 "make",
             ],
         ),
