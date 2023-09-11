@@ -106,7 +106,7 @@ def _clone_and_build_dependencies(ctx: Context) -> None:
             patch_files=[DEPENDENCY_PATCHES_ROOT / "xpwn.patch"],
             compile_commands=[
                 # PT: -fcommon is required to build on Ubuntu
-                "cmake . -DCMAKE_C_FLAGS=\"-fcommon\"",
+                'cmake . -DCMAKE_C_FLAGS="-fcommon"',
                 "make",
             ],
         ),
