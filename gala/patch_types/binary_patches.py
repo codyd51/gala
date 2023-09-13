@@ -37,6 +37,7 @@ class InstructionPatch(Patch):
     orig_instructions: list[Instr]
     patched_instructions: list[Instr]
     expected_length: int | None = None
+    reason: str = ""
 
     @classmethod
     def shellcode(cls, addr: int) -> InstructionPatch:
@@ -54,6 +55,7 @@ class InstructionPatch(Patch):
         branch_to_shellcode = Instr.thumb(f"bl #{hex(shellcode_addr)}")
         return cls(
             function_name="",
+            reason="",
             address=VirtualMemoryPointer(addr),
             orig_instructions=[],
             patched_instructions=[branch_to_shellcode],
@@ -63,6 +65,7 @@ class InstructionPatch(Patch):
     def quick(cls, addr: int, new_instr: Instr | list[Instr], expected_length: int | None = None) -> InstructionPatch:
         return cls(
             function_name="",
+            reason="",
             address=VirtualMemoryPointer(addr),
             orig_instructions=[],
             patched_instructions=[new_instr] if isinstance(new_instr, Instr) else new_instr,
