@@ -40,6 +40,9 @@ def get_rootfs_patches(config: GalaConfig) -> list[DmgPatchSet]:
     )
 
     # This file needs to be owned by the _securityd user.
+    # Unfortunately we can't just set the owner of the file in assets/, as DmgReplaceFileContentsPatch uses bytes
+    # to replace the file, rather than another file path (so the permission metadata is lost).
+    # Instead, there's some logic in asr_wrapper to fix up the owner UID and GID of this file.
     # TODO(PT): Add a validation to ensure the path never starts with /
     trust_store_trusts_globalsign_root_r3 = DmgReplaceFileContentsPatch(
         file_path=Path("private/var/Keychains/TrustStore.sqlite3"),

@@ -574,6 +574,30 @@ int main(int argc, const char** argv) {
         return -1;
     }
 
+    // While we're here, fix up the permissions of the TrustStore file.
+    // When the user tries to manually install a new trusted root via the UI, securityd will try to write to
+    // the TrustStore. For this to succeed, the file needs to be owned by
+    // the _securityd user (UID 64) and the wheel group (GID 0).
+    printf("Mounting /mnt1...\n");
+    const char *mount_system_partition_argv[] = {mount_path, "/dev/disk0s1", "/mnt1", NULL};
+    ret = run_and_wait(mount_path, mount_system_partition_argv);
+    if (ret != 0) {
+        printf("Mounting /dev/disk0s1 to /mnt1 failed\n");
+        return -1;
+    }
+    const char* trust_store_path = "/mnt1/private/var/Keychains/TrustStore.sqlite3";
+    if (chown(trust_store_path, 64, 0) == -1) {
+        printf("Failed to chown the TrustStore!\n");
+        return -1;
+    }
+
+    const char* umount_system_parititon_argv[] = {umount_path, "/mnt1", NULL};
+    ret = run_and_wait(umount_path, umount_system_parititon_argv);
+    if (ret != 0) {
+        printf("Unmounting the System partition failed!\n");
+        return -1;
+    }
+
     printf("asr_wrapper is done!\n");
     return 0;
 }
