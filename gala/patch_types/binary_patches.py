@@ -99,6 +99,8 @@ class InstructionPatch(Patch):
                 print("Applying instruction patch to a Mach-O")
                 binary = macho_parser.get_armv7_slice()
                 patch_file_offset = binary.file_offset_for_virtual_address(self.address)
+                # If this is a FAT, add in the FAT slice offset
+                patch_file_offset += binary.file_offset
             else:
                 raise ArchitectureNotSupportedError()
         except ArchitectureNotSupportedError:
