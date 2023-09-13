@@ -26,23 +26,17 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     setuid_patch = PatchSet(
         name="Everyone is root",
         patches=[
-            # InstructionPatch.quick(0x8014c502, Instr.thumb("movs r0, #0"), expected_length=2),
-            # InstructionPatch.quick(0x8014c696, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014cfde, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014cfe4, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014cfea, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014cff0, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014cffc, Instr.thumb("cmp r0, r0"), expected_length=2),
-            # InstructionPatch.quick(0x8014d070, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014d076, Instr.thumb("nop"), expected_length=2),
-            # InstructionPatch.quick(0x8014d07c, Instr.thumb("nop"), expected_length=2),
-            # kauth_cred_getuid always returns 0
-            # This patch causes the device to fail to boot...
-            # Logs "AppleSerialMultiplexer: mux::timeGetAdjustmentGated: Forcing time update"
-            # once every few seconds forever
-            # InstructionPatch.quick(0x8013cb70, Instr.thumb("movs r0, #0"), expected_length=2),
-            # Checking retval of `suser`. Instead of `cbnz not_root`, set retval = 0.
-            InstructionPatch.quick(0x8014C696, Instr.thumb("movs r0, #0"), expected_length=2),
+            InstructionPatch(
+                address=VirtualMemoryPointer(0x8014C696),
+                function_name="suser",
+                reason="""
+                    Checks the return value of kauth_cred_getuid().
+                    If we're not UID 0, returns zero. 
+                    Let's pretend we're always UID 0.
+                """,
+                orig_instructions=[Instr.thumb("cbnz r0, #0x8014c6a4")],
+                patched_instructions=[Instr.thumb("movs r0, #0")],
+            )
         ],
     )
 
@@ -110,18 +104,47 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     enable_dev_kmem = PatchSet(
         name="Enable /dev/kmem",
         patches=[
-            InstructionPatch.quick(0x8009F7AC, Instr.thumb("movs r3, #1")),
-            # Set permission bits
-            # InstructionPatch.quick(0x8009f738, Instr.arm("mov.w r4, #0x1b6")),
-            BlobPatch(address=VirtualMemoryPointer(0x8009F738), new_content=bytes([0x4F, 0xF4, 0xDB, 0x74])),
-            # Need to set group too?
+            InstructionPatch(
+                address=VirtualMemoryPointer(0x8009F7AC),
+                function_name="make_dev_nodes",
+                reason="""
+                    This code checks a flag in static data to determine 
+                    whether to create the /dev/mem and /dev/kmem files.
+                    Instead of loading the flag from static data, override it, 
+                    so it's always set.
+                """,
+                orig_instructions=[Instr.thumb("ldr r3, [r3]")],
+                patched_instructions=[Instr.thumb("movs r3, #1")],
+            ),
+            BlobPatch(
+                address=VirtualMemoryPointer(0x8009F7AC),
+                # This constant represents the permission bits on the /dev/mem
+                # and /dev/kmem files.
+                # Originally, this constant is 0o640.
+                # Overwrite it to 0o666 instead.
+                # orig_instructions=["mov.w r4, #0x1a0"],
+                # patched_instructions=["mov.w r4, #0x1b6"],
+                new_content=bytes([0x4f, 0xf4, 0xdb, 0x74]),
+            ),
         ],
     )
 
     enable_task_for_pid_0 = PatchSet(
         name="Enable task_for_pid(0)",
         patches=[
-            InstructionPatch.quick(0x8017E552, Instr.thumb("b #0x8017e56c"), expected_length=2),
+            InstructionPatch(
+                address=VirtualMemoryPointer(0x8017E552),
+                function_name="task_for_pid",
+                reason="""
+                    This is an early-return to prevent task_for_pid() 
+                    returning a real answer for PID 0.
+                    This code stays on a failure path if the provided PID is 0. 
+                    We always want to branch away to the success path, 
+                    which proceeds with the task_for_pid() call.
+                """,
+                orig_instructions=[Instr.thumb("cbnz r4, #0x8017e56c")],
+                patched_instructions=[Instr.thumb("b #0x8017e56c")],
+            ),
         ],
     )
 

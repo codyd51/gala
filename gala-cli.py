@@ -178,6 +178,7 @@ def main() -> None:
         time.sleep(5)
 
         try:
+            # TODO(PT): Run iproxy in the background here?
             run_and_check(
                 [
                     (DEPENDENCIES_ROOT / "idevicerestore" / "src" / "idevicerestore").as_posix(),
