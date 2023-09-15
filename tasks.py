@@ -243,3 +243,10 @@ def setup_toolchain(ctx: Context) -> None:
     _install_required_rust_toolchain(ctx)
     _clone_and_build_dependencies(ctx)
     _download_and_unzip_ipsw(ctx, OsBuildEnum.iPhone3_1_4_0_8A293)
+
+
+@task
+def launch_gui(ctx: Context) -> None:
+    with ctx.cd(GALA_ROOT / "runner_app"):
+        #ctx.run("xcodebuild build")
+        ctx.run("/Users/philliptennen/Library/Developer/Xcode/DerivedData/Gala_Runner-hcnfjxscvipvrwgekpiwczqhxkfu/Build/Products/Debug/Gala\ Runner.app/Contents/MacOS/Gala\ Runner")

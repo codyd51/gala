@@ -115,7 +115,7 @@
         @"-l",
         @"-c",
         // -u for unbuffered stdout
-        [NSString stringWithFormat:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python -u /Users/philliptennen/Documents/Jailbreak/gala/jailbreak.py %@", galaArgsAsStr],
+        [NSString stringWithFormat:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python -u /Users/philliptennen/Documents/Jailbreak/gala/gala-cli.py %@", galaArgsAsStr],
     ]];
     self.ongoingTask.arguments = arguments;
 
