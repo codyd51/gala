@@ -5,21 +5,11 @@
 ![](https://github.com/codyd51/gala/actions/workflows/main.yml/badge.svg)
 ![](https://img.shields.io/badge/py-3.11-green)
 
-**gala** is a jailbreak/tethered downgrade tool that currently supports iOS 4. **gala** implements [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) to gain code execution in SecureROM, then gradually boots and compromises the system from there.
+**gala** is a jailbreak for iOS 4. **gala** implements [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) to gain code execution in SecureROM, then gradually boots and compromises the system from there. 
+
+As a result, **gala** is also a tethered downgrade utility.
 
 **gala** comes with an [extensive write-up](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) on developing an iOS jailbreak.
-
-**gala** provides the following user-facing features:
-
-* Fully controlled bootchain and IPSW restore process
-* Custom boot logos
-* Kernel task can be controlled (`task_for_pid(0)`)
-* Neutered sandbox
-* Neutered code signing
-* Any task can be root (`suser() == 0`)
-* Enable `/dev/kmem` device file
-* Disable FreeBSD MAC enforcement
-* Allow RWX pages
 
 <table align="center"> 
     <tr>
@@ -34,14 +24,35 @@
     </tr>
 </table>
 
+**gala** provides features both in the boot environment and in iOS itself.
+
+##### Boot environment features
+
+* Fully controlled bootchain
+* Fully controlled IPSW restore process
+* Boot with custom boot logos
+* Restore to customized firmwares and iOS filesystems
+
+##### Post-boot features
+
+* Enable `/dev/kmem` device file
+* Kernel task can be controlled (`task_for_pid(0)`)
+* Neutered sandbox
+* Neutered code signing
+* Any task can be root (`suser() == 0`)
+* Disable FreeBSD MAC enforcement
+* Allow RWX pages
+
+# Patches
+
 **gala** implements a generic patching framework that emphasises maintainable and understandable patch sets. 
 
 ```python
     InstructionPatch(
         function_name="platform_early_init",
         reason="""
-        The original logic loads a memory word to find the value to pass to debug_enable_uarts(). 
-        We always want the debug logs to be emitted, so override the value here.
+            The original logic loads a memory word to find the value to pass to debug_enable_uarts(). 
+            We always want the debug logs to be emitted, so override the value here.
         """,
         address=VirtualMemoryPointer(0x84010b96),
         orig_instructions=[Instr.thumb("ldrb r0, [r4]")],
@@ -154,3 +165,29 @@ At this point, the device is jailbroken. The user then clicks the `Tethered boot
 * **gala** specifies boot arguments that indicate that the device should boot from the filesystem on NAND.
 * The iBEC loads and jumps to the kernelcache.
 * The device boots to iOS.
+
+# Visual Procedure
+
+The user connects a DFU-mode iPhone 4 and launches the GUI.
+
+<img src="assets/readme/gui.png" width="300px"/>
+
+The iBSS executes.
+
+<img src="assets/readme/ibss_background.png" width="300px"/>
+
+The iBEC executes.
+
+<img src="assets/readme/ibec_background.png" width="300px"/>
+
+**gala** sends and flashes a new filesystem.
+
+<img src="assets/readme/asr_wrapper.png" width="300px"/>
+
+After a tethered boot, the device is now jailbroken.
+
+<img src="assets/readme/jailbroken_with_gala_alert.png" width="300px"/>
+
+# License
+
+**gala** is released under the MIT license.
