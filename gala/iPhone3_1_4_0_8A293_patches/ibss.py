@@ -13,8 +13,6 @@ def get_ibss_patches(_config: GalaConfig) -> list[Patch]:
             name="Enable UART debug logs",
             patches=[
                 InstructionPatch(
-                    # Load memory to find the value that should be passed to debug_enable_uarts()
-                    # We always want debug logs, so override the value here
                     function_name="platform_early_init",
                     reason="""
                         Original code loads a word from memory to find the value to pass to debug_enable_uarts().

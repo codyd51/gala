@@ -16,24 +16,27 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
             patches=[
                 # TODO(PT): These patches seem ineffectual?
                 InstructionPatch(
-                    # Load memory to find the value that should be passed to debug_enable_uarts()
-                    # We always want debug logs, so override the value here
                     function_name="platform_early_init",
+                    reason="""
+                        Original code loads a word from memory to find the value to pass to debug_enable_uarts().
+                        Override the read value so it's always 3 (which emits serial logs).
+                    """,
                     address=VirtualMemoryPointer(0x5FF10546),
                     orig_instructions=[Instr.thumb("ldrb r0, [r4]")],
                     patched_instructions=[Instr.thumb("movs r0, #3")],
                 ),
-                # More UART patch
+                # TODO(PT): Can these be dropped?
                 InstructionPatch(
-                    function_name="maybe_iBSS_start",
-                    address=VirtualMemoryPointer(0x5FF008F4),
+                    function_name="iBSS_start",
+                    reason="Original code branches to get the debug UART setting. Override it to 3 instead",
+                    address=VirtualMemoryPointer(0x5FF00798),
                     orig_instructions=[Instr.arm("bl #0x5ff14d48")],
                     patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
                 ),
-                # More UART patch
                 InstructionPatch(
-                    function_name="maybe_iBSS_start",
-                    address=VirtualMemoryPointer(0x5FF00798),
+                    function_name="iBSS_start",
+                    reason="Original code branches to get the debug UART setting. Override it to 3 instead.",
+                    address=VirtualMemoryPointer(0x5FF008F4),
                     orig_instructions=[Instr.arm("bl #0x5ff14d48")],
                     patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
                 ),
@@ -42,16 +45,23 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
         PatchSet(
             name="Load unsigned kernelcache",
             patches=[
-                # Check PROD tag on image3
                 InstructionPatch(
-                    function_name="",
-                    address=VirtualMemoryPointer(0x5FF0DB00),
-                    orig_instructions=[Instr.thumb("cmp r0, #0")],
-                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                    function_name="image3_load_decrypt_payload",
+                    reason="""
+                        This block verifies the PROD tag on the Img3. This fails for our unpersonalized IPSW, but needs
+                        to succeed. Just drop the branch and patch the return value so it looks like it passes.
+                    """,
+                    address=VirtualMemoryPointer(0x5ff0dafc),
+                    orig_instructions=[Instr.thumb("bl #0x5ff0d7c0")],
+                    patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("nop")],
+                    expected_length=4,
                 ),
-                # Check ECID tag on image3
                 InstructionPatch(
-                    function_name="",
+                    function_name="image3_load_decrypt_payload",
+                    reason="""
+                        This block verifies the ECID tag on the Img3. This fails for our unpersonalized IPSW, but needs
+                        to succeed. Patch the comparison so it looks like it passes.
+                    """,
                     address=VirtualMemoryPointer(0x5FF0DBF8),
                     orig_instructions=[Instr.thumb("cbz r0, #0x5ff0dc1a")],
                     patched_instructions=[Instr.thumb("b #0x5ff0dc1a")],
@@ -61,12 +71,10 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
         PatchSet(
             name="Enable verbose boot",
             patches=[
+                # Override the hard-coded boot argument string with whatever our configuration says
                 BlobPatch(
                     address=VirtualMemoryPointer(0x5FF19D68),
-                    # new_content="rd=md0 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
                     new_content=f"{boot_args}\0".encode(),
-                    # new_content="rd=disk0s1 amfi=0xff cs_enforcement_disable=1 serial=3\0".encode(),
-                    # new_content="rd=disk0s1 amfi_get_out_of_my_way=1 serial=3\0".encode(),
                 )
             ],
         ),
@@ -74,40 +82,102 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
             name="Custom boot logo",
             patches=[
                 # Check SDOM
-                # Replaced with the shellcode above
                 InstructionPatch.quick(0x5FF0DADC, Instr.thumb("movs r1, #0")),
-                # TODO(PT): This looks like it conflicts with the "PROD" patch for loading img3's?
-                # Check PROD tag
-                InstructionPatch.quick(0x5FF0DAFC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")], expected_length=4),
                 # Match the registers for a success call
-                InstructionPatch.quick(
-                    0x5FF0DB46,
-                    [Instr.thumb("movs r0, #0"), Instr.thumb("mov r1, r2"), Instr.thumb("movs r2, #1")],
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="""
+                        These instructions branch to a routine to verify the CHIP tag on the image. 
+                        We don't want this comparison anyway, and here I'm overwriting the registers to match their 
+                        states when loading a successful image.
+                    """,
+                    address=VirtualMemoryPointer(0x5FF0DB46),
+                    orig_instructions=[
+                        Instr.thumb("mov r0, r5"),
+                        Instr.thumb("bl #0x5ff0d7c0"),
+                    ],
+                    patched_instructions=[
+                        Instr.thumb("movs r0, #0"),
+                        Instr.thumb("mov r1, r2"),
+                        Instr.thumb("movs r2, #1")
+                    ],
                     expected_length=6,
                 ),
-                # After the call to validate_shsh_and_cert, `r0 == 0` to indicate success. If successful,
-                # we branch away. We always should take the branch.
-                InstructionPatch.quick(0x5FF0DA84, Instr.thumb("b #0x5ff0ddd4")),
-                InstructionPatch.quick(0x5FF0DC92, Instr.thumb("cmp r3, r3")),
+                InstructionPatch(
+                    function_name="image3_load_validate_constraints",
+                    reason="""
+                        After the call to validate_shsh_and_cert just above, r0 == 0 indicates success. If successful, 
+                        we branch away. We always want to take the success branch.
+                    """,
+                    address=VirtualMemoryPointer(0x5FF0DA84),
+                    orig_instructions=[Instr.thumb("beq.w #0x5ff0ddd4")],
+                    patched_instructions=[Instr.thumb("b #0x5ff0ddd4"), Instr.thumb_nop()],
+                    expected_length=4,
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="""
+                        The original instruction here compares r3 to 0. This comparison needs to succeed, but doesn't
+                        for images we generate. Override the comparison so we can move forward.
+                    """,
+                    address=VirtualMemoryPointer(0x5FF0DC92),
+                    orig_instructions=[Instr.thumb("cmp r3, #0")],
+                    patched_instructions=[Instr.thumb("cmp r3, r3")],
+                ),
             ],
         ),
         PatchSet(
-            name="Tracing",
+            name="Neuter more img3 validation comparisons",
             patches=[
-                # OVRD
-                InstructionPatch.quick(0x5FF0DB24, Instr.thumb("cmp r0, r0")),
-                # CHIP
-                InstructionPatch.quick(0x5FF0DB4E, Instr.thumb("cmp r0, r0")),
-                # TYPE
-                InstructionPatch.quick(0x5FF0DB6E, Instr.thumb("cmp r0, r0")),
-                # SEPO
-                InstructionPatch.quick(0x5FF0DB94, Instr.thumb("cmp r0, r0")),
-                # CEPO
-                InstructionPatch.quick(0x5FF0DBB6, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                # BORD
-                InstructionPatch.quick(0x5FF0DBD4, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                # DATA
-                InstructionPatch.quick(0x5FF0DC2E, Instr.thumb("cmp r0, r0")),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the OVRD tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DB24),
+                    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the CHIP tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DB4E),
+                    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the TYPE tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DB6E),
+                    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the SEPO tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DB94),
+                    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the CEPO tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DBB6),
+                    orig_instructions=[Instr.thumb("mov r4, r0"), Instr.thumb("cbnz r0, #0x5ff0dbfa")],
+                    patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("nop")],
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the BORD tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DBD4),
+                    orig_instructions=[Instr.thumb("mov r4, r0"), Instr.thumb("cbnz r0, #0x5ff0dbfa")],
+                    patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("nop")],
+                ),
+                InstructionPatch(
+                    function_name="image3_load_decrypt_payload",
+                    reason="Original code is checking the DATA tag on the image3. Ensure the tag always looks valid.",
+                    address=VirtualMemoryPointer(0x5FF0DC2E),
+                    orig_instructions=[Instr.thumb("cmp r0, #0")],
+                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                ),
             ],
         ),
     ]
