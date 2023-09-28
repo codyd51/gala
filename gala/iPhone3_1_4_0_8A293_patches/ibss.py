@@ -33,13 +33,13 @@ def get_ibss_patches(_config: GalaConfig) -> list[Patch]:
                     function_name="image3_load_decrypt_payload",
                     reason="""
                         This block verifies the PROD tag on the Img3. This fails for our unpersonalized IPSW, but needs
-                        to succeed. Patch the comparison so it looks like it passes.
+                        to succeed. Just drop the branch and patch the return value so it looks like it passes.
                     """,
-                    address=VirtualMemoryPointer(0x8400DF14),
-                    orig_instructions=[Instr.thumb("cmp r0, #0")],
-                    patched_instructions=[Instr.thumb("cmp r0, r0")],
+                    address=VirtualMemoryPointer(0x8400DF10),
+                    orig_instructions=[Instr.thumb("bl #0x8400dbd4")],
+                    patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("nop")],
+                    expected_length=4,
                 ),
-                # Check ECID tag on image3
                 InstructionPatch(
                     function_name="image3_load_decrypt_payload",
                     reason="""
@@ -64,18 +64,6 @@ def get_ibss_patches(_config: GalaConfig) -> list[Patch]:
                     address=VirtualMemoryPointer(0x8400DEF0),
                     orig_instructions=[Instr.thumb("cmp r0, #0")],
                     patched_instructions=[Instr.thumb("movs r1, #0")],
-                ),
-                # TODO(PT): This looks like it conflicts with the "PROD" patch for loading img3's?
-                InstructionPatch(
-                    function_name="image3_load_decrypt_payload",
-                    reason="""
-                        These instructions branch to a routine to verify the PROD tag on the image. This fails for 
-                        images we generate, so just drop the branch and patch the return value.
-                    """,
-                    address=VirtualMemoryPointer(0x8400DF10),
-                    orig_instructions=[Instr.thumb("bl #0x8400dbd4")],
-                    patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("nop")],
-                    expected_length=4,
                 ),
                 InstructionPatch(
                     function_name="image3_load_decrypt_payload",
