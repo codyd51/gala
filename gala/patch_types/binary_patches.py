@@ -85,13 +85,16 @@ class InstructionPatch(Patch):
         print(f"Applying patch at {self.address}")
         print(f"    {self.address} {self.orig_instructions}")
         print(f"   Patch ----> {self.patched_instructions}")
-        # if len(patch.orig_instructions) != len(patch.patched_instructions):
-        #    raise ValueError(f'Expected to have the same number of instructions in the pre- and post-patch state')
+
+        # Unfortunately, we can't add a validation to ensure that we have the same number of instructions in the pre-
+        # and post-patch states. We might be overwriting a 4-byte Thumb branch with two 2-byte Thumb instructions.
 
         cs = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
         cs.detail = True
 
-        region_size = sum([i.format.typical_size for i in self.orig_instructions])
+        # If the caller specified an exact length for the bytecode sequence, prefer that over trying to guess.
+        # This can be important when we're working with 4-byte Thumb branches, which are unusually large.
+        region_size = self.expected_length or sum([i.format.typical_size for i in self.orig_instructions])
 
         try:
             macho_parser = MachoParser(decrypted_image_path)
