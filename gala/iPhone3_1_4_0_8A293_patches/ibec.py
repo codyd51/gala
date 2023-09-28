@@ -25,21 +25,6 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
                     orig_instructions=[Instr.thumb("ldrb r0, [r4]")],
                     patched_instructions=[Instr.thumb("movs r0, #3")],
                 ),
-                # TODO(PT): Can these be dropped?
-                InstructionPatch(
-                    function_name="iBSS_start",
-                    reason="Original code branches to get the debug UART setting. Override it to 3 instead",
-                    address=VirtualMemoryPointer(0x5FF00798),
-                    orig_instructions=[Instr.arm("bl #0x5ff14d48")],
-                    patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
-                ),
-                InstructionPatch(
-                    function_name="iBSS_start",
-                    reason="Original code branches to get the debug UART setting. Override it to 3 instead.",
-                    address=VirtualMemoryPointer(0x5FF008F4),
-                    orig_instructions=[Instr.arm("bl #0x5ff14d48")],
-                    patched_instructions=[Instr.thumb("movs r0, #3"), Instr.thumb("nop")],
-                ),
             ],
         ),
         PatchSet(
