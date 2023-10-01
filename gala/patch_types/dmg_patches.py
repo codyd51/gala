@@ -1,19 +1,17 @@
 import shutil
 import tempfile
-from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from enum import auto
 from math import ceil
 from pathlib import Path
-from typing import Iterator
 
 from strongarm.macho import MachoParser
 from strongarm.macho import VirtualMemoryPointer
 
 from gala.configuration import IpswPatcherConfig
 from gala.patch_types import Patch
-from gala.utils import run_and_check
+from gala.utils import run_and_check, mount_dmg
 
 
 @dataclass
@@ -59,41 +57,11 @@ class DmgPatchSet(Patch):
             )
 
             mounted_dmg_root: Path  # PT: Just to help mypy
-            with self._mount_dmg(decrypted_dmg_with_dmg_extension) as mounted_dmg_root:
+            with mount_dmg(decrypted_dmg_with_dmg_extension) as mounted_dmg_root:
                 print(f"Mounted {decrypted_image_path.name} to {mounted_dmg_root.as_posix()}")
                 for patch in self.patches:
                     patch.apply(config, mounted_dmg_root)
             image_data[:] = decrypted_dmg_with_dmg_extension.read_bytes()
-
-    @staticmethod
-    @contextmanager
-    def _mount_dmg(path: Path) -> Iterator[Path]:
-        print(f"Mounting {path.name}")
-        with tempfile.TemporaryDirectory() as mount_dir_raw:
-            mount_point = Path(mount_dir_raw) / "dmg_mount_point"
-            run_and_check(
-                [
-                    "hdiutil",
-                    "attach",
-                    "-mountpoint",
-                    f"{mount_point.as_posix()}/",
-                    path.as_posix(),
-                ]
-            )
-            print(f"Mounted to {mount_point.as_posix()}")
-
-            try:
-                yield mount_point
-            finally:
-                # Unmount the disk
-                run_and_check(
-                    [
-                        "hdiutil",
-                        "detach",
-                        mount_point.as_posix(),
-                    ]
-                )
-                print(f"Unmounted {path.name}")
 
 
 @dataclass

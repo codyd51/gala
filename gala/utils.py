@@ -1,6 +1,8 @@
 import os
 import subprocess
+import tempfile
 from collections.abc import Collection
+from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -87,3 +89,33 @@ def chunks(lst: Sequence[Any], n: int) -> Iterator[Collection[Any]]:
     """Yield successive n-sized chunks from lst"""
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
+
+
+@contextmanager
+def mount_dmg(path: Path) -> Iterator[Path]:
+    print(f"Mounting {path.name}")
+    with tempfile.TemporaryDirectory() as mount_dir_raw:
+        mount_point = Path(mount_dir_raw) / "dmg_mount_point"
+        run_and_check(
+            [
+                "hdiutil",
+                "attach",
+                "-mountpoint",
+                f"{mount_point.as_posix()}/",
+                path.as_posix(),
+            ]
+        )
+        print(f"Mounted to {mount_point.as_posix()}")
+
+        try:
+            yield mount_point
+        finally:
+            # Unmount the disk
+            run_and_check(
+                [
+                    "hdiutil",
+                    "detach",
+                    mount_point.as_posix(),
+                ]
+            )
+            print(f"Unmounted {path.name}")
