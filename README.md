@@ -7,7 +7,7 @@
 
 **gala** is a jailbreak for iOS 4. 
 
-**gala** implements [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) to gain code execution in SecureROM, then gradually boots and compromises the system from there. As a result, **gala** is also a tethered downgrade utility.
+**gala** implements [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) to gain code execution in SecureROM, then gradually boots and compromises the system from there. **gala** is also a tethered downgrade utility, as it abuses components of the 'Restore iPhone' procedure to flash and boot the device.
 
 **gala** comes with an [extensive write-up](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) on developing an iOS jailbreak.
 
