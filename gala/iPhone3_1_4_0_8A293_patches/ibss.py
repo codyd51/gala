@@ -78,7 +78,7 @@ def get_ibss_patches(_config: GalaConfig) -> list[Patch]:
                     patched_instructions=[
                         Instr.thumb("movs r0, #0"),
                         Instr.thumb("mov r1, r2"),
-                        Instr.thumb("movs r2, #1")
+                        Instr.thumb("movs r2, #1"),
                     ],
                     expected_length=6,
                 ),

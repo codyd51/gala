@@ -36,7 +36,7 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
                         This block verifies the PROD tag on the Img3. This fails for our unpersonalized IPSW, but needs
                         to succeed. Just drop the branch and patch the return value so it looks like it passes.
                     """,
-                    address=VirtualMemoryPointer(0x5ff0dafc),
+                    address=VirtualMemoryPointer(0x5FF0DAFC),
                     orig_instructions=[Instr.thumb("bl #0x5ff0d7c0")],
                     patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("nop")],
                     expected_length=4,
@@ -84,7 +84,7 @@ def get_ibec_patches(config: GalaConfig) -> list[Patch]:
                     patched_instructions=[
                         Instr.thumb("movs r0, #0"),
                         Instr.thumb("mov r1, r2"),
-                        Instr.thumb("movs r2, #1")
+                        Instr.thumb("movs r2, #1"),
                     ],
                     expected_length=6,
                 ),

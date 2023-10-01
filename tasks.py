@@ -248,5 +248,7 @@ def setup_toolchain(ctx: Context) -> None:
 @task
 def launch_gui(ctx: Context) -> None:
     with ctx.cd(GALA_ROOT / "runner_app"):
-        #ctx.run("xcodebuild build")
-        ctx.run("/Users/philliptennen/Library/Developer/Xcode/DerivedData/Gala_Runner-hcnfjxscvipvrwgekpiwczqhxkfu/Build/Products/Debug/Gala\ Runner.app/Contents/MacOS/Gala\ Runner")
+        # ctx.run("xcodebuild build")
+        ctx.run(
+            "/Users/philliptennen/Library/Developer/Xcode/DerivedData/Gala_Runner-hcnfjxscvipvrwgekpiwczqhxkfu/Build/Products/Debug/Gala\ Runner.app/Contents/MacOS/Gala\ Runner"
+        )

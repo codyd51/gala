@@ -140,14 +140,18 @@ class InstructionPatch(Patch):
             # Validate that the instruction was assembled correctly
             disassembled_instrs = list(cs.disasm(assembled_bytes, patched_instr_address))
             if len(disassembled_instrs) != 1:
-                raise ValueError(f"{self.address}: Expected to disassemble exactly one instruction, but got {disassembled_instrs}")
+                raise ValueError(
+                    f"{self.address}: Expected to disassemble exactly one instruction, but got {disassembled_instrs}"
+                )
             disassembled_instr = disassembled_instrs[0]
             if not disassembled_instr.op_str:
                 assembled_instr_str = disassembled_instr.mnemonic
             else:
                 assembled_instr_str = f"{disassembled_instr.mnemonic} {disassembled_instr.op_str}"
             if assembled_instr_str != patched_instr.value:
-                raise ValueError(f'{self.address}: Expected to assemble "{patched_instr.value}", but assembled "{assembled_instr_str}"')
+                raise ValueError(
+                    f'{self.address}: Expected to assemble "{patched_instr.value}", but assembled "{assembled_instr_str}"'
+                )
 
             # Apply the patch to the binary
             data[patch_file_offset : patch_file_offset + assembled_bytes_len] = assembled_bytes
@@ -158,7 +162,9 @@ class InstructionPatch(Patch):
             patch_length += assembled_bytes_len
 
         if self.expected_length and patch_length != self.expected_length:
-            raise ValueError(f"{self.address}: Expected a patch of {self.expected_length} bytes, but patch was {patch_length} bytes!")
+            raise ValueError(
+                f"{self.address}: Expected a patch of {self.expected_length} bytes, but patch was {patch_length} bytes!"
+            )
 
 
 @dataclass
