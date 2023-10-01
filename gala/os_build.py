@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from enum import auto
 from pathlib import Path
-from typing import Any
+from typing import Any, Tuple
 from typing import Mapping
 
 from strongarm.macho import VirtualMemoryPointer
@@ -127,6 +127,14 @@ class ImageType(Enum):
 ImageType.validate_type_subsets()
 
 
+@dataclass
+class XcodeDownloadInfo:
+    download_name: str
+    download_url: str
+    interior_sdk_package_path: Path
+    sdk_path_within_sdk_package: Path
+
+
 class OsBuildEnum(Enum):
     iPhone3_1_4_0_8A293 = auto()
     iPhone3_1_4_1_8B117 = auto()
@@ -204,6 +212,31 @@ class OsBuildEnum(Enum):
             {
                 self.iPhone3_1_4_0_8A293: lambda: (
                     "https://secure-appldnld.apple.com/iPhone4/061-7380.20100621,Vfgb5/iPhone3,1_4.0_8A293_Restore.ipsw"
+                ),
+                self.iPhone3_1_4_1_8B117: not_implemented,
+                self.iPhone3_1_5_0_9A334: not_implemented,
+                self.iPhone3_1_6_1_10B144: not_implemented,
+            }
+        )[
+            self  # type: ignore
+        ]()
+
+    @property
+    def sdk_download_info(self) -> XcodeDownloadInfo:
+        def not_implemented() -> None:
+            raise NotImplementedError()
+
+        # PT: This map is callback-based as a small trick to stay total without needing to define all the URLs at once
+        return TotalEnumMapping(
+            {
+                self.iPhone3_1_4_0_8A293: lambda: (
+                    # PT: This is the iOS 4.0.1 SDK instead of 4.0, but it's close enough for our purposes
+                    XcodeDownloadInfo(
+                        download_name="Xcode 3.2.3 and iOS SDK 4.0.1",
+                        download_url="https://download.developer.apple.com/ios/ios_sdk_4.0.1__final/xcode_3.2.3_and_ios_sdk_4.0.1.dmg",
+                        interior_sdk_package_path=Path("Packages") / "iPhoneSDK4_0.pkg",
+                        sdk_path_within_sdk_package=Path("Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.0.sdk"),
+                    )
                 ),
                 self.iPhone3_1_4_1_8B117: not_implemented,
                 self.iPhone3_1_5_0_9A334: not_implemented,
