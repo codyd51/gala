@@ -23,25 +23,46 @@ def get_restore_ramdisk_patches(config: GalaConfig) -> list[DmgPatchSet]:
         inner_patch=PatchSet(
             name="",
             patches=[
-                # Don't clear effaceable storage
-                # InstructionPatch.quick(0x0000526C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                # Don't wait for server ASR
-                # InstructionPatch.quick(0x000052AC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
+                # Invoke our controlled asr wrapper instead of invoking asr directly
                 BlobPatch(address=VirtualMemoryPointer(0x00031F10), new_content="/usr/bin/asr_wrapper\0".encode()),
                 BlobPatch(address=VirtualMemoryPointer(0x00031F28), new_content="\0".encode()),
-                # Don't create partitions
-                # InstructionPatch.quick(0x0000529C, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                # No fixup /var
-                # InstructionPatch.quick(0x000052EC, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                # No baseband update
-                InstructionPatch.quick(0x00005338, [Instr.thumb("movs r0, #0"), Instr.thumb("nop")]),
-                # BlobPatch(
-                #    VirtualMemoryPointer(0x0007267C), new_content=int(0x00030E30).to_bytes(4, byteorder="little")
-                # ),
-                # No flash LLB
-                InstructionPatch.quick(0x00007D64, Instr.thumb("b #0x7d7e")),
-                # Don't claim the display
-                InstructionPatch.quick(0x00009E14, [Instr.thumb("b #0xa044"), Instr.thumb_nop()], expected_length=4),
+                InstructionPatch(
+                    address=VirtualMemoryPointer(0x00005338),
+                    function_name="perform_restore",
+                    reason="""
+                        The restore would normally branch to a routine to update/flash the device's baseband.
+                        We don't care about or handle the baseband, so this would normally fail. Neuter it so the 
+                        restore doesn't try to touch the baseband.
+                    """,
+                    orig_instructions=[Instr.thumb("bl #0x7944")],
+                    patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb_nop()],
+                    expected_length=4,
+                ),
+                InstructionPatch(
+                    address=VirtualMemoryPointer(0x00007D64),
+                    function_name="perform_restore",
+                    reason="""
+                        This is checking whether the LlbImageData key is specified in the restore metadata. 
+                        If it is, the LLB will now be flashed to NOR. We want to specifically avoid flashing the LLB, 
+                        because an unsigned LLB leads to the 'dead LCD bug'. Therefore, just skip past all this 
+                        logic so that the LLB is never flashed.
+                    """,
+                    orig_instructions=[Instr.thumb("cbz r0, #0x7d74")],
+                    patched_instructions=[Instr.thumb("b #0x7d7e")],
+                ),
+                InstructionPatch(
+                    address=VirtualMemoryPointer(0x00009E14),
+                    function_name="setup_display",
+                    reason="""
+                        When restored_external is initializing, it'll claim the display and render an Apple logo and
+                        progress bar. If the display is claimed, our on-device asr_wrapper won't render anything to the 
+                        screen. Stop restored_external from claiming the display so that asr_wrapper's graphics appear
+                        directly on-screen.
+                    """,
+                    orig_instructions=[Instr.thumb("beq.w #0xa044")],
+                    patched_instructions=[Instr.thumb("b #0xa044"), Instr.thumb_nop()],
+                    expected_length=4,
+                ),
             ],
         ),
     )

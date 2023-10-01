@@ -107,7 +107,7 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
                     Nudge things such that we're always on the code path for disabled code signature enforcement.
                 """,
                 address=VirtualMemoryPointer(0x803AAF14),
-                orig_instructions=[Instr.thumb("beq #0x803aaf00")],
+                orig_instructions=[Instr.thumb("beq #0x803aaf20")],
                 patched_instructions=[Instr.thumb_nop()],
             ),
             InstructionPatch(
