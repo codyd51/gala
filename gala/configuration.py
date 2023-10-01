@@ -12,6 +12,7 @@ DEPENDENCY_PATCHES_ROOT = GALA_ROOT / "dependency_patches"
 IPSWS_ROOT = GALA_ROOT / "ipsws"
 ZIPPED_IPSWS_ROOT = IPSWS_ROOT / "zipped"
 UNZIPPED_IPSWS_ROOT = IPSWS_ROOT / "unzipped"
+SDKS_ROOT = GALA_ROOT / "sdks"
 
 PATCHED_IMAGES_ROOT = GALA_ROOT / "patched_images"
 ASSETS_ROOT = GALA_ROOT / "assets"

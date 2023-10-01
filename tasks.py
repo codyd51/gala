@@ -1,6 +1,8 @@
 import shutil
 import sys
+import tempfile
 import time
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -10,12 +12,13 @@ import requests
 from invoke import task
 from invoke.context import Context
 
-from gala.configuration import DEPENDENCIES_ROOT
+from gala.configuration import DEPENDENCIES_ROOT, SDKS_ROOT
 from gala.configuration import DEPENDENCY_PATCHES_ROOT
 from gala.configuration import GALA_ROOT
 from gala.configuration import UNZIPPED_IPSWS_ROOT
 from gala.configuration import ZIPPED_IPSWS_ROOT
 from gala.os_build import OsBuildEnum
+from gala.utils import mount_dmg
 
 
 @task
@@ -235,6 +238,61 @@ def _download_and_unzip_ipsw(os_build: OsBuildEnum) -> None:
     print(f"Unzipped IPSW to {embolden(unzipped_path.relative_to(GALA_ROOT).as_posix())}.")
 
 
+def _download_and_unzip_sdk(ctx: Context, os_build: OsBuildEnum) -> None:
+    build_folder = SDKS_ROOT / os_build.unescaped_name
+    build_folder.parent.mkdir(parents=True, exist_ok=True)
+
+    # First, ensure the Xcode .dmg is downloaded (which also includes the iOS SDK)
+    # The user must download this themselves as Apple requires the user to be authenticated
+    xcode_download_path = SDKS_ROOT / os_build.unescaped_name / "xcode_download.dmg"
+
+    sdk_download_info = os_build.sdk_download_info
+    sdk_download_name = sdk_download_info.download_name
+    sdk_download_url = sdk_download_info.download_url
+    if not xcode_download_path.exists():
+        print(f'You must download {embolden(sdk_download_name)} from Apple.')
+        print(f'Save it to {embolden(xcode_download_path.as_posix())}.')
+        print(f'Download from Apple here: {embolden(sdk_download_url)}.')
+        sys.exit(0)
+
+    print(f"Mounting {embolden(xcode_download_path.as_posix())}...")
+    with mount_dmg(xcode_download_path) as mount_point:
+        print(f'Mounted to {embolden(mount_point.as_posix())}.')
+        sdk_package_path = mount_point / sdk_download_info.interior_sdk_package_path
+        if not sdk_package_path.exists():
+            raise RuntimeError(f"Expected to find an SDK package at {sdk_package_path}")
+
+        # Unpack and save the SDK
+        with tempfile.TemporaryDirectory() as temp_dir_raw:
+            temp_dir = Path(temp_dir_raw)
+            print(f'Unpacking SDK package at {embolden(sdk_package_path.as_posix())}...')
+            ctx.run(f"xar -x -f {sdk_package_path} -C {temp_dir.as_posix()}")
+            sdk_payload_zip_path = temp_dir / "Payload"
+            if not sdk_payload_zip_path.exists():
+                raise RuntimeError(f"Expected to find {sdk_payload_zip_path.as_posix()}")
+
+            # Unzip the Payload
+            # First, extract the gzip archive. Then, extract the cpio archive to a filesystem node
+            with ctx.cd(temp_dir):
+                print(f'Unpacking SDK at {embolden(sdk_payload_zip_path.as_posix())}...')
+                ctx.run(f"gzcat {sdk_payload_zip_path.as_posix()} | cpio -id")
+
+            sdk_path = temp_dir / sdk_download_info.sdk_path_within_sdk_package
+            if not sdk_path.exists():
+                raise RuntimeError(f"Expected to find {sdk_path.as_posix()}")
+
+            # Finally, copy the SDK to the gala working directory
+            dest_sdk_path = build_folder / sdk_path.name
+            print(f'Relocating SDK to {embolden(dest_sdk_path.relative_to(GALA_ROOT).as_posix())}...')
+            # PT: This throws some errors due to wonky symlinks in the SDK, but mostly copies fine.
+            try:
+                shutil.copytree(sdk_path.as_posix(), dest_sdk_path)
+            except shutil.Error:
+                pass
+
+    print(f'Successfully extracted SDK for {embolden(os_build.unescaped_name)} at {embolden(dest_sdk_path.relative_to(GALA_ROOT))}.')
+
+
 @task
 def setup_toolchain(ctx: Context) -> None:
     print(embolden("Setting up gala toolchain..."))
@@ -243,6 +301,7 @@ def setup_toolchain(ctx: Context) -> None:
     _install_required_rust_toolchain(ctx)
     _clone_and_build_dependencies(ctx)
     _download_and_unzip_ipsw(OsBuildEnum.iPhone3_1_4_0_8A293)
+    _download_and_unzip_sdk(ctx, OsBuildEnum.iPhone3_1_4_0_8A293)
 
 
 @task
