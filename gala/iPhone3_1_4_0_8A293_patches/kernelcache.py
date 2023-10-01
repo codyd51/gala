@@ -18,9 +18,25 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
         name="Neuter sandbox",
         patches=[
             sandbox_blob_patch,
-            InstructionPatch.quick(0x803C445E, Instr.thumb_nop(), expected_length=2),
-            # Patch out the call to sandbox_mac_policy_register and make it look like it returned zero?
-            InstructionPatch.quick(0x803C100A, Instr.thumb("movs r0, #0"), expected_length=2),
+            InstructionPatch(
+                function_name="sandbox_mac_policy_register",
+                reason="""
+                    This function calls mac_policy_register to register the sandbox with the MAC subsystem. By eliding
+                    this call, the sandbox will never be hooked up to MAC.
+                """,
+                address=VirtualMemoryPointer(0x803C445E),
+                orig_instructions=[Instr.thumb("blx r3")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
+            InstructionPatch(
+                function_name="sandbox_register_mac_policy_and_store",
+                reason="""
+                    Elide the branch to sandbox_mac_policy_register() so that the sandbox never gets hooked up to MAC.
+                """,
+                address=VirtualMemoryPointer(0x803C100A),
+                orig_instructions=[Instr.thumb("blx r3")],
+                patched_instructions=[Instr.thumb("movs r0, #0")],
+            ),
         ],
     )
     setuid_patch = PatchSet(
@@ -58,46 +74,128 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
                     / "kernelcache_set_debug_enabled_shellcode"
                 ).read_bytes(),
             ),
-            # 0x80966080
-            # 0x8026a800
+            # PT: Our in-house assembler doesn't support the backwards far branch we need here
+            # This disassembles to "bl 0x80966080" (the shellcode program we injected above).
+            # We're replacing a call to printf() with a call to the shellcode program above, which will set the
+            # *debug_enabled static variable.
             BlobPatch(address=VirtualMemoryPointer(0x801D5BEA), new_content=bytes([0x90, 0xF3, 0x49, 0xF2])),
-            # TODO(PT): These might be unnecessary...
-            InstructionPatch.quick(0x803AAEB2, Instr.thumb("nop")),
-            InstructionPatch.quick(0x803AAEF4, Instr.thumb("nop")),
-            InstructionPatch.quick(0x803AAF14, Instr.thumb("nop")),
-            InstructionPatch.quick(0x803AAF28, Instr.thumb("nop")),
-            InstructionPatch.quick(0x803C4540, Instr.thumb("b #0x803c454a"), expected_length=2),
+            # PT: The following patches may no longer be necessary
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::start",
+                reason="""
+                    The original code conditionally branches away based on the value of _PE_i_can_has_debugger. 
+                    Always stay here, as though _PE_i_can_has_debugger is set.
+                """,
+                address=VirtualMemoryPointer(0x803AAEB2),
+                orig_instructions=[Instr.thumb("beq #0x803aaf3a")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::start",
+                reason="""
+                    The basic block checks whether a boot argument has disabled code signature enforcement.
+                    Nudge things such that we're always on the code path for disabled code signature enforcement.
+                """,
+                address=VirtualMemoryPointer(0x803AAEF4),
+                orig_instructions=[Instr.thumb("beq #0x803aaf00")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::start",
+                reason="""
+                    The basic block checks whether a boot argument has disabled code signature enforcement.
+                    Nudge things such that we're always on the code path for disabled code signature enforcement.
+                """,
+                address=VirtualMemoryPointer(0x803AAF14),
+                orig_instructions=[Instr.thumb("beq #0x803aaf00")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::start",
+                reason="""
+                    The basic block checks whether a boot argument has disabled cs_enforcement.
+                    Nudge things such that we're always on the code path for disabled cs_enforcement.
+                """,
+                address=VirtualMemoryPointer(0x803AAF28),
+                orig_instructions=[Instr.thumb("cbz r0, #0x803aaf3c")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::start",
+                reason="""
+                    There's a conditional branch here for "outside of container && !i_can_has_debugger". 
+                    Always avoid the failure branch.
+                """,
+                address=VirtualMemoryPointer(0x803C4540),
+                orig_instructions=[Instr.thumb("cbz r0, #0x803c454a")],
+                patched_instructions=[Instr.thumb("b #0x803c454a")],
+            ),
         ],
     )
 
+    image3_nor_patch_reason = "Image3 tags are checked when flashing images to NOR, so neuter these comparisons"
     disable_image3_nor_signature_checks = PatchSet(
-        name="Image3NOR patches",
+        name="NOR access will accept an unpersonalized Image3",
         patches=[
-            # Patch comparison of retval for bl maybe_some_kind_of_image_validation
-            InstructionPatch.quick(0x8057C800, Instr.thumb("cmp r0, r0"), expected_length=2),
-            InstructionPatch.quick(0x8057C7E4, Instr.thumb("cmp r0, r0"), expected_length=2),
-            InstructionPatch.quick(0x8057C7F2, Instr.thumb("cmp r0, r0"), expected_length=2),
-            InstructionPatch.quick(0x8057C826, Instr.thumb("cmp r0, r0"), expected_length=2),
-            InstructionPatch.quick(0x8057C876, Instr.thumb("cmp r0, r0"), expected_length=2),
-            InstructionPatch.quick(0x8057C88A, Instr.thumb("cmp r0, r0"), expected_length=2),
-            # TODO(PT): Next we have to prevent the baseband update...
+            InstructionPatch(
+                function_name="validate_image3",
+                reason=image3_nor_patch_reason,
+                address=VirtualMemoryPointer(cmp_address),
+                orig_instructions=[Instr.thumb(orig_instr)],
+                patched_instructions=[Instr.thumb("cmp r0, r0")],
+            )
+            for cmp_address, orig_instr in [
+                (0x8057C800, "cmp r0, #0"),
+                # 'SHSH' tag
+                (0x8057C7E4, "cmp r0, #0"),
+                (0x8057C7F2, "cmp r0, #0"),
+                # 'illb' tab
+                (0x8057C826, "cmp r3, r2"),
+                (0x8057C876, "cmp r0, #0"),
+                # 'DATA' tag
+                (0x8057C88A, "cmp r0, #0"),
+            ]
         ],
     )
 
     disable_more_signature_checks = PatchSet(
-        name="abc",
+        name="Neuter AMFI TrustCache signature checks",
         patches=[
-            InstructionPatch.quick(0x8057D452, [Instr.thumb("movs r0, #0"), Instr.thumb("movs r0, #0")]),
-            # SHSH
-            InstructionPatch.quick(0x803AC4FE, Instr.thumb("cmp r0, r0")),
-            # CERT
-            InstructionPatch.quick(0x803AC560, Instr.thumb("cmp r0, r0")),
-            # cmp        r0, #0x0?
-            # ite        eq?
-            # moveq      r4, r3
-            # movne      r4, r2
-            InstructionPatch.quick(0x803AA8C0, [Instr.thumb("cmp r0, r0"), Instr.thumb("b #0x803aa8ce")]),
-            InstructionPatch.quick(0x803AA904, Instr.thumb("nop")),
+            InstructionPatch(
+                function_name="rsa_check",
+                reason="""Patch out the call to an inner validation routine and make it look like it succeeded.""",
+                address=VirtualMemoryPointer(0x8057D452),
+                orig_instructions=[Instr.thumb("mov r4, r0"), Instr.thumb("b #0x8057d458")],
+                patched_instructions=[Instr.thumb("movs r0, #0"), Instr.thumb("movs r0, #0")],
+            ),
+            InstructionPatch(
+                function_name="amfi_validate_img3",
+                reason="Patch the comparison when validating the SHSH tag of the trust cache",
+                address=VirtualMemoryPointer(0x803AC4FE),
+                orig_instructions=[Instr.thumb("cmp r3, r2")],
+                patched_instructions=[Instr.thumb("cmp r0, r0")],
+            ),
+            InstructionPatch(
+                function_name="amfi_validate_img3",
+                reason="Patch the comparison when validating the CERT tag of the trust cache",
+                address=VirtualMemoryPointer(0x803AC560),
+                orig_instructions=[Instr.thumb("cmp r3, r2")],
+                patched_instructions=[Instr.thumb("cmp r0, r0")],
+            ),
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::loadTrustCache",
+                reason="Patch another SHSH tag check of the trust cache. Branch unconditionally to the success path.",
+                address=VirtualMemoryPointer(0x803AA8C0),
+                orig_instructions=[Instr.thumb("mov r2, r0"), Instr.thumb("cbz r0, #0x803aa8ce")],
+                patched_instructions=[Instr.thumb("cmp r0, r0"), Instr.thumb("b #0x803aa8ce")],
+            ),
+            InstructionPatch(
+                function_name="AppleMobileFileIntegrity::loadTrustCache",
+                reason="Don't branch away when the 'trst' tag comparison fails.",
+                address=VirtualMemoryPointer(0x803AA904),
+                orig_instructions=[Instr.thumb("bne #0x803aa8c6")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
         ],
     )
 
@@ -152,8 +250,18 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     sandbox_debug_mode = PatchSet(
         name="SandboxDebugMode",
         patches=[
-            InstructionPatch.quick(0x803C4578, Instr.thumb("movs r3, #1"), expected_length=2),
-            InstructionPatch.quick(0x803C457A, Instr.thumb("movs r3, #1"), expected_length=2),
+            InstructionPatch(
+                address=VirtualMemoryPointer(0x803C4578),
+                function_name="hook..execve",
+                reason="""
+                    The code just above fetches a value from the sandbox policy, then conditionally branches away. 
+                    Ensure we always stay on this path.
+                    The original instruction is a 4-byte Thumb instruction, so snug in an extra nop.
+                """,
+                orig_instructions=[Instr.thumb("tst.w r0, #4")],
+                patched_instructions=[Instr.thumb("movs r3, #1"), Instr.thumb_nop()],
+                expected_length=4,
+            ),
         ],
     )
 
@@ -171,25 +279,66 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
     allow_rwx_pages = PatchSet(
         name="Allow RWX pages",
         patches=[
-            # Ref: https://www.theiphonewiki.com/wiki/Vm_map_protect_Patch
-            # vm_map_protect: The original instruction clears the VM_PROT_EXECUTE bit
-            # This basic block is reached from a "tst VM_PROT_EXECUTE bit" branch
-            InstructionPatch.quick(0x8003D9FC, Instr.thumb_nop()),
-            # Same for vm_map_enter
-            InstructionPatch.quick(0x800409E8, Instr.thumb_nop()),
-            InstructionPatch.quick(0x80040976, Instr.thumb_nop()),
+            InstructionPatch(
+                function_name="vm_map_protect",
+                reason="""
+                    The basic block containing this instruction is reached from a "tst VM_PROT_EXECUTE bit" branch.
+                    The original instruction here clears the VM_PROT_EXECUTE bit. 
+                    In other words, the original code is a safety check that nips away the VM_PROT_EXECUTE bit.
+                    Defang it so VM_PROT_EXECUTE can stay.
+                """,
+                address=VirtualMemoryPointer(0x8003D9FC),
+                orig_instructions=[Instr.thumb("bic r5, r5, #4")],
+                patched_instructions=[Instr.thumb_nop(), Instr.thumb_nop()],
+                expected_length=4,
+            ),
+            InstructionPatch(
+                function_name="vm_map_enter",
+                reason="""
+                    Same concept as our vm_map_protect patch on VM_PROT_EXECUTE, but in vm_map_enter.
+                    Defang the safety check so VM_PROT_EXECUTE can stay.
+                """,
+                address=VirtualMemoryPointer(0x800409E8),
+                orig_instructions=[Instr.thumb("bic r6, r6, #4")],
+                patched_instructions=[Instr.thumb_nop(), Instr.thumb_nop()],
+                expected_length=4,
+            ),
+            InstructionPatch(
+                function_name="vm_map_enter",
+                reason="""
+                    The original code branches away into several safety checks if VM_PROT_WRITE is set.
+                    Neuter this branch away so the code never even tries to validate things.
+                """,
+                address=VirtualMemoryPointer(0x80040976),
+                orig_instructions=[Instr.thumb("bne #0x800409da")],
+                patched_instructions=[Instr.thumb_nop()],
+            ),
         ],
+    )
+
+    neuter_firmware_download_timer = InstructionPatch(
+        function_name="wlan_check_if_timeout_reached",
+        reason="""
+            When iOS boots up with gala, a message is eventually visible in the logs: 
+            "Error, no successful firmware download after %ld ms!! Giving up..."
+            The code appears to be a WLAN chip driver.
+            This doesn't appear to have any adverse affects, but seems a bit spooky, so let's have some fun by 
+            neutering it. In this case, there's a conditional branch checking whether the timer limit has been reached.
+            Patch the branch so it looks like the timer is never ready to fire.
+        """,
+        address=VirtualMemoryPointer(0x8080E826),
+        orig_instructions=[Instr.thumb("bne #0x8080e85a")],
+        patched_instructions=[Instr.thumb("b #0x8080e85a")],
     )
 
     return [
         neuter_amfi,
-        # Neuter "Error, no successful firmware download after %ld ms!! Giving up..." timer
-        InstructionPatch.quick(0x8080E826, Instr.thumb("b #0x8080e85a")),
+        neuter_firmware_download_timer,
         disable_image3_nor_signature_checks,
         disable_more_signature_checks,
         setuid_patch,
         sandbox_patch,
-        enable_dev_kmem,
+        #enable_dev_kmem,
         enable_task_for_pid_0,
         disable_mac_enforcement,
         sandbox_debug_mode,
