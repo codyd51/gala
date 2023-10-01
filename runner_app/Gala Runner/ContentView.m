@@ -110,12 +110,20 @@
 
     NSArray* extendedGalaArgs = [args arrayByAddingObject:[NSString stringWithFormat:@"--log_high_level_events_to_file %@", eventLogFilePath]];
     NSString* galaArgsAsStr = [extendedGalaArgs componentsJoinedByString:@" "];
+
+    // PT: Set by gala's launch_gui invoke task
+    NSString* pythonPath = [[[NSProcessInfo processInfo] environment] objectForKey:@"PYTHON_EXECUTABLE_PATH"];
+    NSString* galaCliPath = [[[NSProcessInfo processInfo] environment] objectForKey:@"GALA_CLI_PATH"];
+    if (!pythonPath || !galaCliPath) {
+        self.statusLabel.string = @"Gala's environment variables weren't found, crashing!";
+        [NSException raise:@"Configuration error" format:@"Failed to find the PYTHON_EXECUTABLE_PATH/GALA_CLI_PATH environment variables, which are required. They are normally set by gala's `invoke launch-gui` task."];
+    }
     
     NSMutableArray* arguments = [NSMutableArray arrayWithArray:@[
         @"-l",
         @"-c",
         // -u for unbuffered stdout
-        [NSString stringWithFormat:@"/Users/philliptennen/.pyenv/versions/3.11.1/envs/jailbreak/bin/python -u /Users/philliptennen/Documents/Jailbreak/gala/gala-cli.py %@", galaArgsAsStr],
+        [NSString stringWithFormat:@"%@ -u %@ %@", pythonPath, galaCliPath, galaArgsAsStr],
     ]];
     self.ongoingTask.arguments = arguments;
 
