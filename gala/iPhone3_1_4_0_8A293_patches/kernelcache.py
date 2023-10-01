@@ -199,34 +199,6 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
         ],
     )
 
-    enable_dev_kmem = PatchSet(
-        name="Enable /dev/kmem",
-        patches=[
-            InstructionPatch(
-                address=VirtualMemoryPointer(0x8009F7AC),
-                function_name="make_dev_nodes",
-                reason="""
-                    This code checks a flag in static data to determine 
-                    whether to create the /dev/mem and /dev/kmem files.
-                    Instead of loading the flag from static data, override it, 
-                    so it's always set.
-                """,
-                orig_instructions=[Instr.thumb("ldr r3, [r3]")],
-                patched_instructions=[Instr.thumb("movs r3, #1")],
-            ),
-            BlobPatch(
-                address=VirtualMemoryPointer(0x8009F7AC),
-                # This constant represents the permission bits on the /dev/mem
-                # and /dev/kmem files.
-                # Originally, this constant is 0o640.
-                # Overwrite it to 0o666 instead.
-                # orig_instructions=["mov.w r4, #0x1a0"],
-                # patched_instructions=["mov.w r4, #0x1b6"],
-                new_content=bytes([0x4f, 0xf4, 0xdb, 0x74]),
-            ),
-        ],
-    )
-
     enable_task_for_pid_0 = PatchSet(
         name="Enable task_for_pid(0)",
         patches=[
@@ -338,7 +310,6 @@ def get_kernelcache_patches(_config: GalaConfig) -> list[Patch]:
         disable_more_signature_checks,
         setuid_patch,
         sandbox_patch,
-        #enable_dev_kmem,
         enable_task_for_pid_0,
         disable_mac_enforcement,
         sandbox_debug_mode,
