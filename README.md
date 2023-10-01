@@ -120,6 +120,7 @@ Set up **gala's** toolchain and the working tree. This will perform steps such a
 * Installing the obsolete Rust nightly version that **gala** depends on.
 * Building **gala's** forks of iOS interaction projects such as `idevicerestore`.
 * Downloading and unzipping an iOS 4 IPSW from Apple.
+* Extracting and setting up the iOS 4 SDK from an old Xcode distribution.
 
 ```bash
 $ invoke setup-toolchain
