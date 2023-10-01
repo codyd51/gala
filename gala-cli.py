@@ -5,7 +5,7 @@ from pathlib import Path
 import usb
 import usb.core
 
-from gala.configuration import ASSETS_ROOT
+from gala.configuration import ASSETS_ROOT, ZIPPED_IPSWS_ROOT
 from gala.configuration import DEPENDENCIES_ROOT
 from gala.configuration import GALA_ROOT
 from gala.configuration import UNZIPPED_IPSWS_ROOT
@@ -169,6 +169,12 @@ def main() -> None:
         ),
         log_high_level_events_to_file=maybe_progress_file,
     )
+
+    # Sanity check - ensure the IPSW exists
+    zipped_ipsw_path = ZIPPED_IPSWS_ROOT / f'{config.patcher_config.os_build.unescaped_name}.zip'
+    if not zipped_ipsw_path.exists():
+        raise RuntimeError(f"Expected an IPSW at {zipped_ipsw_path.as_posix()}")
+
     boot_device_with_infinite_retry(config)
 
     if args.jailbreak:
@@ -184,8 +190,7 @@ def main() -> None:
                     (DEPENDENCIES_ROOT / "idevicerestore" / "src" / "idevicerestore").as_posix(),
                     "--restore-mode",
                     "-e",
-                    # TODO(PT): Host this in the gala dir
-                    "/Users/philliptennen/Documents/Jailbreak/zipped_ipsw/iPhone3,1_4.0_8A293_Restore.ipsw",
+                    zipped_ipsw_path.as_posix(),
                 ],
                 # Inform our patched idevicerestore about gala's location
                 # It needs this to know where to find gala's patched root filesystem, kernelcache, assets to send to the

@@ -219,7 +219,7 @@ def _download_file_and_report_progress(url: str, dest_path: Path) -> None:
     _progress_callback(1)
 
 
-def _download_and_unzip_ipsw(ctx: Context, os_build: OsBuildEnum) -> None:
+def _download_and_unzip_ipsw(os_build: OsBuildEnum) -> None:
     ZIPPED_IPSWS_ROOT.mkdir(exist_ok=True)
     downloaded_path = ZIPPED_IPSWS_ROOT / f"{os_build.unescaped_name}.zip"
     _download_file_and_report_progress(os_build.download_url, downloaded_path)
@@ -242,7 +242,7 @@ def setup_toolchain(ctx: Context) -> None:
     _ensure_pre_dependencies_are_installed()
     _install_required_rust_toolchain(ctx)
     _clone_and_build_dependencies(ctx)
-    _download_and_unzip_ipsw(ctx, OsBuildEnum.iPhone3_1_4_0_8A293)
+    _download_and_unzip_ipsw(OsBuildEnum.iPhone3_1_4_0_8A293)
 
 
 @task
