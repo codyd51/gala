@@ -128,8 +128,21 @@ $ invoke setup-toolchain
 
 # Running gala
 
+**gala**'s host-side logic is primarily written in Python, but comes with a Cocoa wrapper application for end-user convenience. The Cocoa GUI can be built and launched using the following commannd:
+
 ```bash
 $ invoke launch-gui
+```
+
+<img src="assets/readme/gui_bare.png" width="500px"/>
+
+Alternatively, you can use the Python application directly:
+
+```bash
+# To flash a jailbroken iOS 4 image to an iPhone 4
+$ python3 gala-cli.py --jailbreak
+# To perform a tethered boot of an iPhone 4
+$ python3 gala-cli.py --boot
 ```
 
 # How gala works
