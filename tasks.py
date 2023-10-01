@@ -307,10 +307,17 @@ def setup_toolchain(ctx: Context) -> None:
 
 @task
 def launch_gui(ctx: Context) -> None:
-    with ctx.cd(GALA_ROOT / "runner_app"):
-        # ctx.run("xcodebuild build")
+    runner_app_root = GALA_ROOT / "runner_app"
+    with ctx.cd(runner_app_root):
+        build_dir = runner_app_root / "build"
+        executable_path = build_dir / "Debug" / "Gala Runner.app" / "Contents" / "MacOS" / "Gala Runner"
+        if executable_path.exists():
+            print(f'Will {embolden("skip")} building GUI because {embolden(executable_path)} already exists.')
+        else:
+            print(f'Will {embolden("build")} GUI because {embolden(executable_path)} does not exist.')
+            ctx.run(f"xcrun xcodebuild build SYMROOT={build_dir} -configuration Debug")
         ctx.run(
-            "/Users/philliptennen/Library/Developer/Xcode/DerivedData/Gala_Runner-hcnfjxscvipvrwgekpiwczqhxkfu/Build/Products/Debug/Gala\ Runner.app/Contents/MacOS/Gala\ Runner",
+            executable_path.as_posix().replace(" ", "\\ "),
             env={
                 "PYTHON_EXECUTABLE_PATH": sys.executable,
                 "GALA_CLI_PATH": GALA_ROOT / "gala-cli.py",
