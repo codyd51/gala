@@ -1,6 +1,9 @@
 import argparse
-import time
+import shutil
+import subprocess
+from contextlib import contextmanager
 from pathlib import Path
+import time
 
 import usb
 import usb.core
@@ -22,6 +25,23 @@ from gala.patcher import regenerate_patched_images
 from gala.recompile_payloads import recompile_payloads
 from gala.securerom import execute_securerom_payload
 from gala.utils import run_and_check
+
+
+@contextmanager
+def _run_iproxy_in_background():
+    print(f"Spawning iproxy...")
+    iproxy_path = shutil.which("iproxy")
+    iproxy = subprocess.Popen([iproxy_path, "2222", "22"])
+    # Ensure iproxy didn't immediately terminate
+    time.sleep(1)
+    if iproxy.poll():
+        raise RuntimeError(f"Expected iproxy to run as a server, but it quit early")
+    try:
+        yield
+    finally:
+        print(f"Killing iproxy...")
+        iproxy.terminate()
+        iproxy.kill()
 
 
 def boot_device(config: GalaConfig) -> None:
@@ -184,21 +204,21 @@ def main() -> None:
         time.sleep(5)
 
         try:
-            # TODO(PT): Run iproxy in the background here?
-            run_and_check(
-                [
-                    (DEPENDENCIES_ROOT / "idevicerestore" / "src" / "idevicerestore").as_posix(),
-                    "--restore-mode",
-                    "-e",
-                    zipped_ipsw_path.as_posix(),
-                ],
-                # Inform our patched idevicerestore about gala's location
-                # It needs this to know where to find gala's patched root filesystem, kernelcache, assets to send to the
-                # device, sshpass dependency, etc.
-                env_additions={
-                    "GALA_ROOT": GALA_ROOT.as_posix(),
-                },
-            )
+            with _run_iproxy_in_background():
+                run_and_check(
+                    [
+                        (DEPENDENCIES_ROOT / "idevicerestore" / "src" / "idevicerestore").as_posix(),
+                        "--restore-mode",
+                        "-e",
+                        zipped_ipsw_path.as_posix(),
+                    ],
+                    # Inform our patched idevicerestore about gala's location
+                    # It needs this to know where to find gala's patched root filesystem, kernelcache, assets to send to the
+                    # device, sshpass dependency, etc.
+                    env_additions={
+                        "GALA_ROOT": GALA_ROOT.as_posix(),
+                    },
+                )
         except RuntimeError:
             config.log_event("Error: Restore failed.")
             raise
