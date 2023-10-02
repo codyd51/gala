@@ -42,6 +42,7 @@
 * Any task can be root (`suser() == 0`)
 * Disable FreeBSD MAC enforcement
 * Allow RWX pages
+* Preinstalled [GlobalSign R3](https://valid.r3.roots.globalsign.com) root SSL certificate
 
 # Patches
 
