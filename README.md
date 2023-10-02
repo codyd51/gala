@@ -186,9 +186,9 @@ The user connects a DFU-mode iPhone 4 and launches the GUI.
 
 <table align="center"> 
     <tr>
-        <td><img src="assets/readme/gui_ready.png" width="200px"/></td>
-        <td><img src="assets/readme/gui_compiling_payloads.png" width="200px"/></td>
-        <td><img src="assets/readme/gui_generate_patched_image_tree.png" width="200px"/></td>
+        <td><img src="assets/readme/gui_ready.png" width="250px"/></td>
+        <td><img src="assets/readme/gui_compiling_payloads.png" width="250px"/></td>
+        <td><img src="assets/readme/gui_generate_patched_image_tree.png" width="250px"/></td>
     </tr>
 </table>
 
