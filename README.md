@@ -44,6 +44,19 @@
 * Allow RWX pages
 * Preinstalled [GlobalSign R3](https://valid.r3.roots.globalsign.com) root SSL certificate
 
+##### Main software components
+
+* Python application
+  * limera1n implementation for exploiting the SecureROM
+  * API for specifying patches in binaries, blob files, `.dmgs`, and `.debs`
+  * Automated pipeline for decrypting, patching, and re-encrypting binaries in an iOS image
+  * Automated toolchain setup (iOS 4 SDK, building dependencies, downloading IPSWs, etc.)
+* Rust/armv7 SecureROM exploit payload
+* Cocoa GUI for running the jailbreak
+* Cocoa Touch wall-bounce animation and visual progress updates on the iPhone 4 while the device restores
+  * Communicates with **gala** on the host machine to coordinate the restore to a new filesystem
+* C utilities that run in the boot environment
+
 # Patches
 
 **gala** implements a generic patching framework that emphasises maintainable and understandable patch sets. 
