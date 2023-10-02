@@ -184,23 +184,50 @@ At this point, the device is jailbroken. The user then clicks the `Tethered boot
 
 The user connects a DFU-mode iPhone 4 and launches the GUI.
 
-<img src="assets/readme/gui.png" width="500px"/>
+<table align="center"> 
+    <tr>
+        <td><img src="assets/readme/gui_ready.png" width="200px"/></td>
+        <td><img src="assets/readme/gui_compiling_payloads.png" width="200px"/></td>
+        <td><img src="assets/readme/gui_generate_patched_image_tree.png" width="200px"/></td>
+    </tr>
+</table>
 
 The iBSS executes.
 
-<img src="assets/readme/ibss_background.png" width="200px"/>
+<table align="center"> 
+    <tr>
+        <td><img src="assets/readme/gui_exploiting_securerom.png" width="300px"/></td>
+        <td><img src="assets/readme/gui_starting_ibss.png" width="300px"/></td>
+        <td><img src="assets/readme/ibss_background.png" width="200px"/></td>
+    </tr>
+</table>
 
 The iBEC executes.
 
-<img src="assets/readme/ibec_background.png" width="300px"/>
+<table align="center"> 
+    <tr>
+        <td><img src="assets/readme/gui_starting_ibec.png" width="300px"/></td>
+        <td><img src="assets/readme/ibec_background.png" width="300px"/></td>
+    </tr>
+</table>
 
 **gala** sends and flashes a new filesystem.
 
-<img src="assets/readme/asr_wrapper.png" width="300px"/>
+<table align="center"> 
+    <tr>
+        <td><img src="assets/readme/gui_flashing_fs.png" width="300px"/></td>
+        <td><img src="assets/readme/asr_wrapper.png" width="300px"/></td>
+    </tr>
+</table>
 
 After a tethered boot, the device is now jailbroken.
 
-<img src="assets/readme/jailbroken_with_gala_alert.png" width="300px"/>
+<table align="center"> 
+    <tr>
+        <td><img src="assets/readme/gui_device_booted.png" width="300px"/></td>
+        <td><img src="assets/readme/jailbroken_with_gala_alert.png" width="300px"/></td>
+    </tr>
+</table>
 
 # License
 

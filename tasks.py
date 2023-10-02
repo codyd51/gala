@@ -316,6 +316,7 @@ def launch_gui(ctx: Context) -> None:
         else:
             print(f'Will {embolden("build")} GUI because {embolden(executable_path)} does not exist.')
             ctx.run(f"xcrun xcodebuild build SYMROOT={build_dir} -configuration Debug")
+        print(f'Launching GUI...')
         ctx.run(
             executable_path.as_posix().replace(" ", "\\ "),
             env={
