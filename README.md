@@ -9,7 +9,7 @@
 
 **gala** implements [limera1n](https://www.theiphonewiki.com/wiki/Limera1n_Exploit) to gain code execution in SecureROM, then gradually boots and compromises the system from there. **gala** is also a tethered downgrade utility, as it abuses components of the 'Restore iPhone' procedure to flash and boot the device.
 
-**gala** comes with an [extensive write-up](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) on developing an iOS jailbreak.
+**gala** comes with an [extensive write-up](https://axleos.com/exploiting-the-iphone-4-part-1-gaining-entry/) on developing an iOS jailbreak.
 
 <table align="center"> 
     <tr>
@@ -50,7 +50,7 @@
   * limera1n implementation for exploiting the SecureROM
   * API for specifying patches in binaries, blob files, `.dmgs`, and `.debs`
   * Automated pipeline for decrypting, patching, and re-encrypting binaries in an iOS image
-  * Automated toolchain setup (iOS 4 SDK, building dependencies, downloading IPSWs, etc.)
+  * Automated toolchain setup (iOS 4 SDK, patching and building dependencies, downloading IPSWs, etc.)
 * Rust/armv7 SecureROM exploit payload
 * Cocoa GUI for running the jailbreak
 * Cocoa Touch wall-bounce animation and visual progress updates on the iPhone 4 while the device restores
@@ -161,7 +161,7 @@ $ python3 gala-cli.py --boot
 
 # How gala works
 
-**gala** comes with a [writeup](https://axleos.com/blog/exploiting-the-iphone-4-part-1-gaining-entry/) detailing the process of writing an iOS jailbreak. Here's what happens on the device at a high-level:
+**gala** comes with a [writeup](https://axleos.com/exploiting-the-iphone-4-part-1-gaining-entry/) detailing the process of writing an iOS jailbreak. Here's what happens on the device at a high-level:
 
 * The user places the device into DFU mode. 
 * The device's SecureROM waits for an iBSS image to be uploaded over USB.
