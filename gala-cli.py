@@ -1,17 +1,18 @@
 import argparse
 import shutil
 import subprocess
+import time
 from contextlib import contextmanager
 from pathlib import Path
-import time
 
 import usb
 import usb.core
 
-from gala.configuration import ASSETS_ROOT, ZIPPED_IPSWS_ROOT
+from gala.configuration import ASSETS_ROOT
 from gala.configuration import DEPENDENCIES_ROOT
 from gala.configuration import GALA_ROOT
 from gala.configuration import UNZIPPED_IPSWS_ROOT
+from gala.configuration import ZIPPED_IPSWS_ROOT
 from gala.configuration import Color
 from gala.configuration import DeviceBootConfig
 from gala.configuration import GalaConfig
@@ -191,7 +192,7 @@ def main() -> None:
     )
 
     # Sanity check - ensure the IPSW exists
-    zipped_ipsw_path = ZIPPED_IPSWS_ROOT / f'{config.patcher_config.os_build.unescaped_name}.zip'
+    zipped_ipsw_path = ZIPPED_IPSWS_ROOT / f"{config.patcher_config.os_build.unescaped_name}.zip"
     if not zipped_ipsw_path.exists():
         raise RuntimeError(f"Expected an IPSW at {zipped_ipsw_path.as_posix()}")
 

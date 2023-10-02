@@ -11,7 +11,8 @@ from strongarm.macho import VirtualMemoryPointer
 
 from gala.configuration import IpswPatcherConfig
 from gala.patch_types import Patch
-from gala.utils import run_and_check, mount_dmg
+from gala.utils import mount_dmg
+from gala.utils import run_and_check
 
 
 @dataclass

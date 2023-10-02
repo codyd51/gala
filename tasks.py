@@ -11,9 +11,10 @@ import requests
 from invoke import task
 from invoke.context import Context
 
-from gala.configuration import DEPENDENCIES_ROOT, SDKS_ROOT
+from gala.configuration import DEPENDENCIES_ROOT
 from gala.configuration import DEPENDENCY_PATCHES_ROOT
 from gala.configuration import GALA_ROOT
+from gala.configuration import SDKS_ROOT
 from gala.configuration import UNZIPPED_IPSWS_ROOT
 from gala.configuration import ZIPPED_IPSWS_ROOT
 from gala.os_build import OsBuildEnum
@@ -250,14 +251,14 @@ def _download_and_unzip_sdk(ctx: Context, os_build: OsBuildEnum) -> None:
     sdk_download_name = sdk_download_info.download_name
     sdk_download_url = sdk_download_info.download_url
     if not xcode_download_path.exists():
-        print(f'You must download {embolden(sdk_download_name)} from Apple.')
-        print(f'Save it to {embolden(xcode_download_path.as_posix())}.')
-        print(f'Download from Apple here: {embolden(sdk_download_url)}.')
+        print(f"You must download {embolden(sdk_download_name)} from Apple.")
+        print(f"Save it to {embolden(xcode_download_path.as_posix())}.")
+        print(f"Download from Apple here: {embolden(sdk_download_url)}.")
         sys.exit(0)
 
     print(f"Mounting {embolden(xcode_download_path.as_posix())}...")
     with mount_dmg(xcode_download_path) as mount_point:
-        print(f'Mounted to {embolden(mount_point.as_posix())}.')
+        print(f"Mounted to {embolden(mount_point.as_posix())}.")
         sdk_package_path = mount_point / sdk_download_info.interior_sdk_package_path
         if not sdk_package_path.exists():
             raise RuntimeError(f"Expected to find an SDK package at {sdk_package_path}")
@@ -265,7 +266,7 @@ def _download_and_unzip_sdk(ctx: Context, os_build: OsBuildEnum) -> None:
         # Unpack and save the SDK
         with tempfile.TemporaryDirectory() as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
-            print(f'Unpacking SDK package at {embolden(sdk_package_path.as_posix())}...')
+            print(f"Unpacking SDK package at {embolden(sdk_package_path.as_posix())}...")
             ctx.run(f"xar -x -f {sdk_package_path} -C {temp_dir.as_posix()}")
             sdk_payload_zip_path = temp_dir / "Payload"
             if not sdk_payload_zip_path.exists():
@@ -274,7 +275,7 @@ def _download_and_unzip_sdk(ctx: Context, os_build: OsBuildEnum) -> None:
             # Unzip the Payload
             # First, extract the gzip archive. Then, extract the cpio archive to a filesystem node
             with ctx.cd(temp_dir):
-                print(f'Unpacking SDK at {embolden(sdk_payload_zip_path.as_posix())}...')
+                print(f"Unpacking SDK at {embolden(sdk_payload_zip_path.as_posix())}...")
                 ctx.run(f"gzcat {sdk_payload_zip_path.as_posix()} | cpio -id")
 
             sdk_path = temp_dir / sdk_download_info.sdk_path_within_sdk_package
@@ -283,14 +284,16 @@ def _download_and_unzip_sdk(ctx: Context, os_build: OsBuildEnum) -> None:
 
             # Finally, copy the SDK to the gala working directory
             dest_sdk_path = build_folder / sdk_path.name
-            print(f'Relocating SDK to {embolden(dest_sdk_path.relative_to(GALA_ROOT).as_posix())}...')
+            print(f"Relocating SDK to {embolden(dest_sdk_path.relative_to(GALA_ROOT).as_posix())}...")
             # PT: This throws some errors due to wonky symlinks in the SDK, but mostly copies fine.
             try:
                 shutil.copytree(sdk_path.as_posix(), dest_sdk_path)
             except shutil.Error:
                 pass
 
-    print(f'Successfully extracted SDK for {embolden(os_build.unescaped_name)} at {embolden(dest_sdk_path.relative_to(GALA_ROOT))}.')
+    print(
+        f"Successfully extracted SDK for {embolden(os_build.unescaped_name)} at {embolden(dest_sdk_path.relative_to(GALA_ROOT))}."
+    )
 
 
 @task
@@ -315,7 +318,7 @@ def launch_gui(ctx: Context) -> None:
         else:
             print(f'Will {embolden("build")} GUI because {embolden(executable_path)} does not exist.')
             ctx.run(f"xcrun xcodebuild build SYMROOT={build_dir} -configuration Debug")
-        print(f'Launching GUI...')
+        print(f"Launching GUI...")
         ctx.run(
             executable_path.as_posix().replace(" ", "\\ "),
             env={
