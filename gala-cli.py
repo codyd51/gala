@@ -30,17 +30,17 @@ from gala.utils import run_and_check
 
 @contextmanager
 def _run_iproxy_in_background():
-    print(f"Spawning iproxy...")
+    print("Spawning iproxy...")
     iproxy_path = shutil.which("iproxy")
     iproxy = subprocess.Popen([iproxy_path, "2222", "22"])
     # Ensure iproxy didn't immediately terminate
     time.sleep(1)
     if iproxy.poll():
-        raise RuntimeError(f"Expected iproxy to run as a server, but it quit early")
+        raise RuntimeError("Expected iproxy to run as a server, but it quit early")
     try:
         yield
     finally:
-        print(f"Killing iproxy...")
+        print("Killing iproxy...")
         iproxy.terminate()
         iproxy.kill()
 
